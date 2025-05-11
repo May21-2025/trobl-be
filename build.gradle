@@ -1,0 +1,105 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.4'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.may21'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+	maven { url = "https://repo.spring.io/snapshot" }
+}
+
+ext {
+	springAiVersion = "1.0.0-M6"
+	springCloudGcpVersion = "6.1.1"
+	springCloudVersion = "2024.0.1"
+}
+
+dependencies {
+	implementation 'org.apache.commons:commons-text:1.13.1'
+	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	implementation 'dev.samstevens.totp:totp:1.7.1'
+	implementation 'com.google.firebase:firebase-admin:9.4.3'
+
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'org.postgresql:postgresql'
+
+	annotationProcessor 'org.projectlombok:lombok'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+
+}
+
+tasks.register('copyProperties') {
+	doLast {
+		def env = project.findProperty('env') ?: 'local'
+		def propertiesFile
+		println "Environment: $env"
+		switch (env) {
+			case 'prod':
+				propertiesFile = file('src/main/resources/application-prod.properties')
+				break
+			case 'dev':
+				propertiesFile = file('src/main/resources/application-dev.properties')
+				break
+			case 'local':
+				propertiesFile = file('src/main/resources/application-local.properties')
+				break
+			default:
+				propertiesFile = file('src/main/resources/application-local.properties')
+				break
+		}
+
+		println "Using properties file: $propertiesFile"
+
+		if (propertiesFile.exists()) {
+			println "Properties file exists: $propertiesFile"
+			copy {
+				from propertiesFile
+				into 'build/resources/main'
+				rename { 'application.properties' }
+			}
+		} else {
+			throw new GradleException("Properties file not found: $propertiesFile")
+		}
+	}
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "com.google.cloud:spring-cloud-gcp-dependencies:${springCloudGcpVersion}"
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
