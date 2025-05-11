@@ -5,4 +5,6 @@ import com.may21.trobl.user.domain.User;
 
 public interface AuthorizationService {
   AuthDto.SignUpResponse signUp(AuthDto.SignUpRequest signUpDto);
+
+  AuthDto.Response signIn(AuthDto.LoginRequest signRequestDto);
 }

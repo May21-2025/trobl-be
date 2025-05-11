@@ -32,4 +32,20 @@ public class AuthController {
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
+
+  // 로그인
+  @PostMapping("/sign-in")
+  public ResponseEntity<Message> signIn(
+      @RequestBody AuthDto.LoginRequest signRequestDto,
+      HttpServletRequest request,
+      HttpServletResponse response) {
+    AuthDto.Response authDto = authorizationService.signIn(signRequestDto);
+    String ipAddress = HeaderExtractor.extractIpAddress(request);
+    String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
+    String deviceId = HeaderExtractor.extractDeviceId(request);
+    TokenInfo token =
+        jwtTokenUtil.generateAccessAndRefreshToken(authDto, ipAddress, deviceIfo, deviceId);
+    token.tokenToHeaders(response);
+    return new ResponseEntity<>(Message.success(authDto), HttpStatus.OK);
+  }
 }

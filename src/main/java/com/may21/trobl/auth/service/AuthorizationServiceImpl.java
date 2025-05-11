@@ -27,4 +27,16 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     notificationService.setNotificationSetting(user);
     return new AuthDto.SignUpResponse(user);
   }
+
+  @Override
+  public AuthDto.Response signIn(AuthDto.LoginRequest signRequestDto) {
+    String username = signRequestDto.getUsername();
+    String password = signRequestDto.getPassword();
+    User user =  userRepository.findByUsername(username)
+        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    if (!passwordEncoder.matches(password, user.getPassword())) {
+      throw new BusinessException(ExceptionCode.INVALID_PASSWORD);
+    }
+    return new AuthDto.Response(user);
+  }
 }
