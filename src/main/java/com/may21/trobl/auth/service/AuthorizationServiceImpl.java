@@ -22,10 +22,25 @@ public class AuthorizationServiceImpl implements AuthorizationService {
   private final PasswordEncoder passwordEncoder;
 
   @Override
-  public AuthDto.SignUpResponse signUp(AuthDto.SignUpRequest signUpDto) {
-    User user = userService.registerUser(signUpDto);
+  public AuthDto.SignUpResponse registerAdminUser(AuthDto.SignUpRequest signUpDto) {
+    User user = userService.registerAdminUser(signUpDto);
     notificationService.setNotificationSetting(user);
     return new AuthDto.SignUpResponse(user);
+  }
+
+  @Override
+  public boolean checkIfUserUnregisteredIn30days(String email) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public boolean confirmSignUp(String code, String email) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public boolean resendConfirmationCode(String email) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
 
   @Override
@@ -38,5 +53,30 @@ public class AuthorizationServiceImpl implements AuthorizationService {
       throw new BusinessException(ExceptionCode.INVALID_PASSWORD);
     }
     return new AuthDto.Response(user);
+  }
+
+  @Override
+  public boolean changePassword(AuthDto.ChangePasswordRequest userDto, User user) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public boolean forgotPassword(String email) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public boolean forgotPasswordConfirm(AuthDto.ForgetPasswordRequest cognitoUserDto) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public boolean logout(Long id) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  }
+
+  @Override
+  public boolean unregister(Long id) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
 }

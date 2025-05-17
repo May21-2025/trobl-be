@@ -14,6 +14,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -22,6 +23,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -112,13 +115,17 @@ public class JwtTokenUtil {
   }
   public String generateRefreshToken(Long userId, String deviceId, String parentTokenId) {
     String tokenId = UUID.randomUUID().toString();
-    Instant expiryDate = Instant.now().plus(7, ChronoUnit.DAYS);
+    Instant expiryDate = Instant.now().plus(14, ChronoUnit.DAYS);
+
+    byte[] keyBytes = SECRET_KEY_JWT.getBytes(StandardCharsets.UTF_8);
+    Key key = new SecretKeySpec(keyBytes,Jwts.SIG.HS512.toString());
+
     String token = Jwts.builder()
-            .setSubject(userId.toString())
-            .setId(tokenId)
-            .setIssuedAt(new Date())
-            .setExpiration(Date.from(expiryDate))
-            .signWith(SignatureAlgorithm.HS512, SECRET_KEY_JWT)
+            .subject(userId.toString())
+            .id(tokenId)
+            .issuedAt(new Date())
+            .expiration(Date.from(expiryDate))
+            .signWith(key)
             .compact();
     RefreshToken refreshToken = RefreshToken.builder()
             .tokenId(tokenId)
@@ -216,26 +223,12 @@ public class JwtTokenUtil {
   }
 
   public TokenInfo reissueAccessToken(HttpServletRequest request) {
-    String refreshToken = extractRefreshToken(request);
-    User user = getAuthentication(refreshToken);
-
+    String parentRefreshToken = extractRefreshToken(request);
+    User user = getAuthentication(parentRefreshToken);
+    Claims refreshTokenClaims = getClaims(parentRefreshToken);
+    String parentTokenId = refreshTokenClaims.get("id").toString();
     String deviceId = extractDeviceId(request);
-    List<RefreshToken> refreshTokenEntity =
-        refreshTokenRepository.findValidTokenByUserIdAndDeviceId(user.getId(), deviceId);
-    if (refreshTokenEntity.isEmpty()) {
-      throw new BusinessException(ExceptionCode.INVALID_ACCESS_TOKEN);
-    }
-    String tokenHash = hashToken(refreshToken);
-    boolean isValid = false;
-    for (RefreshToken token : refreshTokenEntity) {
-      if (token.getToken().equals(tokenHash)) {
-        isValid = true;
-        break;
-      } else token.setRevoked(true);
-    }
-    if (!isValid) {
-      throw new BusinessException(ExceptionCode.INVALID_ACCESS_TOKEN);
-    }
+    String refreshToken = generateRefreshToken(user.getId(),deviceId,parentTokenId);
     String accessToken = generateToken(user, deviceId, ACCESS_TOKEN_EXPIRATION);
     return new TokenInfo("Bearer", accessToken, refreshToken);
   }
@@ -283,7 +276,7 @@ public class JwtTokenUtil {
       byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
       return Base64.getEncoder().encodeToString(hash);
     } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("토큰 해싱 실패", e);
+      throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED, e);
     }
   }
 }
