@@ -1,0 +1,25 @@
+package com.may21.trobl.comment.service;
+
+import com.may21.trobl.comment.dto.CommentDto;
+import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
+
+public interface CommentService {
+
+  @Transactional(readOnly = true)
+  List<CommentDto.Response> getComments(Long postId, Long userId);
+
+  @Transactional
+  CommentDto.Response createComment(Long postId, CommentDto.Request request, Long id);
+
+  @Transactional
+  CommentDto.Response updateComment(Long request, CommentDto.Request id, Long commentId);
+
+  @Transactional
+  boolean likeComment(Long commentId, Long id);
+
+  @Transactional
+  boolean deleteComment(Long id, Long commentId);
+
+  List<CommentDto.RecentInfo> getMyComments(Long id);
+}
