@@ -2,6 +2,7 @@ package com.may21.trobl._global.config;
 
 import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.auth.jwt.JwtAuthenticationFilter;
+import com.may21.trobl.user.domain.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,7 @@ public class SecurityConfig {
 
   private final JwtTokenUtil jwtTokenUtil;
   private final UserDetailsService userDetailsService;
+  private final CustomOAuth2UserService customOAuth2UserService;
 
   @Bean
   public JwtAuthenticationFilter jwtAuthenticationFilter() {
@@ -37,10 +39,24 @@ public class SecurityConfig {
         .cors(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(
             auth ->
-                auth
-                        .requestMatchers("/auth/**", "/public/**"
-                        ).permitAll()
-                        .anyRequest().authenticated())
+                auth.requestMatchers(HttpMethod.GET, "/**")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS, "/**")
+                    .permitAll()
+                    // ✅ POST, PUT, DELETE 요청은 인증 필요
+                    .requestMatchers(HttpMethod.POST, "/**")
+                    .authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/**")
+                    .authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/**")
+                    .authenticated()
+                    .requestMatchers(HttpMethod.PATCH, "/**")
+                    .authenticated()
+                    .anyRequest()
+                    .authenticated())
+        .oauth2Login(
+            oauth2 ->
+                oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService)))
         .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -5,9 +5,9 @@ import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.user.UserDto;
+import com.may21.trobl.user.domain.OAuthUserInfo;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
-import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -44,7 +44,8 @@ public class UserService implements UserDetailsService {
     if (userRepository.existsByUsername(username)) {
       throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
     }
-    User user = User.builder()
+    User user =
+        User.builder()
             .username(username)
             .encryptEmail(passwordEncoder.encode(email))
             .encryptPassword(passwordEncoder.encode(password))
@@ -105,5 +106,22 @@ public class UserService implements UserDetailsService {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
 
+  public User createOAuthUser(OAuthUserInfo userInfo) {
+    String username = userInfo.getProviderId();
+    String email = userInfo.getEmail();
+    String provider = userInfo.getProvider();
 
+    if (userRepository.existsByUsername(username)) {
+      throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
+    }
+    User user =
+        User.builder()
+            .username(username)
+            .encryptEmail(passwordEncoder.encode(email))
+            .provider(provider)
+            .nickname("user1")
+            .role(RoleType.USER)
+            .build();
+    return userRepository.save(user);
+  }
 }

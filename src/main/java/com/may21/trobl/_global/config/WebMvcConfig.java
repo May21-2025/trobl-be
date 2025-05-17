@@ -20,21 +20,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
             HttpMethod.POST.name(),
             HttpMethod.PUT.name(),
             HttpMethod.DELETE.name(),
-            HttpMethod.PATCH.name())
+            HttpMethod.PATCH.name(),
+            HttpMethod.OPTIONS.name())
         .allowedHeaders("Content-Type", "Authorization", "X-Requested-With")
-        .exposedHeaders(
-            "Authorization",
-            "X-Device-ID")
+        .exposedHeaders("Authorization", "X-Device-ID")
         .allowCredentials(true)
         .maxAge(3600);
   }
 
-  /** 환경별로 적절한 Origin 목록을 반환합니다. */
   private String[] getEnvironmentSpecificOrigins() {
-
-    return new String[] {
-      "http://localhost:3000"
-    };
+    return new String[] {"http://localhost:3000"};
   }
 
   @Override

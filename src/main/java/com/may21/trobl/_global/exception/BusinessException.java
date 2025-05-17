@@ -6,14 +6,17 @@ import lombok.Getter;
 public class BusinessException extends RuntimeException {
 
   private final ExceptionCode errorCode;
-
-  public BusinessException(String message, ExceptionCode errorCode) {
-    super(message);
-    this.errorCode = errorCode;
-  }
+  private final String detailMessage;
 
   public BusinessException(ExceptionCode errorCode) {
     super(errorCode.getMessage());
     this.errorCode = errorCode;
+    this.detailMessage = "";
+  }
+  
+  public BusinessException(ExceptionCode errorCode, Exception e) {
+    super(errorCode.getMessage());
+    this.errorCode = errorCode;
+    this.detailMessage = e.getMessage();
   }
 }
