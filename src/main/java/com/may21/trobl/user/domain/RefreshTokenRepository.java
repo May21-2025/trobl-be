@@ -41,7 +41,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
   @Query("SELECT COUNT(r) > 0 FROM RefreshToken r WHERE r.token = :token AND r.revoked = true")
   boolean isTokenRevoked(String token);
 
-  Optional<RefreshToken> findByUserIdAndDeviceInfo(Long userId, String deviceInfo);
+  Optional<RefreshToken> findByUserIdAndDeviceId(Long userId, String deviceId);
   @Query("SELECT r FROM RefreshToken r WHERE r.userId = :userId AND r.deviceId = :deviceId AND r.revoked = false")
   List<RefreshToken> findValidTokenByUserIdAndDeviceId(Long userId, String deviceId);
 }

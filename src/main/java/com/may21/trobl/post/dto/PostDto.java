@@ -121,6 +121,8 @@ public class PostDto {
   public static class Request {
     private String title;
     private String content;
+    private String postType;
+    private OpinionItem optionItem;
     private Poll poll;
 
     public String getTitle() {

@@ -78,8 +78,8 @@ public class UserService implements UserDetailsService {
 
   @Transactional
   public void changePassword(String username, String newPassword) {
-    userRepository.updatePassword(
-        username, passwordEncoder.encode(newPassword), System.currentTimeMillis());
+    User user = userRepository.findByUsername(username).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    user.updatePassword(passwordEncoder.encode(newPassword));
   }
 
   public UserDto.Info updateUserLanguage(Long userId, String language) {

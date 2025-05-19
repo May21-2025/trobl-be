@@ -116,4 +116,7 @@ public class User implements UserDetails, OAuth2User {
     this.roles = List.of(role.name());
   }
 
+    public void updatePassword(String encodePassword) {
+    this.password = encodePassword;
+    }
 }

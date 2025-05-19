@@ -37,12 +37,28 @@ public class TimeTraceAop {
 
   @PostConstruct
   public void init() {
-    try {
-      asciiLogo = Files.readString(new ClassPathResource("banner-tracer.txt").getFile().toPath(), StandardCharsets.UTF_8);
-      log.info("\n\n{}\n\n{}\n\n", color("STAGE : " + stage, BROWN), color(asciiLogo, TROBL_PINK));
-    } catch (IOException e) {
-      log.warn("ASCII logo not loaded.", e);
-    }
+    asciiLogo =
+        "\n"
+            + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀        ⠀⠀⢄⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀        ⠀⠀⠀⢜⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⢦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀       ⠀⠀⢠⢣⠃⠀⠀\n"
+            + "⠀⠀⠀⠀⢇⢆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀       ⠀⠀⠀⡎⡎⠆⠀⠀\n"
+            + "⠀⠀⠀⠀⢱⢱⢱⠀⠀⠀⠀⠀⠀⡀⡄⡄⡆⡆⡆⡆⡆⡤⡠⣀⣀⣀⡀⡄⢤⢰⢰⢰⢰⢠⢄⢄⠀⠀⠀⠀⠀⠀  ⠀⢀⢎⢎⢎⠅⠀⠀\n"
+            + "⠀⠀⠀⠀⠐⢕⢕⢍⢆⢄⢀⢔⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢔⡒⡆⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡝⣔⢢⢀⠀⡀⡔⡕⡕⡕⡕⠁⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⠑⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⠕⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⢘⢜⢜⢜⢜⢜⢜⢜⢜⢜⣜⢜⣜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⣜⣜⣜⣜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⠜⠀⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⡰⡸⡸⡸⡸⡸⡸⡸⡸⠘⠈⠀⠁⠀⠁⠁⠑⠑⠑⠉⠊⠁⠁⠁⠀⠀⠀⠈⠈⠁⠃⠇⢇⢇⢕⢕⢕⢕⢕⢕⢕⡢⡀⠀⠀\n"
+            + "⠀⠀⠀⡀⡆⡇⡇⡇⡇⡇⡇⣇⣷⣧⠀⠀⠀⢀⡆⠀⠀⠀⠀⠀⠀⠠⠀⠀⠀⠀⠀⠀⠀⣀⢀⠀⠀⢀⡕⠕⡕⡕⡕⢕⢕⢕⢜⢜⢔⠄\n"
+            + "⡀⡄⡆⡇⡇⡇⡇⡇⡇⢇⢇⡛⡟⡿⡿⡿⣷⡿⣇⡀⡀⠀⠀⠀⠀⠜⠀⠀⠀⠀⠀⠀⣀⣿⣿⣿⣿⣿⣿⣷⣾⣮⢪⢪⢪⢪⢪⢪⢪⠊\n"
+            + "⠈⠊⠊⠎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢆⢇⢇⢎⢎⢕⢕⡪⡢⡳⡰⡰⡰⡰⡲⣾⣿⣿⣿⣿⣿⣿⢿⡿⢟⢜⢜⢜⢜⢜⢜⢜⠜⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⠈⠈⠘⠸⠸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⢭⢡⠥⡱⡡⡢⡪⡪⡪⡪⡪⡪⡪⡪⡪⡪⠊⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⠇⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠪⢎⡎⡎⡎⡎⡎⡎⡎⡎⡎⡪⡪⡪⡪⡪⡪⡪⡪⠪⠪⡪⢪⠪⠪⠪⡪⡪⡪⡪⣪⠏⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠳⡳⡵⣕⣕⢕⢕⢕⢕⢕⢕⢕⢕⢕⢕⢜⠤⡄⡄⣀⢀⢄⡪⡪⡪⣪⢞⡕⠁⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠘⠱⡳⡽⣝⢞⣞⢼⡪⡮⣪⢎⣎⢮⣪⣪⡪⣲⡱⣕⢼⡪⡯⣺⠍⠀⠀⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠙⠕⢗⢯⢞⡽⡵⣫⣞⢵⡳⡵⣝⣞⢮⣳⡫⣞⠽⠁⠀⠀⠀⠀⠀⠀\n"
+            + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠉⠋⠚⠮⢳⠽⡝⡮⠺⠕⠗⠝⠁⠁⠀⠀⠀⠀⠀⠀⠀\n";
+    log.info("\n\n{}\n\n{}\n\n", color("STAGE : " + stage, BROWN), color(asciiLogo, TROBL_PINK));
   }
 
   @Around("execution(* com.may21.trobl..presentation..*(..))")
@@ -76,7 +92,15 @@ public class TimeTraceAop {
       warn.append(formatWarning(methodName, "EXECUTION TIME", timeThreshold));
     }
 
-    log.info(formatTable(requestURI, methodName, execTime, queryCount, queryThreshold, timeThreshold, warn.toString()));
+    log.info(
+        formatTable(
+            requestURI,
+            methodName,
+            execTime,
+            queryCount,
+            queryThreshold,
+            timeThreshold,
+            warn.toString()));
 
     if (isUrgent) {
       log.error("URGENT WARNING: [{}] in CRITICAL state!", methodName);
@@ -86,7 +110,8 @@ public class TimeTraceAop {
   }
 
   private String getCurrentUri() {
-    ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    ServletRequestAttributes attrs =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
     return attrs == null ? "NONE" : attrs.getRequest().getRequestURI();
   }
 }

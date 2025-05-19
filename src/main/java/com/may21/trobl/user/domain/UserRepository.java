@@ -32,10 +32,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.accountNonLocked = :locked WHERE u.username = :username")
     void updateAccountLockStatus(String username, boolean locked);
 
-    @Modifying
-    @Transactional
-    @Query("UPDATE User u SET u.password = :password, u.lastPasswordChangeTime = :time WHERE u.username = :username")
-    void updatePassword(String username, String password, long time);
-
     List<User> findByIdIn(List<Long> userIds);
 }

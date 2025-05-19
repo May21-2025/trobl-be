@@ -245,7 +245,7 @@ public class JwtTokenUtil {
   public void createRefreshToken(
       String refreshTokenValue, Long userId, String ipAddress, String deviceId, String deviceInfo) {
     Optional<RefreshToken> existingToken =
-        refreshTokenRepository.findByUserIdAndDeviceInfo(userId, deviceInfo);
+        refreshTokenRepository.findByUserIdAndDeviceId(userId, deviceId);
 
     // 기존 토큰이 있다면 폐기 처리
     existingToken.ifPresent(
