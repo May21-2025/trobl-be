@@ -37,12 +37,10 @@ public class SecurityConfig {
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     return http.csrf(AbstractHttpConfigurer::disable)
         .cors(AbstractHttpConfigurer::disable)
-        .authorizeHttpRequests(
-            auth ->
-                auth.requestMatchers(HttpMethod.GET, "/**")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.OPTIONS, "/**")
-                    .permitAll()
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/auth/**").permitAll() // ✅ 회원가입, 로그인은 인증 없이
+                    .requestMatchers(HttpMethod.GET, "/**").permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     // ✅ POST, PUT, DELETE 요청은 인증 필요
                     .requestMatchers(HttpMethod.POST, "/**")
                     .authenticated()

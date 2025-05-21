@@ -23,12 +23,9 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -59,13 +56,25 @@ public class JwtTokenUtil {
   }
 
   /** JWT 토큰에서 사용자 이름 추출 */
-  public String extractUsername(String token) {
-    return extractClaim(token, Claims::getSubject);
+  public String  extractUsername(String token) {
+    byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+    Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
+    return Jwts.parser()
+            .setSigningKey(restoredKey) // 복호화에 사용할 키
+            .build().parseSignedClaims(token).getPayload()
+            .getSubject();             // 바로 subject 꺼냄
+
   }
 
   /** JWT 토큰에서 만료 시간 추출 */
   public Date extractExpiration(String token) {
-    return extractClaim(token, Claims::getExpiration);
+
+    byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+    Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
+    return Jwts.parser()
+            .setSigningKey(restoredKey) // 복호화에 사용할 키
+            .build().parseSignedClaims(token).getPayload()
+            .getExpiration();
   }
 
   /** JWT 토큰에서 특정 클레임 추출 */
@@ -86,56 +95,49 @@ public class JwtTokenUtil {
     return expiration.before(new Date());
   }
 
-  /** 사용자 정보로 Access Token 생성 */
-  public String generateToken(UserDetails userDetails, String deviceId, long duration) {
-    Authentication authentication =
-        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-    return createToken(authentication, deviceId, duration);
+  /** RefreshToken로 Access Token 생성 */
+  public String generateTokenFromRefreshToken(User user, RefreshToken refreshToken, String deviceId) {
+  Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.MILLIS);
+if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED);
+    byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+    Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
+    Long userId = refreshToken.getUserId();
+    String token = Jwts.builder()
+            .subject(user.getUsername())
+            .claim("userId", userId)
+            .id(refreshToken.getTokenId())
+            .issuedAt(new Date())
+            .expiration(Date.from(expiryDate))
+            .signWith(restoredKey)
+            .compact();
+    return token;
   }
 
-  /** JWT 토큰 생성 공통 메서드 */
-  public String createToken(Authentication authentication, String deviceId, long expireTime) {
-    String authorities =
-        authentication.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .collect(Collectors.joining(","));
-    Date now = new Date();
-    Date accessExpiration = new Date(now.getTime() + expireTime);
-    Long userId = ((User) authentication.getPrincipal()).getId();
-
-    return Jwts.builder()
-        .subject(authentication.getName())
-        .claim("auth", authorities)
-        .claim("userId", userId)
-        .claim("device_id", deviceId)
-        .issuedAt(now)
-        .expiration(accessExpiration)
-        .signWith(getKey(), Jwts.SIG.HS256)
-        .compact();
-  }
-  public String generateRefreshToken(Long userId, String deviceId, String parentTokenId) {
+  public RefreshToken generateRefreshToken(User user, String deviceId, String parentTokenId) {
     String tokenId = UUID.randomUUID().toString();
-    Instant expiryDate = Instant.now().plus(14, ChronoUnit.DAYS);
+    Instant expiryDate = Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.MILLIS);
 
-    byte[] keyBytes = SECRET_KEY_JWT.getBytes(StandardCharsets.UTF_8);
-    Key key = new SecretKeySpec(keyBytes,Jwts.SIG.HS512.toString());
+    byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+    Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
 
     String token = Jwts.builder()
-            .subject(userId.toString())
+            .subject(user.getUsername())
+            .claim("userId", user.getId())
             .id(tokenId)
             .issuedAt(new Date())
             .expiration(Date.from(expiryDate))
-            .signWith(key)
+            .signWith(restoredKey)
             .compact();
     RefreshToken refreshToken = RefreshToken.builder()
             .tokenId(tokenId)
-            .userId(userId)
+            .token(token)
+            .userId(user.getId())
             .deviceId(deviceId)
             .expiryDate(expiryDate)
             .parentId(parentTokenId)
             .build();
     refreshTokenRepository.save(refreshToken);
-    return token;
+    return refreshToken;
   }
 
   public User getAuthentication(String token) {
@@ -191,21 +193,6 @@ public class JwtTokenUtil {
     throw new BusinessException(ExceptionCode.INVALID_ACCESS_TOKEN);
   }
 
-  public TokenInfo createTokenInfo(Authentication authentication, String deviceId) {
-    UserDetails userDetails;
-    if (authentication != null
-        && authentication.getPrincipal() instanceof UserDetails extractedUserDetail) {
-      userDetails = extractedUserDetail;
-    } else if (authentication != null && authentication.getPrincipal() instanceof User user) {
-      userDetails = user;
-    } else {
-      throw new IllegalArgumentException("Invalid authentication object");
-    }
-    String accessToken = generateToken(userDetails, deviceId, ACCESS_TOKEN_EXPIRATION);
-    String refreshToken = generateToken(userDetails, deviceId, REFRESH_TOKEN_EXPIRATION);
-
-    return new TokenInfo("Bearer", accessToken, refreshToken);
-  }
 
   public User getUserFromValidateAccessToken(HttpServletRequest request) {
     String token = getTokenFromRequest(request);
@@ -228,46 +215,18 @@ public class JwtTokenUtil {
     Claims refreshTokenClaims = getClaims(parentRefreshToken);
     String parentTokenId = refreshTokenClaims.get("id").toString();
     String deviceId = extractDeviceId(request);
-    String refreshToken = generateRefreshToken(user.getId(),deviceId,parentTokenId);
-    String accessToken = generateToken(user, deviceId, ACCESS_TOKEN_EXPIRATION);
-    return new TokenInfo("Bearer", accessToken, refreshToken);
+    RefreshToken refreshToken = generateRefreshToken(user, deviceId,parentTokenId);
+    String accessToken = generateTokenFromRefreshToken(user, refreshToken, deviceId);
+    return new TokenInfo("Bearer", accessToken, refreshToken.getToken());
   }
 
   public TokenInfo generateAccessAndRefreshToken(
       AuthDto.Response authDto, String ipAddress, String deviceInfo, String deviceId) {
+
     User user = new User(authDto.getUserId(), authDto.getUsername(), "", new ArrayList<>());
-    String refreshToken = generateToken(user, deviceId, REFRESH_TOKEN_EXPIRATION);
-    String accessToken = generateToken(user, deviceId, ACCESS_TOKEN_EXPIRATION);
-    createRefreshToken(refreshToken, user.getId(), ipAddress, deviceId, deviceInfo);
-    return new TokenInfo("Bearer", accessToken, refreshToken);
-  }
-
-  public void createRefreshToken(
-      String refreshTokenValue, Long userId, String ipAddress, String deviceId, String deviceInfo) {
-    Optional<RefreshToken> existingToken =
-        refreshTokenRepository.findByUserIdAndDeviceId(userId, deviceId);
-
-    // 기존 토큰이 있다면 폐기 처리
-    existingToken.ifPresent(
-        token -> {
-          token.setRevoked(true);
-          refreshTokenRepository.save(token);
-        });
-
-    String tokenHash = hashToken(refreshTokenValue);
-    // 토큰 만료 시간 설정 (예: 7일)
-    Instant expiryDate = Instant.now().plus(7, ChronoUnit.DAYS);
-
-    RefreshToken refreshToken =
-        RefreshToken.builder()
-            .token(tokenHash)
-            .userId(userId)
-            .expiryDate(expiryDate)
-            .deviceId(deviceId)
-            .ipAddress(ipAddress)
-            .build();
-
-    refreshTokenRepository.save(refreshToken);
+    RefreshToken refreshToken = generateRefreshToken(user, deviceId, null);
+    String accessToken = generateTokenFromRefreshToken(user, refreshToken, deviceId);
+    return new TokenInfo("Bearer", accessToken, refreshToken.getToken());
   }
 
   private String hashToken(String token) {

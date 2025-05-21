@@ -19,16 +19,16 @@ public class RefreshToken {
   @Column(nullable = false)
   private Long userId;
 
-  @Column(nullable = false)
+  @Column(nullable = false, columnDefinition = "text")
   private String tokenId;
 
-  @Column(nullable = false, unique = true)
+  @Column(nullable = false, unique = true, columnDefinition = "text")
   private String token;
 
   @Column(nullable = false)
   private Instant expiryDate;
 
-  @Column(nullable = false)
+  @Column(nullable = false, columnDefinition = "text")
   private String deviceId;
 
   @Column(nullable = false)
