@@ -13,7 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/posts/{postId}/comments")
+@RequestMapping("/postings/{postId}/comments")
 @RequiredArgsConstructor
 public class CommentController {
 
@@ -51,7 +51,7 @@ public class CommentController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @PostMapping("/{commentId}/like")
+    @PutMapping("/{commentId}/like")
     public ResponseEntity<Message> likeComment(
             @PathVariable Long commentId,
             @AuthenticationPrincipal User user) {
