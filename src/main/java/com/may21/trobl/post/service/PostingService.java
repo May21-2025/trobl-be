@@ -8,11 +8,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 public interface PostingService {
+
+    @Transactional(readOnly = true)
     Page<PostDto.ListItem> getPostsList(Pageable pageable);
 
+    @Transactional(readOnly = true)
     List<PostDto.View> getTop5Views();
+
+    @Transactional(readOnly = true)
     List<PostDto.ListItem> getTop10Views(String type);
 
+    @Transactional(readOnly = true)
     PostDto.Detail getPostDetail(Long postId);
 
     @Transactional
@@ -40,4 +46,9 @@ public interface PostingService {
     List<PostDto.ListItem> getLikedPosts(Long id);
 
     List<PostDto.ListItem> getVisitedPosts(Long id);
+
+    PostDto.Detail addPairView(Long postId, Long id, PostDto.OpinionItem opinionItem);
+
+    @Transactional(readOnly = true)
+    List<PostDto.View> getRandomQuickPoll();
 }

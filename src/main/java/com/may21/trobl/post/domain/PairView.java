@@ -20,15 +20,18 @@ public class PairView {
   @Setter private String content;
 
   private Long userId;
+  @Setter
+    private String nickname;
 
   @ManyToOne(fetch = FetchType.LAZY)
   private Posting posting;
 
   @Builder
-  public PairView(String title, String content, Posting post, Long userId) {
+  public PairView(String title, String content, String nickname, Posting post, Long userId) {
     this.title = title;
     this.content = content;
     this.posting = post;
     this. userId=userId;
+    this.nickname=nickname;
   }
 }

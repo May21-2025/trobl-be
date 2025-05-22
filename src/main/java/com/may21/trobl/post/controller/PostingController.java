@@ -40,9 +40,16 @@ public class PostingController {
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
+  @GetMapping("/quick-poll")
+  public ResponseEntity<Message> getRandomQuickPoll() {
+    List<PostDto.View> response = postingService.getRandomQuickPoll();
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
 
-  @GetMapping("/top10")
-  public ResponseEntity<Message> getTop10PostsView(@RequestParam String type) {
+
+
+  @GetMapping("/top-list")
+  public ResponseEntity<Message> getTopListPostsView(@RequestParam String type,@RequestParam(required = false, defaultValue = "10") int count) {
     List<PostDto.ListItem> response = postingService.getTop10Views(type);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
@@ -76,6 +83,14 @@ public class PostingController {
     boolean response = postingService.deletePost(user.getId(), postId);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
+  @PostMapping("/{postId}/pair-view")
+  public ResponseEntity<Message> addPairView(
+          @PathVariable Long postId,
+          @RequestBody PostDto.OpinionItem opinionItem,@AuthenticationPrincipal User user) {
+    PostDto.Detail response = postingService.addPairView(postId, user.getId(), opinionItem);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+
   @PutMapping("/{postId}/like")
   public ResponseEntity<Message> likePost(
       @PathVariable Long postId, @AuthenticationPrincipal User user) {

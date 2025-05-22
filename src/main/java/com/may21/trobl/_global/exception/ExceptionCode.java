@@ -30,6 +30,7 @@ public enum ExceptionCode {
   POST_NOT_AUTHORIZED(HttpStatus.FORBIDDEN, "P001", "게시글에 대한 권한이 없습니다."),
   POLL_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "P002", "투표 항목을 찾을 수 없습니다."),
   VOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "P003", "투표를 찾을 수 없습니다."),
+  PAIR_VIEW_CAN_NOT_BE_ADDED(HttpStatus.BAD_REQUEST, "P004", "페어뷰 항목을 추가할 수 없습니다."),
 
   // Other Z000
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Z000", "UNAUTHORIZED"),

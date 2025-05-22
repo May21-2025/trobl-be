@@ -26,11 +26,11 @@ public class Posting extends ContentEntity {
   private String pollTitle;
 
   @Setter
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<PollOption> pollOptions;
 
   @Setter
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<PairView> pairViews;
 
   @Setter

@@ -3,6 +3,7 @@ package com.may21.trobl.post.dto;
 import static com.may21.trobl._global.utility.SecurityUtils.decodeHtml;
 import static com.may21.trobl._global.utility.SecurityUtils.escapeHtml;
 
+import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl.post.domain.PairView;
 import com.may21.trobl.post.domain.PollOption;
 import com.may21.trobl.post.domain.Posting;
@@ -48,7 +49,6 @@ public class PostDto {
     private String username;
     private int viewCount;
     private int shareCount;
-    private String pollTitle;
     private String postType;
     private LocalDateTime createdAt;
     private Poll poll;
@@ -60,11 +60,10 @@ public class PostDto {
       this.postType = posting.getPostType().name();
       this.username = user.getNickname();
       this.viewCount = posting.getViewCount();
-      this.pollTitle = posting.getPollTitle();
       this.shareCount = posting.getShareCount();
       this.createdAt = posting.getCreatedAt();
-      this.poll = new Poll(posting.getPollTitle(), posting.getPollOptions());
-      this.opinions = OpinionItem.fromPairViews(posting.getPairViews(), userMap);
+      this.poll = posting.getPostType() == PostingType.POLL ? new Poll(posting.getPollTitle(), posting.getPollOptions()): null;
+      this.opinions = posting.getPostType() == PostingType.PAIR_VIEW ? OpinionItem.fromPairViews(posting.getPairViews(), userMap) : List.of();
     }
   }
 
@@ -82,19 +81,23 @@ public class PostDto {
 
   @Getter
   @NoArgsConstructor
-  private static class OpinionItem {
+  public static class OpinionItem {
     private String title;
     private String nickname;
     private String content;
 
     public OpinionItem(PairView pairView, User user) {
+      String nickname = user==null ? pairView.getNickname() : user.getNickname();
       this.content = pairView.getContent();
       this.title = pairView.getTitle();
-      this.nickname = user.getNickname();
+      this.nickname = nickname;
     }
 
     public static List<OpinionItem> fromPairViews(
         List<PairView> pairViews, Map<Long, User> userMap) {
+      if (pairViews == null) {
+        return new ArrayList<>();
+      }
       List<OpinionItem> opinionItems = new ArrayList<>();
       for (PairView pairView : pairViews) {
         opinionItems.add(new OpinionItem(pairView, userMap.get(pairView.getUserId())));
@@ -130,7 +133,7 @@ public class PostDto {
     }
 
     public String getPollTitle() {
-      return escapeHtml(poll.title);
+      return poll==null? "" : escapeHtml(poll.title);
     }
 
     public String getContent() {

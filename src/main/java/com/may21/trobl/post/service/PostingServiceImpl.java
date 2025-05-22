@@ -24,6 +24,7 @@ public class PostingServiceImpl implements PostingService {
   private final UserRepository userRepository;
   private final PostRepository postRepository;
   private final PollOptionRepository pollOptionRepository;
+  private final PairViewRepository pairViewRepository;
   private final VoteRepository voteRepository;
   private final PostLikeRepository likeRepository;
 
@@ -44,7 +45,7 @@ public class PostingServiceImpl implements PostingService {
   @Override
   public List<PostDto.View> getTop5Views() {
     LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3);
-    List<Posting> posts = postRepository.findTopPostsByLikesAndViews(5, threeMonthsAgo);
+    List<Posting> posts = postRepository.findTopPostsByLikesAndViews(5, threeMonthsAgo, PostingType.POLL);
     Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
     List<User> users = userRepository.findAllById(userIds);
     Map<Long, User> userMap =
@@ -65,12 +66,12 @@ public class PostingServiceImpl implements PostingService {
 
     List<Posting> posts =
         switch (type.toLowerCase()) {
-          case "like" -> postRepository.findTopPostsByLikes(10);
-          case "view" -> postRepository.findTopPostsByViews(10);
-          case "share" -> postRepository.findTopPostsByShares(10);
-          case "comment" -> postRepository.findTopPostsByComments(10);
+          case "like" -> postRepository.findTopPostsByLikes(10, PostingType.POLL);
+          case "view" -> postRepository.findTopPostsByViews(10, PostingType.POLL);
+          case "share" -> postRepository.findTopPostsByShares(10, PostingType.POLL);
+          case "comment" -> postRepository.findTopPostsByComments(10, PostingType.POLL);
           case "vote" -> postRepository.findTopPostsByVotes(10);
-          default -> postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo);
+          default -> postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo, PostingType.POLL);
         };
 
     List<PostDto.ListItem> response = new ArrayList<>();
@@ -102,32 +103,47 @@ public class PostingServiceImpl implements PostingService {
         userRepository
             .findById(userId)
             .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    PostingType postType =
+        PostingType.valueOf(request.getPostType().toUpperCase());
     Posting post =
         Posting.builder()
             .title(request.getTitle())
-            .postType(PostingType.valueOf(request.getPostType()))
+            .postType(postType)
             .content(request.getContent())
             .userId(userId)
             .pollTitle(request.getPollTitle())
             .nickname(user.getNickname())
             .build();
     postRepository.save(post);
-    List<PostDto.PollItem> pollOptionsRequest = request.getPoll().getPollOptions();
-    List<PollOption> pollOptions = new ArrayList<>();
-    for (int i = 0; i < pollOptionsRequest.size(); i++) {
-      PostDto.PollItem pollOptionRequest = pollOptionsRequest.get(i);
-      PollOption pollOption =
-          PollOption.builder()
-              .name(pollOptionRequest.getName())
-              .content(pollOptionRequest.getContent())
-              .index(i)
-              .post(post)
-              .build();
-      pollOptions.add(pollOption);
+    if(postType==PostingType.POLL) {
+      List<PostDto.PollItem > pollOptionsRequest = request.getPoll().getPollOptions();
+      List<PollOption> pollOptions = new ArrayList<>();
+      for (int i = 0; i < pollOptionsRequest.size(); i++) {
+        PostDto.PollItem pollOptionRequest = pollOptionsRequest.get(i);
+        PollOption pollOption =
+                PollOption.builder()
+                        .name(pollOptionRequest.getName())
+                        .content(pollOptionRequest.getContent())
+                        .index(i)
+                        .post(post)
+                        .build();
+        pollOptions.add(pollOption);
+      }
+      pollOptionRepository.saveAll(pollOptions);
+      post.setPollOptions(pollOptions);
+    } else if (postType ==PostingType.PAIR_VIEW) {
+      PostDto.OpinionItem opinionItem = request.getOptionItem();
+      PairView pairView = PairView.builder()
+          .title(opinionItem.getTitle())
+          .content(opinionItem.getContent())
+          .post(post)
+          .userId(userId)
+          .build();
+      pairViewRepository.save(pairView);
+      post.setPairViews(List.of(pairView));
     }
-    pollOptionRepository.saveAll(pollOptions);
-    post.setPollOptions(pollOptions);
     Map<Long, User> userMap = new HashMap<>();
+    userMap.put(userId, user);
     return new PostDto.Detail(post, user, userMap);
   }
 
@@ -301,4 +317,45 @@ public class PostingServiceImpl implements PostingService {
   public List<PostDto.ListItem> getVisitedPosts(Long id) {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
+
+
+    @Override
+    public PostDto.Detail addPairView(Long postId, Long userId, PostDto.OpinionItem opinionItem) {
+        Posting post =
+                postRepository
+                        .getPostWithOnePairView(postId)
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.PAIR_VIEW_CAN_NOT_BE_ADDED));
+      User user =
+              userRepository
+                      .findById(userId)
+                      .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        PairView pairView = PairView.builder()
+                .title(opinionItem.getTitle())
+                .content(opinionItem.getContent())
+                .post(post)
+                .userId(user.getId())
+                .nickname(user.getNickname())
+                .build();
+        pairViewRepository.save(pairView);
+        Map<Long, User> userMap = new HashMap<>();
+        userMap.put(userId, user);
+      post.setPairViews(List.of(pairView));
+        return new PostDto.Detail(post,user, userMap);
+    }
+
+    @Override
+    public List<PostDto.View> getRandomQuickPoll() {
+        List<Posting> posts = postRepository.findRandomPostsByType(5,PostingType.POLL);
+        Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
+        List<User> users = userRepository.findAllById(userIds);
+        Map<Long, User> userMap =
+                users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<PostDto.View> response = new ArrayList<>();
+        for (Posting post : posts) {
+            User user = userMap.get(post.getUserId());
+            response.add(new PostDto.View(post, user, userMap));
+        }
+        return response;
+    }
 }
