@@ -1,6 +1,8 @@
 package com.may21.trobl.auth.jwt;
 
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,30 +32,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     try {
       String token = jwtTokenUtil.getTokenFromRequest(request);
 
-      if (token != null) {
+      if (token == null) {
+        request.setAttribute("exception", ExceptionCode.TOKEN_MISSING);
+      } else {
         String username = jwtTokenUtil.extractUsername(token);
 
-        // 사용자 이름이 있고 현재 인증이 설정되지 않은 경우
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (username == null) {
+          request.setAttribute("exception", ExceptionCode.TOKEN_PARSE_FAILED);
+        } else if (SecurityContextHolder.getContext().getAuthentication() == null) {
           UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-          // 토큰 유효성 검사
           if (Boolean.TRUE.equals(jwtTokenUtil.validateToken(token, userDetails))) {
-            // 인증 객체 생성
             UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities());
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
 
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            // 보안 컨텍스트에 인증 설정
             SecurityContextHolder.getContext().setAuthentication(authToken);
             log.debug("Security Context에 '{}' 인증 정보 설정 완료", username);
+          } else {
+            request.setAttribute("exception", ExceptionCode.INVALID_ACCESS_TOKEN);
           }
         }
       }
+
+    } catch (ExpiredJwtException e) {
+      request.setAttribute("exception", ExceptionCode.TOKEN_EXPIRED);
     } catch (Exception e) {
-      log.error("사용자 인증을 설정할 수 없습니다: {}", e.getMessage());
+      log.error("JWT 필터 오류: {}", e.getMessage());
+      request.setAttribute("exception", ExceptionCode.TOKEN_PARSE_FAILED);
     }
 
     filterChain.doFilter(request, response);

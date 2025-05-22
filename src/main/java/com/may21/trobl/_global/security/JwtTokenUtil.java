@@ -167,16 +167,16 @@ if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessExce
       return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     } catch (ExpiredJwtException e) {
       log.error("JWT 토큰이 만료되었습니다: {}", e.getMessage());
-      return false;
+      throw new BusinessException(ExceptionCode.TOKEN_EXPIRED);
     } catch (UnsupportedJwtException e) {
       log.error("지원되지 않는 JWT 토큰입니다: {}", e.getMessage());
-      return false;
+      throw new BusinessException(ExceptionCode.INVALID_ACCESS_TOKEN);
     } catch (MalformedJwtException e) {
       log.error("잘못된 형식의 JWT 토큰입니다: {}", e.getMessage());
-      return false;
+      throw new BusinessException(ExceptionCode.MALFORMED_TOKEN);
     } catch (IllegalArgumentException e) {
       log.error("JWT 클레임 문자열이 비어있습니다: {}", e.getMessage());
-      return false;
+      throw new BusinessException(ExceptionCode.TOKEN_MISSING);
     }
   }
 

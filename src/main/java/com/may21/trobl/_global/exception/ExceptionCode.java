@@ -17,6 +17,8 @@ public enum ExceptionCode {
   INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "T001", "유효하지 않은 토큰입니다."),
   INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "T002", "리프레시 토큰이 유효하지 않습니다."),
   TOKEN_PARSE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T003", "토큰 파싱에 실패했습니다."),
+    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "T004", "토큰이 만료되었습니다."),
+  MALFORMED_TOKEN(HttpStatus.UNAUTHORIZED, "T005", "잘못된 토큰입니다."),
 
   // USER U000
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U000", "사용자를 찾을 수 없습니다."),

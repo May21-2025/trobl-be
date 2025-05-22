@@ -15,6 +15,8 @@ public class PairView {
   private Long id;
 
   @Setter private String title;
+
+  @Column(columnDefinition = "text")
   @Setter private String content;
 
   private Long userId;

@@ -1,6 +1,7 @@
 package com.may21.trobl._global.config;
 
 import com.may21.trobl._global.security.JwtTokenUtil;
+import com.may21.trobl.auth.jwt.CustomAuthenticationEntryPoint;
 import com.may21.trobl.auth.jwt.JwtAuthenticationFilter;
 import com.may21.trobl.user.domain.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class SecurityConfig {
   private final JwtTokenUtil jwtTokenUtil;
   private final UserDetailsService userDetailsService;
   private final CustomOAuth2UserService customOAuth2UserService;
+  private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
   @Bean
   public JwtAuthenticationFilter jwtAuthenticationFilter() {
@@ -52,13 +54,13 @@ public class SecurityConfig {
                     .authenticated()
                     .anyRequest()
                     .authenticated())
-        .oauth2Login(
-            oauth2 ->
-                oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService)))
-        .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-        .sessionManagement(
-            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .build();
+            .oauth2Login(oauth2 ->
+                    oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+            )
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint))
+            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .build();
   }
 
   @Bean

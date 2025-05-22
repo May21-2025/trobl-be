@@ -1,5 +1,6 @@
 package com.may21.trobl.post.service;
 
+import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.post.domain.*;
@@ -104,6 +105,7 @@ public class PostingServiceImpl implements PostingService {
     Posting post =
         Posting.builder()
             .title(request.getTitle())
+            .postType(PostingType.valueOf(request.getPostType()))
             .content(request.getContent())
             .userId(userId)
             .pollTitle(request.getPollTitle())

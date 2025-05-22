@@ -48,10 +48,11 @@ public class Posting extends ContentEntity {
 
   @Builder
   public Posting(
-      String title, String pollTitle,  String content, Long userId, String nickname) {
+      String title, String pollTitle, PostingType postType, String content, Long userId, String nickname) {
     super(title, content, userId);
     this.nickname = nickname;
     this.pollTitle = pollTitle;
+    this.postType = postType;
     this.viewCount = 0;
     this.shareCount = 0;
   }
