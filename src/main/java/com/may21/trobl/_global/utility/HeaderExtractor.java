@@ -75,7 +75,7 @@ public class HeaderExtractor {
 
 
   public static String extractRefreshToken(HttpServletRequest request) {
-    String refreshToken = request.getHeader("Refresh-Token");
+    String refreshToken = request.getHeader("X-Refresh-Token");
     if (refreshToken == null || refreshToken.isEmpty() || STR_LC_UNKNOWN.equalsIgnoreCase(refreshToken)) {
       refreshToken = "unknown";
     }

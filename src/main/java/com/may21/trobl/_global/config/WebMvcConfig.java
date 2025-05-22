@@ -22,7 +22,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
             HttpMethod.DELETE.name(),
             HttpMethod.PATCH.name(),
             HttpMethod.OPTIONS.name())
-        .allowedHeaders("Content-Type", "Authorization", "X-Requested-With")
+        .allowedHeaders("Content-Type", "Authorization", "X-Refresh-Token", "X-Requested-With")
         .exposedHeaders("Authorization", "X-Device-ID")
         .allowCredentials(true)
         .maxAge(3600);

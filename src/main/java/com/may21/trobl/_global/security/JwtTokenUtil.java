@@ -50,7 +50,6 @@ public class JwtTokenUtil {
   public JwtTokenUtil(RefreshTokenRepository refreshTokenRepository) {
     this.refreshTokenRepository = refreshTokenRepository;
   }
-
   public SecretKey getKey() {
     return Keys.hmacShaKeyFor(SECRET_KEY_JWT.getBytes(StandardCharsets.UTF_8));
   }
@@ -97,7 +96,7 @@ public class JwtTokenUtil {
 
   /** RefreshToken로 Access Token 생성 */
   public String generateTokenFromRefreshToken(User user, RefreshToken refreshToken, String deviceId) {
-  Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.MILLIS);
+  Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.HOURS);
 if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED);
     byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
     Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
@@ -115,7 +114,7 @@ if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessExce
 
   public RefreshToken generateRefreshToken(User user, String deviceId, String parentTokenId) {
     String tokenId = UUID.randomUUID().toString();
-    Instant expiryDate = Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.MILLIS);
+    Instant expiryDate = Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS);
 
     byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
     Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
@@ -212,10 +211,11 @@ if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessExce
   public TokenInfo reissueAccessToken(HttpServletRequest request) {
     String parentRefreshToken = extractRefreshToken(request);
     User user = getAuthentication(parentRefreshToken);
-    Claims refreshTokenClaims = getClaims(parentRefreshToken);
-    String parentTokenId = refreshTokenClaims.get("id").toString();
+    RefreshToken preRefreshToken = refreshTokenRepository.findByToken(parentRefreshToken)
+        .orElseThrow(() -> new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED));
+    preRefreshToken.setRevoked(true);
     String deviceId = extractDeviceId(request);
-    RefreshToken refreshToken = generateRefreshToken(user, deviceId,parentTokenId);
+    RefreshToken refreshToken = generateRefreshToken(user, deviceId, preRefreshToken.getTokenId());
     String accessToken = generateTokenFromRefreshToken(user, refreshToken, deviceId);
     return new TokenInfo("Bearer", accessToken, refreshToken.getToken());
   }
