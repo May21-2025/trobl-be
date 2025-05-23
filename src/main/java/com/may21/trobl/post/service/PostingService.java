@@ -43,6 +43,7 @@ public interface PostingService {
 
     Page<PostDto.ListItem> getLikedPosts(Long id, int page, int size);
 
+    @Transactional(readOnly = true)
     Page<PostDto.ListItem> getVisitedPosts(Long id, int page, int size);
 
     @Transactional
@@ -53,4 +54,7 @@ public interface PostingService {
 
     @Transactional
     boolean bookmarkPost(Long postId, Long id);
+
+    @Transactional(readOnly = true)
+    Page<PostDto.ListItem> getBookmarkedPosts(Long id, int page, int size);
 }

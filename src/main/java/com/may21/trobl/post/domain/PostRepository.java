@@ -74,14 +74,14 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     """, nativeQuery = true)
   List<Posting> findRandomPostsByType( @Param("count") int count,@Param("postingType") PostingType postingType);
 
-    @Query("SELECT p.id FROM Posting p LEFT JOIN p.postLikes l WHERE l.userId = :userId")
-    List<Long> getAllIdsInListLikedByUserId(Long userId);
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.postLikes l WHERE l.userId = :userId AND l.posting IN :list")
+    List<Long> getAllIdsInListLikedByUserId(Long userId, List<Posting> list);
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.bookmarks l WHERE l.userId = :userId")
   List<Long> getAllIdsInListBookmarkedByUserId(Long userId);
 
-    @Query("SELECT p.id FROM Posting p LEFT JOIN p.views l WHERE l.userId = :userId")
-  List<Long> getAllIdsInListViewedByUserId(Long userId);
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.views l WHERE l.userId = :userId AND l.posting IN :posts")
+  List<Long> getAllIdsInListViewedByUserId(Long userId, List<Posting> posts);
 
-    @Query("SELECT p.id FROM Posting p LEFT JOIN p.comments l WHERE l.userId = :userId")
-  List<Long> getAllIdsInListCommentedByUserId(Long userId);
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.comments l WHERE l.userId = :userId AND l.posting IN :posts")
+  List<Long> getAllIdsInListCommentedByUserId(Long userId, List<Posting> posts);
 }

@@ -38,11 +38,12 @@ public class PostingServiceImpl implements PostingService {
     Page<Posting> posts = postRepository.findAll(pageable);
     Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
     List<User> users = userRepository.findAllById(userIds);
+    List<Posting> postList = posts.stream().toList();
     Map<Long, User> userMap =
         users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId);
-    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId);
-    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, posts.stream().toList());
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, postList);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, postList);
     return posts.map(
         post -> {
           Long postId = post.getId();
@@ -309,11 +310,12 @@ public class PostingServiceImpl implements PostingService {
     Page<Posting> posts = postRepository.findByUserId(userId,PageRequest.of(page, size));
     Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
     List<User> users = userRepository.findAllById(userIds);
+    List<Posting> postList = posts.stream().toList();
     Map<Long, User> userMap =
         users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId);
-    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId);
-    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, posts.stream().toList());
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, postList);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, postList);
     List<PostDto.ListItem> response = new ArrayList<>();
     for (Posting post : posts) {
       response.add(new PostDto.ListItem(post, userMap.get(post.getUserId()), likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId())));
@@ -326,10 +328,11 @@ public class PostingServiceImpl implements PostingService {
     Page<Posting> posts = likeRepository.findPostingByUserId(userId,PageRequest.of(page, size));
     Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
     List<User> users = userRepository.findAllById(userIds);
+    List<Posting> postList = posts.stream().toList();
     Map<Long, User> userMap =
         users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId);
-    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, postList);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, postList);
     return posts.map(
             post -> {
               User user = userMap.get(post.getUserId());
@@ -344,8 +347,8 @@ public class PostingServiceImpl implements PostingService {
     List<User> users = userRepository.findAllById(userIds);
     Map<Long, User> userMap =
         users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId);
-    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, posts.stream().toList());
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, posts.stream().toList());
     return posts.map(
             post -> {
               User user = userMap.get(post.getUserId());
@@ -404,5 +407,24 @@ public class PostingServiceImpl implements PostingService {
       bookmarkRepository.delete(bookmark);
     }
     return marked;
+  }
+
+  @Override
+  public Page<PostDto.ListItem> getBookmarkedPosts(Long userId, int page, int size) {
+    Pageable pageable = PageRequest.of(page, size);
+    Page<Posting> postPages = bookmarkRepository.findPostsByUserId(userId,pageable);
+    Set<Long> userIds = postPages.stream().map(Posting::getUserId).collect(Collectors.toSet());
+    List<User> users = userRepository.findAllById(userIds);
+    Map<Long, User> userMap =
+        users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    List<Posting> posts = postPages.stream().toList();
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId,posts);
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, posts);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, posts);
+    return postPages.map(
+            post -> {
+              User user = userMap.get(post.getUserId());
+              return new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
+            });
   }
 }

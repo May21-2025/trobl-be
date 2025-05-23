@@ -88,7 +88,7 @@ public class UserController {
   @GetMapping("/bookmarks")
   public ResponseEntity<Message> getBookmarkedPosts(@AuthenticationPrincipal User user,
                                                  @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-    Page<PostDto.ListItem> response = postingService.getVisitedPosts(user.getId(), page, size);
+    Page<PostDto.ListItem> response = postingService.getBookmarkedPosts(user.getId(), page, size);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 

@@ -82,7 +82,7 @@ public class PostDto {
         this.postType = post.getPostType();
 
       String raw = decodeHtml(post.getContent());
-      this.content = raw.length() > 100 ? raw.substring(0, 100) + "..." : raw;
+      this.content = raw==null? "" : raw.length() > 100 ? raw.substring(0, 100) + "..." : raw;
     }
   }
 
