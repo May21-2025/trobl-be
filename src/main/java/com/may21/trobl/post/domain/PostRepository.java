@@ -44,7 +44,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
   @Query("""
     SELECT p
     FROM Posting p
-    LEFT JOIN p.pollOptions po
+    LEFT JOIN p.poll.pollOptions po
     LEFT JOIN po.pollVotes pv
     GROUP BY p
     ORDER BY COUNT(pv) DESC
@@ -74,4 +74,14 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     """, nativeQuery = true)
   List<Posting> findRandomPostsByType( @Param("count") int count,@Param("postingType") PostingType postingType);
 
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.postLikes l WHERE l.userId = :userId")
+    List<Long> getAllIdsInListLikedByUserId(Long userId);
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.bookmarks l WHERE l.userId = :userId")
+  List<Long> getAllIdsInListBookmarkedByUserId(Long userId);
+
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.views l WHERE l.userId = :userId")
+  List<Long> getAllIdsInListViewedByUserId(Long userId);
+
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.comments l WHERE l.userId = :userId")
+  List<Long> getAllIdsInListCommentedByUserId(Long userId);
 }

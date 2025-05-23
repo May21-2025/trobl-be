@@ -23,11 +23,8 @@ public class Posting extends ContentEntity {
   private PostingType postType;
 
   @Setter
-  private String pollTitle;
-
-  @Setter
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<PollOption> pollOptions;
+  @OneToOne(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Poll poll;
 
   @Setter
   @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -40,6 +37,12 @@ public class Posting extends ContentEntity {
   @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   private List<Comment> comments;
 
+  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  private List<PostView> views;
+
+  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<PostBookmark> bookmarks;
+
   @Setter private int viewCount;
 
   @Setter private int shareCount;
@@ -51,7 +54,6 @@ public class Posting extends ContentEntity {
       String title, String pollTitle, PostingType postType, String content, Long userId, String nickname) {
     super(title, content, userId);
     this.nickname = nickname;
-    this.pollTitle = pollTitle;
     this.postType = postType;
     this.viewCount = 0;
     this.shareCount = 0;
@@ -63,5 +65,17 @@ public class Posting extends ContentEntity {
 
   public void incrementShareCount() {
     this.shareCount++;
+  }
+
+  public int getViewCount() {
+    int viewsNum = views==null ? 0 : views.size();
+    return viewCount+ viewsNum;
+  }
+
+  public void addPairView(PairView pairView) {
+    if(pairView == null) {
+      throw new IllegalArgumentException("PairView cannot be null");
+    }
+    this.pairViews.add(pairView);
   }
 }

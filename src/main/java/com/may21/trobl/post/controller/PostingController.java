@@ -26,31 +26,24 @@ public class PostingController {
   private final NotificationService notificationService;
 
   @GetMapping("/all")
-  public ResponseEntity<Message> getAllPostsList(
+  public ResponseEntity<Message> getAllPostsList(@AuthenticationPrincipal User user,
       @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
     // PageRequest 객체 생성 (페이지, 사이즈, 정렬 정보)
     Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-    Page<PostDto.ListItem> response = postingService.getPostsList(pageable);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-
-  @GetMapping("/top5")
-  public ResponseEntity<Message> getPostsView() {
-    List<PostDto.View> response = postingService.getTop5Views();
+    Long userId = user != null ? user.getId() : null;
+    Page<PostDto.ListItem> response = postingService.getPostsList(pageable, userId);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
   @GetMapping("/quick-poll")
   public ResponseEntity<Message> getRandomQuickPoll() {
-    List<PostDto.View> response = postingService.getRandomQuickPoll();
+    List<PostDto.QuickPoll> response = postingService.getRandomQuickPoll();
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
-
-
   @GetMapping("/top-list")
   public ResponseEntity<Message> getTopListPostsView(@RequestParam String type,@RequestParam(required = false, defaultValue = "10") int count) {
-    List<PostDto.ListItem> response = postingService.getTop10Views(type);
+    List<PostDto.Card> response = postingService.getTop10Views(type);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
@@ -72,8 +65,8 @@ public class PostingController {
   }
 
   @GetMapping("/{postId}")
-  public ResponseEntity<Message> getPostDetail(@PathVariable Long postId) {
-    PostDto.Detail response = postingService.getPostDetail(postId);
+  public ResponseEntity<Message> getPostDetail(@PathVariable Long postId, @AuthenticationPrincipal User user) {
+    PostDto.Detail response = postingService.getPostDetail(postId, user);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
   @DeleteMapping("/{postId}")
@@ -83,6 +76,7 @@ public class PostingController {
     boolean response = postingService.deletePost(user.getId(), postId);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
+
   @PostMapping("/{postId}/pair-view")
   public ResponseEntity<Message> addPairView(
           @PathVariable Long postId,
@@ -96,6 +90,13 @@ public class PostingController {
       @PathVariable Long postId, @AuthenticationPrincipal User user) {
     boolean response = postingService.likePost(postId, user.getId());
     if(response) notificationService.sendPostLikeNotification(postId, user.getId());
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+
+  @PutMapping("/{postId}/bookmarks")
+  public ResponseEntity<Message> bookmarkPost(
+          @PathVariable Long postId, @AuthenticationPrincipal User user) {
+    boolean response = postingService.bookmarkPost(postId, user.getId());
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 

@@ -32,6 +32,9 @@ public enum ExceptionCode {
   VOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "P003", "투표를 찾을 수 없습니다."),
   PAIR_VIEW_CAN_NOT_BE_ADDED(HttpStatus.BAD_REQUEST, "P004", "페어뷰 항목을 추가할 수 없습니다."),
 
+  //POLL P100
+  POLL_NOT_FOUND(HttpStatus.NOT_FOUND, "P100", "설문조사를 찾을 수 없습니다."),
+
   // Other Z000
   UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Z000", "UNAUTHORIZED"),
   RESTRICTED(HttpStatus.UNAUTHORIZED, "Z001", "RESTRICTED"),

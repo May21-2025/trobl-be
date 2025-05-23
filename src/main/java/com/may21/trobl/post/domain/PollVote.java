@@ -27,11 +27,14 @@ public class PollVote {
 
   private Long userId;
 
+  private Long pollId;
+
   @ManyToOne private PollOption pollOption;
 
   @CreatedDate private LocalDate createdAt;
 
   public PollVote(PollOption pollOption, Long userId) {
+    this.pollId = pollOption.getPoll().getId();
     this.pollOption = pollOption;
     this.userId = userId;
   }

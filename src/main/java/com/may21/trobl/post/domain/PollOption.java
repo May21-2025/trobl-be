@@ -26,13 +26,13 @@ public class PollOption {
   private List<PollVote> pollVotes;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  private Posting posting;
+  private Poll poll;
 
   @Builder
-  public PollOption(String name, String content, int index, Posting post) {
+  public PollOption(String name, String content, int index, Poll poll) {
     this.content = content;
     this.name = name;
-    this.posting = post;
+    this.poll = poll;
     this.index = index;
   }
 

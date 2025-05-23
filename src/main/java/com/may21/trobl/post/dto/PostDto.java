@@ -5,6 +5,7 @@ import static com.may21.trobl._global.utility.SecurityUtils.escapeHtml;
 
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl.post.domain.PairView;
+import com.may21.trobl.post.domain.Poll;
 import com.may21.trobl.post.domain.PollOption;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.user.domain.User;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,62 +22,122 @@ public class PostDto {
 
   @Getter
   @NoArgsConstructor
-  public static class ListItem {
-    private Long postId;
-    private String title;
-    private String username;
-    private LocalDateTime createdAt;
+  public abstract static class BasePostDto {
+    protected Long postId;
+    protected String username;
+    protected int viewCount;
 
-    public ListItem(Posting post, User user) {
+    protected BasePostDto(Posting post, User user) {
       this.postId = post.getId();
-      this.title = post.getTitle();
-      this.username = user.getNickname();
-      this.createdAt = post.getCreatedAt();
-    }
-
-    public ListItem(Posting post) {
-      this.postId = post.getId();
-      this.title = post.getTitle();
-      this.username = post.getNickname();
-      this.createdAt = post.getCreatedAt();
+      this.username = user != null ? user.getNickname() : post.getNickname();
+      this.viewCount = post.getViewCount();
     }
   }
 
   @Getter
   @NoArgsConstructor
-  public static class View {
-    private Long postId;
+  public abstract static class BasicPostWithTitle extends BasePostDto {
+    protected String title;
+
+    protected BasicPostWithTitle(Posting post, User user) {
+      super(post, user);
+      this.title = decodeHtml(post.getTitle());
+    }
+  }
+
+
+
+
+  @Getter
+  @NoArgsConstructor
+  public static class Card extends BasicPostWithTitle {
+    private int commentCount;
+
+    public Card(Posting post) {
+      super(post, null); // username은 Posting 기반
+      this.commentCount = post.getComments().size();
+    }
+  }
+
+  @Getter
+  @NoArgsConstructor
+  public static class ListItem extends BasicPostWithTitle {
+    private String content;
+    private LocalDateTime createdAt;
+    private int commentCount;
+    private int likeCount;
+    private boolean liked;
+    private boolean viewed;
+    private boolean commented;
+    private PostingType postType;
+
+    public ListItem(Posting post, User user, Boolean liked, Boolean viewed, Boolean commented) {
+      super(post, user);
+      this.createdAt = post.getCreatedAt();
+      this.commentCount = post.getComments().size();
+      this.likeCount = post.getPostLikes().size();
+      this.liked = Boolean.TRUE.equals(liked);
+      this.viewed = Boolean.TRUE.equals(viewed);
+      this.commented = Boolean.TRUE.equals(commented);
+        this.postType = post.getPostType();
+
+      String raw = decodeHtml(post.getContent());
+      this.content = raw.length() > 100 ? raw.substring(0, 100) + "..." : raw;
+    }
+  }
+
+  @Getter
+  @NoArgsConstructor
+  public static class QuickPoll extends BasePostDto {
     private Long userId;
-    private String username;
-    private int viewCount;
-    private int shareCount;
-    private String postType;
     private LocalDateTime createdAt;
-    private Poll poll;
-    private List<OpinionItem> opinions;
+    private PollDto pollDto;
 
-    public View(Posting posting, User user, Map<Long, User> userMap) {
-      this.userId = user.getId();
-      this.postId = posting.getId();
-      this.postType = posting.getPostType().name();
-      this.username = user.getNickname();
-      this.viewCount = posting.getViewCount();
-      this.shareCount = posting.getShareCount();
-      this.createdAt = posting.getCreatedAt();
-      this.poll = posting.getPostType() == PostingType.POLL ? new Poll(posting.getPollTitle(), posting.getPollOptions()): null;
-      this.opinions = posting.getPostType() == PostingType.PAIR_VIEW ? OpinionItem.fromPairViews(posting.getPairViews(), userMap) : List.of();
+    public QuickPoll(Posting post) {
+      super(post, null);
+      this.userId = post.getUserId();
+      this.createdAt = post.getCreatedAt();
+      this.pollDto = new PollDto(post.getPoll());
+    }
+  }
+  @Getter
+  @NoArgsConstructor
+  public static class Detail extends BasicPostWithTitle {
+    private Long userId;
+    private LocalDateTime createdAt;
+    private PollDto pollDto;
+    private List<OpinionItem> opinions;
+    private String content;
+    private int shareCount;
+    private boolean liked;
+    private boolean bookmarked;
+    private String postType;
+
+    public Detail(Posting post, User user, Map<Long, User> userMap, boolean liked, boolean bookmarked) {
+      super(post, user);
+      this.userId = post.getUserId();
+      this.createdAt = post.getCreatedAt();
+      this.pollDto = post.getPoll() != null ? new PollDto(post.getPoll()) : null;
+      this.opinions = OpinionItem.fromPairViews(post.getPairViews(), userMap);
+      this.shareCount = post.getShareCount();
+      this.postType = post.getPostType().name();
+      this.content = decodeHtml(post.getContent());
+      this.liked = liked;
+      this.bookmarked = bookmarked;
     }
   }
 
   @Getter
   @NoArgsConstructor
-  public static class Poll {
+  public static class PollDto {
+    private Long pollId;
     private String title;
     private List<PollItem> pollOptions;
 
-    public Poll(String title, List<PollOption> options) {
-      this.title = decodeHtml(title);
-      this.pollOptions = PollItem.fromPollOption(options);
+    public PollDto(Poll poll) {
+        this.pollId = poll.getId();
+      this.title = poll.getTitle();
+      this.pollOptions = PollItem.fromPollOption(poll.getPollOptions());
     }
   }
 
@@ -108,33 +170,24 @@ public class PostDto {
 
   @Getter
   @NoArgsConstructor
-  public static class Detail extends View {
-    private String title;
-    private String content;
-
-    public Detail(Posting posting, User user, Map<Long, User> userMap) {
-      super(posting, user, userMap);
-      this.title = decodeHtml(posting.getTitle());
-      this.content = decodeHtml(posting.getContent());
-    }
-  }
-
-  @Getter
-  @NoArgsConstructor
   public static class Request {
     private String title;
     private String content;
     private String postType;
     private OpinionItem optionItem;
-    private Poll poll;
+    private PollDto poll;
 
     public String getTitle() {
       return escapeHtml(title);
     }
 
     public String getPollTitle() {
-      return poll==null? "" : escapeHtml(poll.title);
+      return poll ==null? "" : escapeHtml(poll.title);
     }
+    public Long getPollId() {
+      return poll ==null? null : poll.pollId;
+    }
+
 
     public String getContent() {
       return escapeHtml(content);
@@ -150,6 +203,7 @@ public class PostDto {
     private String content;
     private long voteCount = 0;
     private int index = 0;
+    private boolean voted = false;
 
     public PollItem(PollOption polloption) {
       this.pollOptionId = polloption.getId();

@@ -29,40 +29,30 @@ public class PostingServiceImpl implements PostingService {
   private final PairViewRepository pairViewRepository;
   private final VoteRepository voteRepository;
   private final PostLikeRepository likeRepository;
+  private final PostBookmarkRepository bookmarkRepository;
+  private final PostViewRepository viewRepository;
+  private final PollRepository pollRepository;
 
   @Override
-  public Page<PostDto.ListItem> getPostsList(Pageable pageable) {
+  public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
     Page<Posting> posts = postRepository.findAll(pageable);
     Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
     List<User> users = userRepository.findAllById(userIds);
     Map<Long, User> userMap =
         users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId);
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
     return posts.map(
         post -> {
-          User user = userMap.get(post.getUserId());
-          return new PostDto.ListItem(post, user);
+          Long postId = post.getId();
+          User owner = userMap.get(post.getUserId());
+          return new PostDto.ListItem(post, owner, likedPostIds.contains(postId), viewedPostIds.contains(postId), commentedPostIds.contains(postId));
         });
   }
 
   @Override
-  public List<PostDto.View> getTop5Views() {
-    LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3);
-    List<Posting> posts = postRepository.findTopPostsByLikesAndViews(5, threeMonthsAgo, PostingType.POLL);
-    Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
-    List<User> users = userRepository.findAllById(userIds);
-    Map<Long, User> userMap =
-        users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-
-    List<PostDto.View> response = new ArrayList<>();
-    for (Posting post : posts) {
-      User user = userMap.get(post.getUserId());
-      response.add(new PostDto.View(post, user, userMap));
-    }
-    return response;
-  }
-
-  @Override
-  public List<PostDto.ListItem> getTop10Views(String type) {
+  public List<PostDto.Card> getTop10Views(String type) {
 
     LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3);
 
@@ -76,26 +66,37 @@ public class PostingServiceImpl implements PostingService {
           default -> postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo, PostingType.POLL);
         };
 
-    List<PostDto.ListItem> response = new ArrayList<>();
+    List<PostDto.Card> response = new ArrayList<>();
     for (Posting post : posts) {
-      response.add(new PostDto.ListItem(post));
+      response.add(new PostDto.Card(post));
     }
     return response;
   }
 
   @Override
-  public PostDto.Detail getPostDetail(Long postId) {
+  public PostDto.Detail getPostDetail(Long postId, User user) {
     Posting post =
         postRepository
             .findById(postId)
             .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
     post.incrementViewCount();
-    User user =
+    User owner =
         userRepository
             .findById(post.getUserId())
             .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
     Map<Long, User> userMap = new HashMap<>();
-    return new PostDto.Detail(post, user, userMap);
+    boolean liked = false;
+    boolean bookmarked = false;
+    if (user != null) {
+        liked = likeRepository.existsByPostingIdAndUserId(postId, user.getId());
+        bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, user.getId());
+        if(viewRepository.existsByPostIdAndUserId(postId, user.getId())) {
+            post.incrementViewCount();
+        } else {
+            viewRepository.save(new PostView(post, user.getId()));
+        }
+    }
+    return new PostDto.Detail(post, owner, userMap, liked, bookmarked);
   }
 
   @Override
@@ -118,6 +119,9 @@ public class PostingServiceImpl implements PostingService {
             .build();
     postRepository.save(post);
     if(postType==PostingType.POLL) {
+      Poll poll = new Poll(request.getPollTitle(), post);
+      pollRepository.save(poll);
+
       List<PostDto.PollItem > pollOptionsRequest = request.getPoll().getPollOptions();
       List<PollOption> pollOptions = new ArrayList<>();
       for (int i = 0; i < pollOptionsRequest.size(); i++) {
@@ -125,14 +129,14 @@ public class PostingServiceImpl implements PostingService {
         PollOption pollOption =
                 PollOption.builder()
                         .name(pollOptionRequest.getName())
+                        .poll(poll)
                         .content(pollOptionRequest.getContent())
                         .index(i)
-                        .post(post)
                         .build();
         pollOptions.add(pollOption);
       }
       pollOptionRepository.saveAll(pollOptions);
-      post.setPollOptions(pollOptions);
+      poll.setPollOptions(pollOptions);
     } else if (postType ==PostingType.PAIR_VIEW) {
       PostDto.OpinionItem opinionItem = request.getOptionItem();
       PairView pairView = PairView.builder()
@@ -146,7 +150,7 @@ public class PostingServiceImpl implements PostingService {
     }
     Map<Long, User> userMap = new HashMap<>();
     userMap.put(userId, user);
-    return new PostDto.Detail(post, user, userMap);
+    return new PostDto.Detail(post, user, userMap, false, false);
   }
 
   @Override
@@ -160,23 +164,27 @@ public class PostingServiceImpl implements PostingService {
     }
     post.setTitle(request.getTitle());
     post.setContent(request.getContent());
-    post.setPollTitle(request.getPollTitle());
-    List<PostDto.PollItem> pollOptionsRequest = request.getPoll().getPollOptions();
-    post.setPollOptions(updatePollOptions(pollOptionsRequest, post));
+    if(post.getPostType() != PostingType.POLL && request.getPollId() != null) {
+      Long pollId = request.getPollId();
+      Poll poll = pollRepository.findById(pollId).orElseThrow(() -> new BusinessException(ExceptionCode.POLL_NOT_FOUND));
+      poll.setTitle(request.getPollTitle());
+      List<PostDto.PollItem> pollOptionsRequest = request.getPoll().getPollOptions();
+      updatePollOptions(pollOptionsRequest, poll);
+    }
     postRepository.save(post);
 
     Map<Long, User> userMap = new HashMap<>();
     return new PostDto.Detail(
-        post,
-        userRepository
-            .findById(userId)
-            .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
-        userMap);
+            post,
+            userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
+            userMap, false, false);
   }
 
   private List<PollOption> updatePollOptions(
-      List<PostDto.PollItem> pollOptionsRequest, Posting post) {
-    List<PollOption> pollOptions = post.getPollOptions();
+      List<PostDto.PollItem> pollOptionsRequest, Poll poll) {
+    List<PollOption> pollOptions = poll.getPollOptions();
     List<PollOption> newPollOptions = new ArrayList<>();
     List<Long> pollOptionIds =
         pollOptionsRequest.stream().map(PostDto.PollItem::getPollOptionId).toList();
@@ -191,7 +199,7 @@ public class PostingServiceImpl implements PostingService {
                 .name(pollOptionRequest.getName())
                 .content(pollOptionRequest.getContent())
                 .index(i)
-                .post(post)
+                .poll(poll)
                 .build();
         newPollOptions.add(pollOption);
       } else {
@@ -202,7 +210,7 @@ public class PostingServiceImpl implements PostingService {
                 .findFirst()
                 .orElse(
                     new PollOption(
-                        pollOptionRequest.getName(), pollOptionRequest.getContent(), i, post));
+                        pollOptionRequest.getName(), pollOptionRequest.getContent(), i, poll));
         existingOption.setName(pollOptionRequest.getName());
         existingOption.setContent(pollOptionRequest.getContent());
         existingOption.setIndex(i);
@@ -224,6 +232,7 @@ public class PostingServiceImpl implements PostingService {
       pollOptions.addAll(newPollOptions);
       pollOptionRepository.saveAll(newPollOptions);
     }
+    poll.setPollOptions(pollOptions);
     return pollOptions;
   }
 
@@ -298,30 +307,50 @@ public class PostingServiceImpl implements PostingService {
   @Override
   public Page<PostDto.ListItem> getMyPosts(Long userId, int page, int size) {
     Page<Posting> posts = postRepository.findByUserId(userId,PageRequest.of(page, size));
+    Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
+    List<User> users = userRepository.findAllById(userIds);
+    Map<Long, User> userMap =
+        users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId);
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
     List<PostDto.ListItem> response = new ArrayList<>();
     for (Posting post : posts) {
-      response.add(new PostDto.ListItem(post));
+      response.add(new PostDto.ListItem(post, userMap.get(post.getUserId()), likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId())));
     }
     return new PageImpl<>(response, PageRequest.of(page, size), posts.getTotalElements());
   }
 
   @Override
-  public Page<PostDto.ListItem> getLikedPosts(Long id, int page, int size) {
-    Page<Posting> posts = likeRepository.findPostingByUserId(id,PageRequest.of(page, size));
+  public Page<PostDto.ListItem> getLikedPosts(Long userId, int page, int size) {
+    Page<Posting> posts = likeRepository.findPostingByUserId(userId,PageRequest.of(page, size));
     Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
     List<User> users = userRepository.findAllById(userIds);
     Map<Long, User> userMap =
         users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
     return posts.map(
             post -> {
               User user = userMap.get(post.getUserId());
-              return new PostDto.ListItem(post, user);
+              return new PostDto.ListItem(post, user, true, viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
             });
   }
 
   @Override
-  public Page<PostDto.ListItem> getVisitedPosts(Long id, int page, int size) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  public Page<PostDto.ListItem> getVisitedPosts(Long userId, int page, int size) {
+    Page<Posting> posts = viewRepository.findPostingByUserId(userId,PageRequest.of(page, size));
+    Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
+    List<User> users = userRepository.findAllById(userIds);
+    Map<Long, User> userMap =
+        users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId);
+    return posts.map(
+            post -> {
+              User user = userMap.get(post.getUserId());
+              return new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), true, commentedPostIds.contains(post.getId()));
+            });
   }
 
 
@@ -345,23 +374,35 @@ public class PostingServiceImpl implements PostingService {
         pairViewRepository.save(pairView);
         Map<Long, User> userMap = new HashMap<>();
         userMap.put(userId, user);
-      post.setPairViews(List.of(pairView));
-        return new PostDto.Detail(post,user, userMap);
+        post.addPairView(pairView);
+        return new PostDto.Detail(post, user, userMap, false, false);
     }
 
     @Override
-    public List<PostDto.View> getRandomQuickPoll() {
+    public List<PostDto.QuickPoll> getRandomQuickPoll() {
         List<Posting> posts = postRepository.findRandomPostsByType(5,PostingType.POLL);
-        Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
-        List<User> users = userRepository.findAllById(userIds);
-        Map<Long, User> userMap =
-                users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-
-        List<PostDto.View> response = new ArrayList<>();
+        List<PostDto.QuickPoll> response = new ArrayList<>();
         for (Posting post : posts) {
-            User user = userMap.get(post.getUserId());
-            response.add(new PostDto.View(post, user, userMap));
+            response.add(new PostDto.QuickPoll(post));
         }
         return response;
     }
+
+  @Override
+  public boolean bookmarkPost(Long postId, Long userId) {
+    boolean marked = true;
+    PostBookmark bookmark = bookmarkRepository.findByPostingIdAndUserId(postId, userId).orElse(null);
+    if (bookmark == null) {
+      Posting post =
+              postRepository
+                      .findById(postId)
+                      .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+      bookmark = new PostBookmark(post, userId);
+      bookmarkRepository.save(bookmark);
+    } else {
+      marked = false;
+      bookmarkRepository.delete(bookmark);
+    }
+    return marked;
+  }
 }
