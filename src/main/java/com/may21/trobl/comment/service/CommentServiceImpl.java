@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -112,25 +114,20 @@ public class CommentServiceImpl implements CommentService {
   }
 
   @Override
-  public List<CommentDto.RecentInfo> getMyComments(Long userId) {
-    List<Comment> comments = commentRepository.findByUserId(userId);
-    List<Posting> posts = postRepository.findByIdInComments(comments);
-    Map<Long, Posting> postMap =
-        posts.stream().collect(Collectors.toMap(Posting::getId, Function.identity()));
+  public Page<CommentDto.RecentInfo> getMyComments(Long userId, int page, int size) {
+    Page<Comment> comments = commentRepository.findByUserId(userId, PageRequest.of(page, size));
     User user =
         userRepository
             .findById(userId)
             .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-    List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, comments);
+    List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, comments.stream().toList());
     List<Comment> likedList = likes.stream().map(CommentLike::getComment).toList();
-    return comments.stream()
-        .map(
-            comment ->
-                new CommentDto.RecentInfo(
-                    postMap.get(comment.getPosting().getId()),
-                    comment,
-                    user,
-                    likedList.contains(comment)))
-        .toList();
+    return comments.map(
+        comment ->
+            new CommentDto.RecentInfo(
+                comment.getPosting(),
+                comment,
+                user,
+                likedList.contains(comment)));
   }
 }

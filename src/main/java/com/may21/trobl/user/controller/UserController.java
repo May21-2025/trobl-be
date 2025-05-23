@@ -9,6 +9,7 @@ import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -60,23 +61,27 @@ public class UserController {
   }
 
   @GetMapping("/posts")
-  public ResponseEntity<Message> getMyPosts(@AuthenticationPrincipal User user) {
-    List<PostDto.ListItem> response = postingService.getMyPosts(user.getId());
+  public ResponseEntity<Message> getMyPosts(@AuthenticationPrincipal User user,
+      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    Page<PostDto.ListItem> response = postingService.getMyPosts(user.getId(), page, size);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
   @GetMapping("/comments")
-  public ResponseEntity<Message> getMyComments(@AuthenticationPrincipal User user) {
-    List<CommentDto.RecentInfo> response = commentService.getMyComments(user.getId());
+  public ResponseEntity<Message> getMyComments(@AuthenticationPrincipal User user,
+                                               @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    Page<CommentDto.RecentInfo> response = commentService.getMyComments(user.getId(), page, size);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
   @GetMapping("/likes")
-  public ResponseEntity<Message> getLikedPosts(@AuthenticationPrincipal User user) {
-    List<PostDto.ListItem> response = postingService.getLikedPosts(user.getId());
+  public ResponseEntity<Message> getLikedPosts(@AuthenticationPrincipal User user,
+                                               @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    Page<PostDto.ListItem> response = postingService.getLikedPosts(user.getId(), page, size);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
   @GetMapping("/visits")
-  public ResponseEntity<Message> getVisitedPosts(@AuthenticationPrincipal User user) {
-    List<PostDto.ListItem> response = postingService.getVisitedPosts(user.getId());
+  public ResponseEntity<Message> getVisitedPosts(@AuthenticationPrincipal User user,
+                                                 @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    Page<PostDto.ListItem> response = postingService.getVisitedPosts(user.getId(), page, size);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 

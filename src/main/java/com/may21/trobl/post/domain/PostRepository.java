@@ -7,6 +7,8 @@ import java.util.Optional;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl.comment.domain.Comment;
 import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -53,7 +55,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
   @Query("SELECT p FROM Posting p JOIN p.comments c WHERE c IN :comments")
   List<Posting> findByIdInComments(List<Comment> comments);
 
-  List<Posting> findByUserId(Long userId);
+  Page<Posting> findByUserId(Long userId, PageRequest pageRequest);
   @Query("""
     SELECT p
     FROM Posting p

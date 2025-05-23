@@ -41,11 +41,11 @@ public interface PostingService {
     @Transactional
     boolean deletePost(Long id, Long postId);
 
-    List<PostDto.ListItem> getMyPosts(Long id);
+    Page<PostDto.ListItem> getMyPosts(Long id, int page, int size);
 
-    List<PostDto.ListItem> getLikedPosts(Long id);
+    Page<PostDto.ListItem> getLikedPosts(Long id, int page, int size);
 
-    List<PostDto.ListItem> getVisitedPosts(Long id);
+    Page<PostDto.ListItem> getVisitedPosts(Long id, int page, int size);
 
     PostDto.Detail addPairView(Long postId, Long id, PostDto.OpinionItem opinionItem);
 

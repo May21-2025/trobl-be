@@ -74,7 +74,7 @@ public class PostDto {
     private List<PollItem> pollOptions;
 
     public Poll(String title, List<PollOption> options) {
-      this.title = title;
+      this.title = decodeHtml(title);
       this.pollOptions = PollItem.fromPollOption(options);
     }
   }
@@ -88,8 +88,8 @@ public class PostDto {
 
     public OpinionItem(PairView pairView, User user) {
       String nickname = user==null ? pairView.getNickname() : user.getNickname();
-      this.content = pairView.getContent();
-      this.title = pairView.getTitle();
+      this.content = decodeHtml(pairView.getContent());
+      this.title = decodeHtml(pairView.getTitle());
       this.nickname = nickname;
     }
 

@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -294,27 +296,31 @@ public class PostingServiceImpl implements PostingService {
   }
 
   @Override
-  public List<PostDto.ListItem> getMyPosts(Long userId) {
-    List<Posting> posts = postRepository.findByUserId(userId);
+  public Page<PostDto.ListItem> getMyPosts(Long userId, int page, int size) {
+    Page<Posting> posts = postRepository.findByUserId(userId,PageRequest.of(page, size));
     List<PostDto.ListItem> response = new ArrayList<>();
     for (Posting post : posts) {
       response.add(new PostDto.ListItem(post));
     }
-    return response;
+    return new PageImpl<>(response, PageRequest.of(page, size), posts.getTotalElements());
   }
 
   @Override
-  public List<PostDto.ListItem> getLikedPosts(Long id) {
-    List<Posting> posts = likeRepository.findPostingByUserId(id);
-    List<PostDto.ListItem> response = new ArrayList<>();
-    for (Posting post : posts) {
-      response.add(new PostDto.ListItem(post));
-    }
-    return response;
+  public Page<PostDto.ListItem> getLikedPosts(Long id, int page, int size) {
+    Page<Posting> posts = likeRepository.findPostingByUserId(id,PageRequest.of(page, size));
+    Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
+    List<User> users = userRepository.findAllById(userIds);
+    Map<Long, User> userMap =
+        users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    return posts.map(
+            post -> {
+              User user = userMap.get(post.getUserId());
+              return new PostDto.ListItem(post, user);
+            });
   }
 
   @Override
-  public List<PostDto.ListItem> getVisitedPosts(Long id) {
+  public Page<PostDto.ListItem> getVisitedPosts(Long id, int page, int size) {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
 

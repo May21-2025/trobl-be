@@ -1,7 +1,10 @@
 package com.may21.trobl.post.domain;
 
-import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,5 +18,6 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
   @Query("DELETE FROM PostLike p WHERE p = :postLike")
   void deleteByEntity(PostLike postLike);
 
-  List<Posting> findPostingByUserId(Long id);
+  @Query("SELECT p.posting FROM PostLike p WHERE p.userId = :userId")
+  Page<Posting> findPostingByUserId(Long userId, Pageable pageRequest);
 }

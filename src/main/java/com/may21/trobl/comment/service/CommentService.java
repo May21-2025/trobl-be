@@ -2,6 +2,8 @@ package com.may21.trobl.comment.service;
 
 import com.may21.trobl.comment.dto.CommentDto;
 import java.util.List;
+
+import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface CommentService {
@@ -21,5 +23,6 @@ public interface CommentService {
   @Transactional
   boolean deleteComment(Long id, Long commentId);
 
-  List<CommentDto.RecentInfo> getMyComments(Long id);
+  @Transactional(readOnly = true)
+  Page<CommentDto.RecentInfo> getMyComments(Long id, int page, int size);
 }
