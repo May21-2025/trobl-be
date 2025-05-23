@@ -91,13 +91,20 @@ public class PostDto {
   public static class QuickPoll extends BasePostDto {
     private Long userId;
     private LocalDateTime createdAt;
+    private int voteCount;
     private PollDto pollDto;
 
     public QuickPoll(Posting post) {
       super(post, null);
+      Poll poll = post.getPoll();
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
-      this.pollDto = new PollDto(post.getPoll());
+      this.pollDto = new PollDto(poll);
+      int voteCount = 0;
+      for(PollItem pollItem : pollDto.getPollOptions()) {
+        voteCount += pollItem.getVoteCount();
+      }
+      this.voteCount = voteCount;
     }
   }
   @Getter
@@ -135,7 +142,7 @@ public class PostDto {
     private List<PollItem> pollOptions;
 
     public PollDto(Poll poll) {
-        this.pollId = poll.getId();
+      this.pollId = poll.getId();
       this.title = poll.getTitle();
       this.pollOptions = PollItem.fromPollOption(poll.getPollOptions());
     }
@@ -201,7 +208,7 @@ public class PostDto {
     private Long pollOptionId;
     private String name;
     private String content;
-    private long voteCount = 0;
+    private int voteCount = 0;
     private int index = 0;
     private boolean voted = false;
 

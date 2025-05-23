@@ -36,7 +36,7 @@ public class PollOption {
     this.index = index;
   }
 
-  public long getVoteCount() {
+  public int getVoteCount() {
     return pollVotes == null ? 0 : pollVotes.size();
   }
 
