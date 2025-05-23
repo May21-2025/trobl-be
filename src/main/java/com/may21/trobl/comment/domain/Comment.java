@@ -27,15 +27,24 @@ public class Comment extends Timestamped {
     @ManyToOne(fetch = FetchType.LAZY)
     private Posting posting;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Comment parentComment;
+
     @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CommentLike> commentLikes;
 
 
+    @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> commentList;
+
+
     @Builder
-   public Comment(User user, Posting post, String content) {
+   public Comment(User user, Posting post, Comment comment, String content) {
         this.userId = user.getId();
         this.content = content;
         this.posting = post;
+        this.parentComment = comment;
     }
 
     public int getLikeCount() {

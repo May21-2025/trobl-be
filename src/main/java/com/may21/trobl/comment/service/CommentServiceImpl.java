@@ -55,8 +55,12 @@ public class CommentServiceImpl implements CommentService {
         userRepository
             .findById(userId)
             .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    Comment parentComment = request.getCommentId()==null? null :
+        commentRepository
+            .findById(request.getCommentId())
+            .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
 
-    Comment comment = new Comment(user, post, request.getContent());
+    Comment comment = new Comment(user, post, parentComment, request.getContent());
     commentRepository.save(comment);
     return new CommentDto.Response(comment, user, false);
   }

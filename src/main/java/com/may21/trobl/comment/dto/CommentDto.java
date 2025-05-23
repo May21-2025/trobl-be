@@ -12,6 +12,7 @@ public class CommentDto {
     @Getter
     public static class Request {
         private String content;
+        private Long commentId;
     }
 
     @Getter
@@ -19,6 +20,7 @@ public class CommentDto {
         private Long id;
         private String content;
         private Long userId;
+        private Long parentCommentId;
         private Long postId;
         private String nickname;
         private LocalDateTime createdAt;
@@ -31,6 +33,7 @@ public class CommentDto {
             this.userId = user.getId();
             this.nickname = user.getNickname();
             this.postId = comment.getPosting().getId();
+            this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
             this.createdAt = comment.getCreatedAt();
             this.likeCount = comment.getLikeCount();
             this.liked = liked;
