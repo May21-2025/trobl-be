@@ -5,6 +5,9 @@ import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.tag.domain.Tag;
+import com.may21.trobl.tag.domain.TagMapping;
+import com.may21.trobl.tag.service.TagService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import java.time.LocalDate;
@@ -32,6 +35,7 @@ public class PostingServiceImpl implements PostingService {
   private final PostBookmarkRepository bookmarkRepository;
   private final PostViewRepository viewRepository;
   private final PollRepository pollRepository;
+  private final TagService tagService;
 
   @Override
   public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
@@ -97,7 +101,8 @@ public class PostingServiceImpl implements PostingService {
             viewRepository.save(new PostView(post, user.getId()));
         }
     }
-    return new PostDto.Detail(post, owner, userMap, liked, bookmarked);
+    List<Tag> tags = tagService.getPostTags(post);
+    return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked);
   }
 
   @Override
@@ -150,9 +155,13 @@ public class PostingServiceImpl implements PostingService {
       fairViewRepository.save(fairView);
       post.addFairView(fairView);
     }
+    Set<Tag> tags = tagService.createTags(request.getTags());
+    List<TagMapping> tagResponses =tagService.createTagMapping(tags, post);
+    post.setTags(tagResponses);
     Map<Long, User> userMap = new HashMap<>();
     userMap.put(userId, user);
-    return new PostDto.Detail(post, user, userMap, false, false);
+    List<Tag> tagList = tags.stream().toList();
+    return new PostDto.Detail(post, user, userMap, tagList, false, false);
   }
 
   @Override
@@ -173,15 +182,18 @@ public class PostingServiceImpl implements PostingService {
       List<PostDto.PollItem> pollOptionsRequest = request.getPoll().getPollOptions();
       updatePollOptions(pollOptionsRequest, poll);
     }
+    Set<Tag> tags = tagService.createTags(request.getTags());
+    List<TagMapping> tagResponses = tagService.updateTags(tags, post);
+    post.setTags(tagResponses);
     postRepository.save(post);
-
+    List<Tag> tagList = tags.stream().toList();
     Map<Long, User> userMap = new HashMap<>();
     return new PostDto.Detail(
             post,
             userRepository
                     .findById(userId)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
-            userMap, false, false);
+            userMap, tagList,false, false);
   }
 
   private List<PollOption> updatePollOptions(
