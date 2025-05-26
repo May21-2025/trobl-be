@@ -1,6 +1,9 @@
 package com.may21.trobl.user.domain;
 
 import com.may21.trobl._global.enums.RoleType;
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -36,6 +39,8 @@ public class User implements UserDetails, OAuth2User {
 
   private LocalDate weddingAnniversaryDate;
 
+  private LocalDate nicknameUpdatedAt;
+
   private Long partnerId;
 
   @ElementCollection(fetch = FetchType.EAGER)
@@ -50,6 +55,10 @@ public class User implements UserDetails, OAuth2User {
   private boolean accountNonLocked = true;
   private boolean credentialsNonExpired = true;
   private boolean enabled = true;
+
+  public void setPartner(User partner) {
+    this.partnerId = partner.getId();
+  }
 
   public User(Long userId, String subject, String s, Collection<GrantedAuthority> authorities) {
     this.id = userId;
@@ -119,4 +128,19 @@ public class User implements UserDetails, OAuth2User {
     public void updatePassword(String encodePassword) {
     this.password = encodePassword;
     }
+
+    public void updateNickname(String nickname) {
+    if (nickname == null || nickname.isEmpty()) {
+      throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+    }
+    this.nickname = nickname;
+    this.nicknameUpdatedAt = LocalDate.now();
+    }
+
+  public void updateInformation(UserDto.InfoRequest requestBody) {
+    if (requestBody.getMarriageDate() != null) {
+      this.weddingAnniversaryDate = requestBody.getMarriageDate();
+      this.married = true;
+    }
+  }
 }

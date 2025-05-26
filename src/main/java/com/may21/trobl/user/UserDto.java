@@ -3,6 +3,8 @@ package com.may21.trobl.user;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDate;
+
 public class UserDto {
 
   @Getter
@@ -48,16 +50,21 @@ public class UserDto {
 
   @Getter
   public class InfoRequest {
-    private final String name;
-    private final String email;
-    private final String phoneNumber;
-    private final String address;
+    private final LocalDate marriageDate;
+    private final String partnerEmail;
 
-    public InfoRequest(String name, String email, String phoneNumber, String address) {
-      this.name = name;
-      this.email = email;
-      this.phoneNumber = phoneNumber;
-      this.address = address;
+    public InfoRequest(LocalDate marriageDate, String partnerEmail) {
+      this.marriageDate = marriageDate;
+      this.partnerEmail = partnerEmail;
     }
+  }
+
+  @Getter
+  @AllArgsConstructor
+  public class NotificationSetting {
+    private final boolean post;
+    private final boolean comment;
+    private final boolean like;
+    private final boolean view;
   }
 }

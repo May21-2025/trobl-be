@@ -82,6 +82,7 @@ public class UserService implements UserDetailsService {
     user.updatePassword(passwordEncoder.encode(newPassword));
   }
 
+  @Transactional
   public UserDto.Info updateUserLanguage(Long userId, String language) {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
@@ -94,6 +95,7 @@ public class UserService implements UserDetailsService {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
 
+  @Transactional
   public UserDto.Info updateUserProfile(UserDto.InfoRequest userRequestDto, Long userId) {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
@@ -102,10 +104,12 @@ public class UserService implements UserDetailsService {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
 
+  @Transactional
   public void setEmailAlarmStatus(UserDto.AlertSetting request, Long userId) {
     throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
   }
 
+  @Transactional
   public User createOAuthUser(OAuthUserInfo userInfo) {
     String username = userInfo.getProviderId();
     String email = userInfo.getEmail();
@@ -123,5 +127,63 @@ public class UserService implements UserDetailsService {
             .role(RoleType.USER)
             .build();
     return userRepository.save(user);
+  }
+
+    public UserDto.NotificationSetting getUsersNotification(Long id) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    }
+
+  @Transactional
+  public UserDto.NotificationSetting updateNotificationSetting(Long id, String type, boolean enabled) {
+    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+  }
+
+  public boolean isNicknameAvailable(String nickname) {
+    if (nickname == null || nickname.isEmpty()) {
+      throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+    }
+    if (nickname.length() > 10) {
+      throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
+    }
+    return !userRepository.existsByNickname(nickname);
+  }
+
+  @Transactional
+  public boolean updateNickname(Long userId, String nickname) {
+    User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    if (nickname == null || nickname.isEmpty()) {
+      throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+    }
+    if (nickname.length() > 10) {
+      throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
+    }
+    if (userRepository.existsByNickname(nickname)) {
+      throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
+    }
+    user.updateNickname(nickname);
+    return true;
+  }
+
+  @Transactional
+  public boolean updateInformation(Long userId, UserDto.InfoRequest requestBody) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    user.updateInformation(requestBody);
+    return true;
+  }
+
+  public boolean matchPartner(Long id, String partnerId) {
+    User user = userRepository.findById(id)
+        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    User partner = userRepository.findByUsername(partnerId)
+        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+    if (user.getPartnerId() != null || partner.getPartnerId() != null) {
+      throw new BusinessException(ExceptionCode.RESTRICTED);
+    }
+
+    user.setPartner(partner);
+    partner.setPartner(user);
+    return true;
   }
 }

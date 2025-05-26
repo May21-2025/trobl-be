@@ -24,6 +24,9 @@ public enum ExceptionCode {
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U000", "사용자를 찾을 수 없습니다."),
   USERNAME_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "U001", "이미 존재하는 아이디입니다."),
   INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "U002", "비밀번호가 일치하지 않습니다."),
+  NICKNAME_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "U003", "이미 존재하는 닉네임입니다."),
+  NICKNAME_REQUIREMENTS_NOT_MET(HttpStatus.BAD_REQUEST, "U004", "닉네임은 2자 이상 10자 이하로 입력해주세요."),
+
 
   // POST P000
   POST_NOT_FOUND(HttpStatus.NOT_FOUND, "P000", "게시글을 찾을 수 없습니다."),
@@ -31,6 +34,7 @@ public enum ExceptionCode {
   POLL_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "P002", "투표 항목을 찾을 수 없습니다."),
   VOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "P003", "투표를 찾을 수 없습니다."),
   PAIR_VIEW_CAN_NOT_BE_ADDED(HttpStatus.BAD_REQUEST, "P004", "페어뷰 항목을 추가할 수 없습니다."),
+
 
   //POLL P100
   POLL_NOT_FOUND(HttpStatus.NOT_FOUND, "P100", "설문조사를 찾을 수 없습니다."),

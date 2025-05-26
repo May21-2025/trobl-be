@@ -92,4 +92,34 @@ public class UserController {
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
+  @GetMapping("/notifications")
+  public ResponseEntity<Message> getUsersNotification(@AuthenticationPrincipal User user) {
+    UserDto.NotificationSetting response = userService.getUsersNotification(user.getId());
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+  @PatchMapping("/bookmarks")
+  public ResponseEntity<Message> updateNotificationSetting(@AuthenticationPrincipal User user, @RequestParam String type, @RequestParam boolean enabled) {
+    UserDto.NotificationSetting response = userService.updateNotificationSetting(user.getId(), type, enabled);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+  @GetMapping("/nickname/existence")
+  public ResponseEntity<Message> checkIfNicknameAvailable(@RequestParam String nickname) {
+    boolean response = userService.isNicknameAvailable(nickname);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+  @PatchMapping("/nickname")
+  public ResponseEntity<Message> updateNickname(@AuthenticationPrincipal User user,@RequestParam String nickname) {
+    boolean response = userService.updateNickname(user.getId(),nickname);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+  @PatchMapping("/marriage-info")
+  public ResponseEntity<Message> updateInformation(@AuthenticationPrincipal User user,@RequestBody UserDto.InfoRequest requestBody) {
+    boolean response = userService.updateInformation(user.getId(),requestBody);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+  @PatchMapping("/partner")
+  public ResponseEntity<Message> matchPartner(@AuthenticationPrincipal User user,@RequestParam String partnerId) {
+    boolean response = userService.matchPartner(user.getId(),partnerId);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
 }

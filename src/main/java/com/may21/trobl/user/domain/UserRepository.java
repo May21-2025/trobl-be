@@ -33,4 +33,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     void updateAccountLockStatus(String username, boolean locked);
 
     List<User> findByIdIn(List<Long> userIds);
+
+    boolean existsByNickname(String nickname);
 }
