@@ -18,6 +18,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.Objects;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -150,9 +154,16 @@ public class UserService implements UserDetailsService {
 
   @Transactional
   public boolean updateNickname(Long userId, String nickname) {
-    User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
     if (nickname == null || nickname.isEmpty()) {
       throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+    }
+    User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    if (user.getNicknameUpdatedAt().plusDays(30).isAfter(LocalDate.now())) {
+      throw new BusinessException(ExceptionCode.NICKNAME_UPDATE_RESTRICTED);
+    }
+
+    if (Objects.equals(user.getNickname(), nickname)) {
+      throw new BusinessException(ExceptionCode.NICKNAME_EQUAL_TO_EXISTING);
     }
     if (nickname.length() > 10) {
       throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
@@ -172,6 +183,7 @@ public class UserService implements UserDetailsService {
     return true;
   }
 
+  @Transactional
   public boolean matchPartner(Long id, String partnerId) {
     User user = userRepository.findById(id)
         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));

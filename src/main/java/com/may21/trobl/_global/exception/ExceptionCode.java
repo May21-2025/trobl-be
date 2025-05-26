@@ -26,7 +26,8 @@ public enum ExceptionCode {
   INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "U002", "비밀번호가 일치하지 않습니다."),
   NICKNAME_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "U003", "이미 존재하는 닉네임입니다."),
   NICKNAME_REQUIREMENTS_NOT_MET(HttpStatus.BAD_REQUEST, "U004", "닉네임은 2자 이상 10자 이하로 입력해주세요."),
-
+  NICKNAME_UPDATE_RESTRICTED(HttpStatus.BAD_REQUEST, "U005", "닉네임 변경은 30일에 한 번만 가능합니다."),
+  NICKNAME_EQUAL_TO_EXISTING(HttpStatus.BAD_REQUEST, "U006", "닉네임이 기존 닉네임과 동일합니다."),
 
   // POST P000
   POST_NOT_FOUND(HttpStatus.NOT_FOUND, "P000", "게시글을 찾을 수 없습니다."),
