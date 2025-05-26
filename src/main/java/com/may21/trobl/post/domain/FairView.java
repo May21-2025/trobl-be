@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
-public class PairView {
+public class FairView {
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE)
   private Long id;
@@ -26,12 +26,15 @@ public class PairView {
   @ManyToOne(fetch = FetchType.LAZY)
   private Posting posting;
 
+  private boolean confirmed;
+
   @Builder
-  public PairView(String title, String content, String nickname, Posting post, Long userId) {
+  public FairView(String title, String content, String nickname, Posting post, Long userId) {
     this.title = title;
     this.content = content;
     this.posting = post;
     this. userId=userId;
     this.nickname=nickname;
+    this.confirmed = false;
   }
 }

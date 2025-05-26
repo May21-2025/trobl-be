@@ -1,22 +1,24 @@
 package com.may21.trobl.post.dto;
 
-import static com.may21.trobl._global.utility.SecurityUtils.decodeHtml;
-import static com.may21.trobl._global.utility.SecurityUtils.escapeHtml;
-
 import com.may21.trobl._global.enums.PostingType;
-import com.may21.trobl.post.domain.PairView;
+import com.may21.trobl.post.domain.FairView;
 import com.may21.trobl.post.domain.Poll;
 import com.may21.trobl.post.domain.PollOption;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.tag.domain.Tag;
+import com.may21.trobl.tag.dto.TagDto;
 import com.may21.trobl.user.domain.User;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import static com.may21.trobl._global.utility.SecurityUtils.decodeHtml;
+import static com.may21.trobl._global.utility.SecurityUtils.escapeHtml;
 
 public class PostDto {
 
@@ -119,18 +121,20 @@ public class PostDto {
     private boolean liked;
     private boolean bookmarked;
     private String postType;
+    private List<TagDto.Response> tags;
 
-    public Detail(Posting post, User user, Map<Long, User> userMap, boolean liked, boolean bookmarked) {
+    public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags, boolean liked, boolean bookmarked) {
       super(post, user);
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
       this.pollDto = post.getPoll() != null ? new PollDto(post.getPoll()) : null;
-      this.opinions = OpinionItem.fromPairViews(post.getPairViews(), userMap);
+      this.opinions = OpinionItem.fromPairViews(post.getFairViews(), userMap);
       this.shareCount = post.getShareCount();
       this.postType = post.getPostType().name();
       this.content = decodeHtml(post.getContent());
       this.liked = liked;
       this.bookmarked = bookmarked;
+        this.tags = TagDto.Response.fromTagList(tags);
     }
   }
 
@@ -155,21 +159,21 @@ public class PostDto {
     private String nickname;
     private String content;
 
-    public OpinionItem(PairView pairView, User user) {
-      String nickname = user==null ? pairView.getNickname() : user.getNickname();
-      this.content = decodeHtml(pairView.getContent());
-      this.title = decodeHtml(pairView.getTitle());
+    public OpinionItem(FairView fairView, User user) {
+      String nickname = user==null ? fairView.getNickname() : user.getNickname();
+      this.content = decodeHtml(fairView.getContent());
+      this.title = decodeHtml(fairView.getTitle());
       this.nickname = nickname;
     }
 
     public static List<OpinionItem> fromPairViews(
-        List<PairView> pairViews, Map<Long, User> userMap) {
-      if (pairViews == null) {
+        List<FairView> fairViews, Map<Long, User> userMap) {
+      if (fairViews == null) {
         return new ArrayList<>();
       }
       List<OpinionItem> opinionItems = new ArrayList<>();
-      for (PairView pairView : pairViews) {
-        opinionItems.add(new OpinionItem(pairView, userMap.get(pairView.getUserId())));
+      for (FairView fairView : fairViews) {
+        opinionItems.add(new OpinionItem(fairView, userMap.get(fairView.getUserId())));
       }
       return opinionItems;
     }
@@ -183,6 +187,7 @@ public class PostDto {
     private String postType;
     private OpinionItem optionItem;
     private PollDto poll;
+    private List<TagDto.Request> tags;
 
     public String getTitle() {
       return escapeHtml(title);
@@ -195,10 +200,10 @@ public class PostDto {
       return poll ==null? null : poll.pollId;
     }
 
-
     public String getContent() {
       return escapeHtml(content);
     }
+
   }
 
   @Getter

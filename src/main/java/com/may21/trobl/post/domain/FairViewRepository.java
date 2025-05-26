@@ -4,4 +4,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface PairViewRepository extends JpaRepository<PairView,Long> {}
+public interface FairViewRepository extends JpaRepository<FairView,Long> {}

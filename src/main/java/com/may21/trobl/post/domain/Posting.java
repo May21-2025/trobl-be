@@ -2,6 +2,7 @@ package com.may21.trobl.post.domain;
 
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl.comment.domain.Comment;
+import com.may21.trobl.tag.domain.TagMapping;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -28,7 +29,7 @@ public class Posting extends ContentEntity {
 
   @Setter
   @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<PairView> pairViews;
+  private List<FairView> fairViews;
 
   @Setter
   @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -42,6 +43,11 @@ public class Posting extends ContentEntity {
 
   @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PostBookmark> bookmarks;
+
+  @Setter
+  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  private List<TagMapping> tags;
+
 
   @Setter private int viewCount;
 
@@ -72,10 +78,11 @@ public class Posting extends ContentEntity {
     return viewCount+ viewsNum;
   }
 
-  public void addPairView(PairView pairView) {
-    if(pairView == null) {
-      throw new IllegalArgumentException("PairView cannot be null");
+  public void addFairView(FairView fairView) {
+    if(fairView == null) {
+      throw new IllegalArgumentException("FairView cannot be null");
     }
-    this.pairViews.add(pairView);
+    this.fairViews.add(fairView);
   }
+
 }

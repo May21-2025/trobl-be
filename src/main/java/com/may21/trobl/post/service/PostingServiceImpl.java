@@ -26,7 +26,7 @@ public class PostingServiceImpl implements PostingService {
   private final UserRepository userRepository;
   private final PostRepository postRepository;
   private final PollOptionRepository pollOptionRepository;
-  private final PairViewRepository pairViewRepository;
+  private final FairViewRepository fairViewRepository;
   private final VoteRepository voteRepository;
   private final PostLikeRepository likeRepository;
   private final PostBookmarkRepository bookmarkRepository;
@@ -138,16 +138,17 @@ public class PostingServiceImpl implements PostingService {
       }
       pollOptionRepository.saveAll(pollOptions);
       poll.setPollOptions(pollOptions);
-    } else if (postType ==PostingType.PAIR_VIEW) {
+      post.setPoll(poll);
+    } else if (postType ==PostingType.FAIR_VIEW) {
       PostDto.OpinionItem opinionItem = request.getOptionItem();
-      PairView pairView = PairView.builder()
+      FairView fairView = FairView.builder()
           .title(opinionItem.getTitle())
           .content(opinionItem.getContent())
           .post(post)
           .userId(userId)
           .build();
-      pairViewRepository.save(pairView);
-      post.setPairViews(List.of(pairView));
+      fairViewRepository.save(fairView);
+      post.addFairView(fairView);
     }
     Map<Long, User> userMap = new HashMap<>();
     userMap.put(userId, user);
@@ -367,18 +368,18 @@ public class PostingServiceImpl implements PostingService {
               userRepository
                       .findById(userId)
                       .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        PairView pairView = PairView.builder()
+        FairView fairView = FairView.builder()
                 .title(opinionItem.getTitle())
                 .content(opinionItem.getContent())
                 .post(post)
                 .userId(user.getId())
                 .nickname(user.getNickname())
                 .build();
-        pairViewRepository.save(pairView);
+        fairViewRepository.save(fairView);
         Map<Long, User> userMap = new HashMap<>();
         userMap.put(userId, user);
-        post.addPairView(pairView);
-        return new PostDto.Detail(post, user, userMap, false, false);
+        post.addFairView(fairView);
+        return new PostDto.Detail(post, user, userMap, List.of(), false, false);
     }
 
     @Override

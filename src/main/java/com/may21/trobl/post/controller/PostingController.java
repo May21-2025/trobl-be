@@ -77,7 +77,7 @@ public class PostingController {
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
-  @PostMapping("/{postId}/pair-view")
+  @PostMapping("/{postId}/fair-view")
   public ResponseEntity<Message> addPairView(
           @PathVariable Long postId,
           @RequestBody PostDto.OpinionItem opinionItem,@AuthenticationPrincipal User user) {

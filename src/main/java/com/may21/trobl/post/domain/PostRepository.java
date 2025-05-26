@@ -59,7 +59,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
   @Query("""
     SELECT p
     FROM Posting p
-    LEFT JOIN p.pairViews pv
+    LEFT JOIN p.fairViews pv
     WHERE p.id = :postId
     GROUP BY p
     HAVING COUNT(pv) = 1
