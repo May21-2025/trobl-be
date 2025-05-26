@@ -57,4 +57,7 @@ public interface PostingService {
 
     @Transactional(readOnly = true)
     Page<PostDto.ListItem> getBookmarkedPosts(Long id, int page, int size);
+
+    @Transactional(readOnly = true)
+    Page<PostDto.ListItem> getVotedPosts(Long id, int page, int size);
 }

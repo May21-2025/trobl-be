@@ -440,4 +440,23 @@ public class PostingServiceImpl implements PostingService {
               return new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
             });
   }
+
+  @Override
+  public Page<PostDto.ListItem> getVotedPosts(Long userId, int page, int size) {
+    Pageable pageable = PageRequest.of(page, size);
+    Page<Posting> postPages = voteRepository.findVotedPostsByUserId(userId, pageable);
+    Set<Long> userIds = postPages.stream().map(Posting::getUserId).collect(Collectors.toSet());
+    List<User> users = userRepository.findAllById(userIds);
+    Map<Long, User> userMap =
+        users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    List<Posting> posts = postPages.stream().toList();
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, posts);
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, posts);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, posts);
+    return postPages.map(
+            post -> {
+              User user = userMap.get(post.getUserId());
+              return new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
+            });
+  }
 }
