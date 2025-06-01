@@ -16,10 +16,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -56,6 +58,7 @@ public class PostingServiceImpl implements PostingService {
         });
   }
 
+  @Cacheable(value = "topPosts", key = "#type", condition = "#type != null")
   @Override
   public List<PostDto.Card> getTop10Views(String type) {
 
