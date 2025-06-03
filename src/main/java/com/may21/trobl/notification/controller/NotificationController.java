@@ -32,4 +32,14 @@ public class NotificationController {
     boolean response = notificationService.markAsRead(notificationId, user.getId());
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
+
+  @PatchMapping("/settings")
+  public ResponseEntity<Message> setNotificationSettings(
+          @RequestParam Boolean enabled,
+          @RequestParam String notificationType,   @AuthenticationPrincipal User user) {
+    boolean response = notificationService.setNotificationSettings(user.getId(), notificationType, enabled);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+
+
 }

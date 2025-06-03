@@ -17,22 +17,35 @@ import org.springframework.stereotype.Repository;
 public interface PostRepository extends JpaRepository<Posting, Long> {
 
   @Query(
-      "SELECT p FROM Posting p LEFT JOIN p.postLikes l "
-          + "WHERE p.postType = : postingType AND l.createdAt >= :startDate OR l IS NULL "
-          + "ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC "
-          + "LIMIT :count")
+      """
+SELECT p FROM Posting p LEFT JOIN p.postLikes l
+LEFT JOIN FETCH p.poll poll
+LEFT JOIN FETCH poll.pollOptions
+WHERE p.postType = : postingType AND l.createdAt >= :startDate OR l IS NULL
+ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
+LIMIT :count
+""")
   List<Posting> findTopPostsByLikesAndViews(int count, LocalDate startDate, PostingType postingType);
 
   @Query(
-      "SELECT p FROM Posting p LEFT JOIN p.postLikes l "
-          + "WHERE p.postType = :postingType ORDER BY SIZE(p.postLikes) DESC "
-          + "LIMIT :count")
+      """
+SELECT p FROM Posting p LEFT JOIN p.postLikes l
+LEFT JOIN FETCH p.poll poll
+LEFT JOIN FETCH poll.pollOptions
+WHERE p.postType = :postingType ORDER BY SIZE(p.postLikes) DESC
+LIMIT :count
+""")
   List<Posting> findTopPostsByLikes(int count, PostingType postingType);
 
   @Query("SELECT p FROM Posting p " + "WHERE p.postType = :postingType ORDER BY p.viewCount DESC " + "LIMIT :count")
   List<Posting> findTopPostsByViews(int count, PostingType postingType);
 
-  @Query("SELECT p FROM Posting p " + "WHERE p.postType = :postingType ORDER BY p.shareCount DESC " + "LIMIT :count")
+  @Query("""
+SELECT p FROM Posting p
+LEFT JOIN FETCH p.poll poll
+LEFT JOIN FETCH poll.pollOptions
+WHERE p.postType = :postingType ORDER BY p.shareCount DESC LIMIT :count
+""")
   List<Posting> findTopPostsByShares(int count, PostingType postingType);
 
   @Query(

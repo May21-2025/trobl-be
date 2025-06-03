@@ -1,8 +1,11 @@
 package com.may21.trobl.user.domain;
 
+import com.may21.trobl._global.enums.Language;
+import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.notification.domain.NotificationSetting;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
 
@@ -10,6 +13,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 import lombok.*;
+import org.apache.commons.codec.language.bm.Languages;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -37,11 +41,16 @@ public class User implements UserDetails, OAuth2User {
 
   private boolean married;
 
+  private Language language;
+
   private LocalDate weddingAnniversaryDate;
 
   private LocalDate nicknameUpdatedAt;
 
   private Long partnerId;
+
+  @OneToOne(cascade = CascadeType.ALL)
+  private NotificationSetting setting;
 
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
@@ -142,5 +151,8 @@ public class User implements UserDetails, OAuth2User {
       this.weddingAnniversaryDate = requestBody.getMarriageDate();
       this.married = true;
     }
+  }
+
+  public void setNotification(NotificationType type, Boolean enabled) {
   }
 }

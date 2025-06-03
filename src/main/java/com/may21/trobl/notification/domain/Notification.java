@@ -1,11 +1,10 @@
 package com.may21.trobl.notification.domain;
 
 import com.may21.trobl._global.enums.NotificationType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Notification {
 
     @Id
@@ -30,6 +30,9 @@ public class Notification {
 
     private Boolean isRead;
 
+    private LocalDateTime scheduledTime;
+
+    @CreatedDate
     private LocalDateTime createdAt;
 
     public void markAsRead() {
@@ -37,13 +40,14 @@ public class Notification {
     }
 
     @Builder
-    public Notification(Long userId, NotificationType type, String title, String body, String data) {
+    public Notification(Long userId, NotificationType type, String title, String body, String data, LocalDateTime scheduledTime) {
         this.userId = userId;
         this.type = type;
         this.title = title;
         this.body = body;
         this.data = data;
         this.isRead = false;
+        this.scheduledTime = scheduledTime;
         this.createdAt = LocalDateTime.now();
     }
 }

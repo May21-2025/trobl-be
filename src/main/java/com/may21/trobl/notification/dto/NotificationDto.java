@@ -1,11 +1,20 @@
 package com.may21.trobl.notification.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.util.Map;
 
 public class NotificationDto {
+
+    @Getter
+    @AllArgsConstructor
+    public static class Message {
+        private String title;
+        private String body;
+    }
+
 
     @Getter
     public static class TokenRegistrationRequest {
