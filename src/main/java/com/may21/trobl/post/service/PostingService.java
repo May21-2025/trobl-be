@@ -60,4 +60,12 @@ public interface PostingService {
 
     @Transactional(readOnly = true)
     Page<PostDto.ListItem> getVotedPosts(Long id, int page, int size);
+
+    @Transactional(readOnly = true)
+    Page<PostDto.ListItem> getFairViewConfirmList(Long id, Pageable pageable);
+
+    @Transactional
+    boolean confirmFairViewPost(Long id, Long postId);
+
+    boolean confirmFairView(Long userId, Long fairViewId);
 }

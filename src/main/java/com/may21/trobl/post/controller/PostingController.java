@@ -1,6 +1,8 @@
 package com.may21.trobl.post.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
@@ -85,6 +87,14 @@ public class PostingController {
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 
+  @PatchMapping("/{postId}/fair-view/{opinionId}")
+  public ResponseEntity<Message> confirmFairView(
+          @PathVariable Long postId,
+          @PathVariable Long opinionId,@AuthenticationPrincipal User user) {
+    boolean response = postingService.confirmFairView(user.getId(), opinionId);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+
   @PutMapping("/{postId}/like")
   public ResponseEntity<Message> likePost(
       @PathVariable Long postId, @AuthenticationPrincipal User user) {
@@ -111,6 +121,25 @@ public class PostingController {
   public ResponseEntity<Message> viewPost(
       @PathVariable Long postId, @AuthenticationPrincipal User user) {
     boolean response = postingService.viewPost(postId, user.getId());
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+  }
+
+    @GetMapping("/fair-view/confirm")
+    public ResponseEntity<Message> getFairViewConfirmList(
+        @AuthenticationPrincipal User user,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
+    if(user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
+    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+    Page<PostDto.ListItem> response = postingService.getFairViewConfirmList(user.getId(), pageable);
+    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+  @PatchMapping("/fair-view/confirm/{postId}")
+  public ResponseEntity<Message> confirmFairViewPost(
+          @AuthenticationPrincipal User user, @PathVariable Long postId) {
+    if(user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
+    boolean response = postingService.confirmFairViewPost(user.getId(), postId);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
 }

@@ -9,6 +9,7 @@ import com.may21.trobl.comment.domain.Comment;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -98,4 +99,11 @@ WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.shareCount DES
 
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.comments l WHERE l.userId = :userId AND p.confirmed = true AND l.posting IN :posts")
   List<Long> getAllIdsInListCommentedByUserId(Long userId, List<Posting> posts);
+
+    @Query("SELECT p FROM Posting p WHERE p.confirmed = true AND p.userId = :userId")
+    List<Posting> findAllUnconfirmedPostsByUserId(Long userId);
+
+
+  @Query("SELECT p FROM Posting p WHERE p.confirmed !=true AND p.userId IN :userIds")
+  Page<Posting> findAllUnconfirmedPostsByUserIdIn(List<Long> userIds, Pageable pageable);
 }

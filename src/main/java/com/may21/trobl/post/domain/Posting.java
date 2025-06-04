@@ -62,6 +62,7 @@ public class Posting extends ContentEntity {
 
   @CreatedDate private LocalDateTime createdAt;
 
+  @Setter
   private Boolean confirmed;
 
   @Builder

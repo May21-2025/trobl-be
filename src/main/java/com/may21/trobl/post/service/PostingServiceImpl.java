@@ -21,7 +21,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -377,7 +376,7 @@ public class PostingServiceImpl implements PostingService {
         Posting post =
                 postRepository
                         .getPostWithOnePairView(postId)
-                        .orElseThrow(() -> new BusinessException(ExceptionCode.PAIR_VIEW_CAN_NOT_BE_ADDED));
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.FAIR_VIEW_CAN_NOT_BE_ADDED));
       User user =
               userRepository
                       .findById(userId)
@@ -460,5 +459,52 @@ public class PostingServiceImpl implements PostingService {
               User user = userMap.get(post.getUserId());
               return new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
             });
+  }
+
+  @Override
+  public Page<PostDto.ListItem> getFairViewConfirmList(Long userId, Pageable pageable) {
+    List<User> users =
+        userRepository
+            .findPartnerAndUserById(userId);
+    if(users.isEmpty()) {
+      throw new BusinessException(ExceptionCode.USER_NOT_FOUND);
+    }
+    List<Long> userIds = users.stream().map(User::getId).toList();
+    Page<Posting> postPages = postRepository.findAllUnconfirmedPostsByUserIdIn(userIds, pageable);
+    Map<Long, User> userMap =
+            users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+    List<Posting> posts = postPages.stream().toList();
+    List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, posts);
+    List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, posts);
+    List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, posts);
+    return postPages.map(
+            post -> {
+              User user = userMap.get(post.getUserId());
+              return new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
+            });
+  }
+
+  @Override
+  public boolean confirmFairViewPost(Long userId, Long postId) {
+    Posting post =
+        postRepository
+            .findById(postId)
+            .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+    if (post.getPostType() != PostingType.FAIR_VIEW) {
+        throw new BusinessException(ExceptionCode.POST_NOT_FIT_FOR_CONFIRMATION);
+    }
+    post.setConfirmed(true);
+    return true;
+  }
+
+  @Override
+  public boolean confirmFairView(Long userId, Long fairViewId) {
+    FairView fairView =
+            fairViewRepository
+                    .findById(fairViewId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+
+    fairView.setConfirmed(true);
+    return true;
   }
 }

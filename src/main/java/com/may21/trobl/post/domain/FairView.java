@@ -26,6 +26,7 @@ public class FairView {
   @ManyToOne(fetch = FetchType.LAZY)
   private Posting posting;
 
+  @Setter
   private boolean confirmed;
 
   @Builder
