@@ -123,7 +123,6 @@ public class PostingServiceImpl implements PostingService {
             .postType(postType)
             .content(request.getContent())
             .userId(userId)
-            .pollTitle(request.getPollTitle())
             .nickname(user.getNickname())
             .build();
     postRepository.save(post);

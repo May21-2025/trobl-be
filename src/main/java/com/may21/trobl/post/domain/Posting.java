@@ -62,14 +62,17 @@ public class Posting extends ContentEntity {
 
   @CreatedDate private LocalDateTime createdAt;
 
+  private Boolean confirmed;
+
   @Builder
   public Posting(
-      String title, String pollTitle, PostingType postType, String content, Long userId, String nickname) {
+      String title, PostingType postType, String content, Long userId, String nickname) {
     super(title, content, userId);
     this.nickname = nickname;
     this.postType = postType;
     this.viewCount = 0;
     this.shareCount = 0;
+    this.confirmed = postType != PostingType.FAIR_VIEW;
   }
 
   public void incrementViewCount() {
