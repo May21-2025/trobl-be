@@ -22,7 +22,7 @@ public class PollOption {
       mappedBy = "pollOption",
       cascade = CascadeType.ALL,
       orphanRemoval = true,
-      fetch = FetchType.EAGER)
+      fetch = FetchType.LAZY)
   private List<PollVote> pollVotes;
 
   @ManyToOne(fetch = FetchType.LAZY)

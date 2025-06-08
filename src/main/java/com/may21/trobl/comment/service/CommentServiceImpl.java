@@ -11,6 +11,8 @@ import com.may21.trobl.post.domain.PostRepository;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -34,31 +36,31 @@ public class CommentServiceImpl implements CommentService {
     List<Long> userIds = comments.stream().map(Comment::getUserId).distinct().toList();
     List<User> users = userRepository.findByIdIn(userIds);
     Map<Long, User> userMap =
-        users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+            users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
     List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, comments);
     List<Comment> likedList = likes.stream().map(CommentLike::getComment).toList();
     return comments.stream()
-        .map(
-            comment ->
-                new CommentDto.Response(
-                    comment, userMap.get(comment.getUserId()), likedList.contains(comment)))
-        .toList();
+            .map(
+                    comment ->
+                            new CommentDto.Response(
+                                    comment, userMap.get(comment.getUserId()), likedList.contains(comment)))
+            .toList();
   }
 
   @Override
   public CommentDto.Response createComment(Long postId, CommentDto.Request request, Long userId) {
     Posting post =
-        postRepository
-            .findById(postId)
-            .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+            postRepository
+                    .findById(postId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
     User user =
-        userRepository
-            .findById(userId)
-            .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-    Comment parentComment = request.getCommentId()==null? null :
-        commentRepository
-            .findById(request.getCommentId())
-            .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
+            userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    Comment parentComment = request.getCommentId() == null ? null :
+            commentRepository
+                    .findById(request.getCommentId())
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
 
     Comment comment = new Comment(user, post, parentComment, request.getContent());
     commentRepository.save(comment);
@@ -67,19 +69,19 @@ public class CommentServiceImpl implements CommentService {
 
   @Override
   public CommentDto.Response updateComment(
-      Long userId, CommentDto.Request request, Long commentId) {
+          Long userId, CommentDto.Request request, Long commentId) {
     Comment comment =
-        commentRepository
-            .findById(commentId)
-            .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
+            commentRepository
+                    .findById(commentId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
     if (!comment.getUserId().equals(userId)) {
       throw new BusinessException(ExceptionCode.UNAUTHORIZED);
     }
     comment.setContent(request.getContent());
     User user =
-        userRepository
-            .findById(userId)
-            .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
 
     CommentLike like = likeRepository.findByUserIdAndComment(userId, comment);
     return new CommentDto.Response(comment, user, like != null);
@@ -89,12 +91,12 @@ public class CommentServiceImpl implements CommentService {
   public boolean likeComment(Long commentId, Long userId) {
     boolean liked = true;
     CommentLike commentLike =
-        likeRepository.findByCommentIdAndUserId(commentId, userId).orElse(null);
+            likeRepository.findByCommentIdAndUserId(commentId, userId).orElse(null);
     if (commentLike == null) {
       Comment comment =
-          commentRepository
-              .findById(commentId)
-              .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+              commentRepository
+                      .findById(commentId)
+                      .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
       commentLike = new CommentLike(comment, userId);
       likeRepository.save(commentLike);
     } else {
@@ -107,9 +109,9 @@ public class CommentServiceImpl implements CommentService {
   @Override
   public boolean deleteComment(Long userId, Long commentId) {
     Comment comment =
-        commentRepository
-            .findById(commentId)
-            .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
+            commentRepository
+                    .findById(commentId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
     if (!comment.getUserId().equals(userId)) {
       throw new BusinessException(ExceptionCode.UNAUTHORIZED);
     }
@@ -121,17 +123,48 @@ public class CommentServiceImpl implements CommentService {
   public Page<CommentDto.RecentInfo> getMyComments(Long userId, int page, int size) {
     Page<Comment> comments = commentRepository.findByUserId(userId, PageRequest.of(page, size));
     User user =
-        userRepository
-            .findById(userId)
-            .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
     List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, comments.stream().toList());
     List<Comment> likedList = likes.stream().map(CommentLike::getComment).toList();
     return comments.map(
-        comment ->
-            new CommentDto.RecentInfo(
-                comment.getPosting(),
-                comment,
-                user,
-                likedList.contains(comment)));
+            comment ->
+                    new CommentDto.RecentInfo(
+                            comment.getPosting(),
+                            comment,
+                            user,
+                            likedList.contains(comment)));
+  }
+
+  @Override
+  public Map<Long, Integer> getPostCommentMap(List<Posting> posts) {
+    Map<Long, Integer> postCommentMap = new HashMap<>();
+
+    if (posts == null || posts.isEmpty()) {
+      return postCommentMap;
+    }
+
+    List<Long> postIds = posts.stream()
+            .map(Posting::getId)
+            .toList();
+
+    List<Comment> comments = commentRepository.findByPostIdIn(postIds);
+
+    if (comments != null && !comments.isEmpty()) {
+      postCommentMap = comments.stream()
+              .collect(Collectors.toMap(
+                      c -> c.getPosting().getId(),
+                      c -> 1,
+                      Integer::sum
+              ));
+    }
+
+    // Ensure every post ID is in the map, even those with 0 comments
+    for (Posting post : posts) {
+      postCommentMap.putIfAbsent(post.getId(), 0);
+    }
+
+    return postCommentMap;
   }
 }

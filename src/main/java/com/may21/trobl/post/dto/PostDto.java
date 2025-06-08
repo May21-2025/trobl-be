@@ -55,9 +55,9 @@ public class PostDto {
   public static class Card extends BasicPostWithTitle {
     private int commentCount;
 
-    public Card(Posting post) {
+    public Card(Posting post, int commentCount) {
       super(post, null); // username은 Posting 기반
-      this.commentCount = post.getComments().size();
+      this.commentCount = commentCount;
     }
   }
 
@@ -233,4 +233,17 @@ public class PostDto {
       return pollList;
     }
   }
+
+  public record PostListDto(
+          Long id,
+          String title,
+          String content,
+          String nickname,
+          LocalDateTime createdAt,
+          Long likeCount,
+          Long commentCount,
+          Long viewCount,
+          Boolean likedByUser
+  ) {}
+
 }

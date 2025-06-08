@@ -2,7 +2,9 @@ package com.may21.trobl.comment.service;
 
 import com.may21.trobl.comment.dto.CommentDto;
 import java.util.List;
+import java.util.Map;
 
+import com.may21.trobl.post.domain.Posting;
 import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,4 +27,7 @@ public interface CommentService {
 
   @Transactional(readOnly = true)
   Page<CommentDto.RecentInfo> getMyComments(Long id, int page, int size);
+
+  @Transactional(readOnly = true)
+    Map<Long, Integer> getPostCommentMap(List<Posting> posts);
 }

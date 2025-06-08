@@ -25,14 +25,17 @@ public class Poll {
             mappedBy = "poll",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
-            fetch = FetchType.EAGER)
+            fetch = FetchType.LAZY)
     private List<PollOption> pollOptions;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @Setter
+    @ManyToOne(fetch = FetchType.LAZY)
     private Posting posting;
 
     public Poll(String pollTitle, Posting post) {
         this.title = pollTitle;
         this.posting = post;
     }
+
+
 }

@@ -1,6 +1,8 @@
 package com.may21.trobl.post.domain;
 
 import com.may21.trobl._global.enums.PostingType;
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.tag.domain.TagMapping;
 import jakarta.persistence.*;
@@ -25,8 +27,8 @@ public class Posting extends ContentEntity {
   private PostingType postType;
 
   @Setter
-  @OneToOne(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
-  private Poll poll;
+  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<Poll> poll;
 
   @Setter
   @BatchSize(size = 10)
@@ -96,4 +98,31 @@ public class Posting extends ContentEntity {
     this.fairViews.add(fairView);
   }
 
+  public Poll getPoll() {
+    if (poll == null || poll.isEmpty()) {
+      return null;
+    }
+    if(poll.size() > 1) {
+      //delete all except the first one
+        for (int i = 1; i < poll.size(); i++) {
+            Poll p = poll.get(i);
+            p.setPosting(null);
+        }
+        poll = poll.subList(0, 1);
+    }
+    return poll.getFirst();
+  }
+
+  public void setPoll(Poll poll) {
+    //if this.poll has one throw exception
+    if (this.poll != null && !this.poll.isEmpty()) {
+      throw new BusinessException(ExceptionCode.FORBIDDEN, "Posting already has a poll");
+    }
+    if (poll == null) {
+      this.poll = null;
+    } else {
+      this.poll = List.of(poll);
+      poll.setPosting(this);
+    }
+  }
 }

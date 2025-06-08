@@ -19,4 +19,10 @@ public class BusinessException extends RuntimeException {
     this.errorCode = errorCode;
     this.detailMessage = e.getMessage();
   }
+
+  public BusinessException(ExceptionCode exceptionCode, String postingAlreadyHasAPoll) {
+    super(exceptionCode.getMessage());
+    this.errorCode = exceptionCode;
+    this.detailMessage = postingAlreadyHasAPoll;
+  }
 }

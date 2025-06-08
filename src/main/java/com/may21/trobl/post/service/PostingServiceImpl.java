@@ -3,6 +3,8 @@ package com.may21.trobl.post.service;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.comment.domain.Comment;
+import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.tag.domain.Tag;
@@ -37,6 +39,7 @@ public class PostingServiceImpl implements PostingService {
   private final PostViewRepository viewRepository;
   private final PollRepository pollRepository;
   private final TagService tagService;
+  private final CommentService commentService;
 
   @Override
   public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
@@ -73,9 +76,10 @@ public class PostingServiceImpl implements PostingService {
           default -> postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo, PostingType.POLL);
         };
 
+    Map<Long, Integer> commentMaps = commentService.getPostCommentMap(posts);
     List<PostDto.Card> response = new ArrayList<>();
     for (Posting post : posts) {
-      response.add(new PostDto.Card(post));
+      response.add(new PostDto.Card(post, commentMaps.get(post.getId())));
     }
     return response;
   }
