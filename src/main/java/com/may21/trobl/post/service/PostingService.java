@@ -26,46 +26,50 @@ public interface PostingService {
     PostDto.Detail updatePost(PostDto.Request request, Long userId, Long postId);
 
     @Transactional
-    boolean votePoll(Long pollOptionId, Long id);
+    boolean votePoll(Long pollOptionId, Long userId);
 
     @Transactional
-    boolean sharePost(Long postId, Long id);
-  @Transactional
-    boolean viewPost(Long postId, Long id);
+    boolean sharePost(Long postId, Long userId);
 
     @Transactional
-    boolean likePost(Long postId, Long id);
+    boolean viewPost(Long postId, Long userId);
 
     @Transactional
-    boolean deletePost(Long id, Long postId);
+    boolean likePost(Long postId, Long userId);
 
-    Page<PostDto.ListItem> getMyPosts(Long id, int page, int size);
+    @Transactional
+    boolean deletePost(Long userId, Long postId);
 
-    Page<PostDto.ListItem> getLikedPosts(Long id, int page, int size);
+    Page<PostDto.ListItem> getMyPosts(Long userId, int page, int size);
+
+    Page<PostDto.ListItem> getLikedPosts(Long userId, int page, int size);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getVisitedPosts(Long id, int page, int size);
+    Page<PostDto.ListItem> getVisitedPosts(Long userId, int page, int size);
 
     @Transactional
-    PostDto.Detail addPairView(Long postId, Long id, PostDto.OpinionItem opinionItem);
+    PostDto.Detail addPairView(Long postId, Long userId, PostDto.OpinionItem opinionItem);
 
     @Transactional(readOnly = true)
     List<PostDto.QuickPoll> getRandomQuickPoll();
 
     @Transactional
-    boolean bookmarkPost(Long postId, Long id);
+    boolean bookmarkPost(Long postId, Long userId);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getBookmarkedPosts(Long id, int page, int size);
+    Page<PostDto.ListItem> getBookmarkedPosts(Long userId, int page, int size);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getVotedPosts(Long id, int page, int size);
+    Page<PostDto.ListItem> getVotedPosts(Long userId, int page, int size);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getFairViewConfirmList(Long id, Pageable pageable);
+    Page<PostDto.ListItem> getFairViewConfirmList(Long userId, Pageable pageable);
 
     @Transactional
-    boolean confirmFairViewPost(Long id, Long postId);
+    boolean confirmFairViewPost(Long userId, Long postId);
 
     boolean confirmFairView(Long userId, Long fairViewId);
+
+    @Transactional(readOnly = true)
+    List<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword);
 }

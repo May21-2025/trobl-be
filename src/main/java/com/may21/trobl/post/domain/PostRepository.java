@@ -17,93 +17,114 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PostRepository extends JpaRepository<Posting, Long> {
 
-  @Query(
-      """
-SELECT p FROM Posting p LEFT JOIN p.postLikes l
-LEFT JOIN FETCH p.poll poll
-LEFT JOIN FETCH poll.pollOptions
-WHERE p.postType = : postingType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true
-ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
-LIMIT :count
-""")
-  List<Posting> findTopPostsByLikesAndViews(int count, LocalDate startDate, PostingType postingType);
+    @Query(
+            """
+                    SELECT p FROM Posting p LEFT JOIN p.postLikes l
+                    LEFT JOIN FETCH p.poll poll
+                    LEFT JOIN FETCH poll.pollOptions
+                    WHERE p.postType = : postingType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true
+                    ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
+                    LIMIT :count
+                    """)
+    List<Posting> findTopPostsByLikesAndViews(int count, LocalDate startDate, PostingType postingType);
 
-  @Query(
-      """
-SELECT p FROM Posting p LEFT JOIN p.postLikes l
-LEFT JOIN FETCH p.poll poll
-LEFT JOIN FETCH poll.pollOptions
-WHERE p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.postLikes) DESC
-LIMIT :count
-""")
-  List<Posting> findTopPostsByLikes(int count, PostingType postingType);
+    @Query(
+            """
+                    SELECT p FROM Posting p LEFT JOIN p.postLikes l
+                    LEFT JOIN FETCH p.poll poll
+                    LEFT JOIN FETCH poll.pollOptions
+                    WHERE p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.postLikes) DESC
+                    LIMIT :count
+                    """)
+    List<Posting> findTopPostsByLikes(int count, PostingType postingType);
 
-  @Query("SELECT p FROM Posting p " + "WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.viewCount DESC " + "LIMIT :count")
-  List<Posting> findTopPostsByViews(int count, PostingType postingType);
+    @Query("SELECT p FROM Posting p " + "WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.viewCount DESC " + "LIMIT :count")
+    List<Posting> findTopPostsByViews(int count, PostingType postingType);
 
-  @Query("""
-SELECT p FROM Posting p
-LEFT JOIN FETCH p.poll poll
-LEFT JOIN FETCH poll.pollOptions
-WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.shareCount DESC LIMIT :count
-""")
-  List<Posting> findTopPostsByShares(int count, PostingType postingType);
+    @Query("""
+            SELECT p FROM Posting p
+            LEFT JOIN FETCH p.poll poll
+            LEFT JOIN FETCH poll.pollOptions
+            WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.shareCount DESC LIMIT :count
+            """)
+    List<Posting> findTopPostsByShares(int count, PostingType postingType);
 
-  @Query(
-      "SELECT p FROM Posting p LEFT JOIN p.comments l "
-          + "WHERE p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.comments) DESC "
-          + "LIMIT :count")
-  List<Posting> findTopPostsByComments(int count, PostingType postingType);
+    @Query(
+            "SELECT p FROM Posting p LEFT JOIN p.comments l "
+                    + "WHERE p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.comments) DESC "
+                    + "LIMIT :count")
+    List<Posting> findTopPostsByComments(int count, PostingType postingType);
 
-  @Query("""
-    SELECT p
-    FROM Posting p
-    LEFT JOIN p.poll.pollOptions po
-    LEFT JOIN po.pollVotes pv
-        WHERE p.confirmed = true
-    GROUP BY p
-    ORDER BY COUNT(pv) DESC
-    LIMIT :count
-    """)
-  List<Posting> findTopPostsByVotes(int count);
+    @Query("""
+            SELECT p
+            FROM Posting p
+            LEFT JOIN p.poll poll
+                LEFT JOIN poll.pollOptions po
+            LEFT JOIN po.pollVotes pv
+                WHERE p.confirmed = true
+            GROUP BY p
+            ORDER BY COUNT(pv) DESC
+            LIMIT :count
+            """)
+    List<Posting> findTopPostsByVotes(int count);
 
-  @Query("SELECT p FROM Posting p JOIN p.comments c WHERE c IN :comments AND p.confirmed = true")
-  List<Posting> findByIdInComments(List<Comment> comments);
+    @Query("SELECT p FROM Posting p JOIN p.comments c WHERE c IN :comments AND p.confirmed = true")
+    List<Posting> findByIdInComments(List<Comment> comments);
 
-  Page<Posting> findByUserId(Long userId, PageRequest pageRequest);
-  @Query("""
-    SELECT p
-    FROM Posting p
-    LEFT JOIN p.fairViews pv
-    WHERE p.id = :postId
-    GROUP BY p
-    HAVING COUNT(pv) = 1
-""")
-  Optional<Posting> getPostWithOnePairView(@Param("postId") Long postId);
+    Page<Posting> findByUserId(Long userId, PageRequest pageRequest);
 
-  @Query(value = """
-    SELECT * FROM posting 
-    WHERE post_type = :postingType AND p.confirmed = true 
-    ORDER BY RANDOM() 
-    LIMIT :count
-    """, nativeQuery = true)
-  List<Posting> findRandomPostsByType( @Param("count") int count,@Param("postingType") PostingType postingType);
+    @Query("""
+                SELECT p
+                FROM Posting p
+                LEFT JOIN p.fairViews pv
+                WHERE p.id = :postId
+                GROUP BY p
+                HAVING COUNT(pv) = 1
+            """)
+    Optional<Posting> getPostWithOnePairView(@Param("postId") Long postId);
+
+    @Query(value = """
+            SELECT * FROM posting 
+            WHERE post_type = :postingType AND p.confirmed = true 
+            ORDER BY RANDOM() 
+            LIMIT :count
+            """, nativeQuery = true)
+    List<Posting> findRandomPostsByType(@Param("count") int count, @Param("postingType") PostingType postingType);
 
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.postLikes l WHERE l.userId = :userId AND p.confirmed = true AND l.posting IN :list")
     List<Long> getAllIdsInListLikedByUserId(Long userId, List<Posting> list);
+
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.bookmarks l WHERE l.userId = :userId AND p.confirmed = true")
-  List<Long> getAllIdsInListBookmarkedByUserId(Long userId);
+    List<Long> getAllIdsInListBookmarkedByUserId(Long userId);
 
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.views l WHERE l.userId = :userId AND p.confirmed = true AND l.posting IN :posts")
-  List<Long> getAllIdsInListViewedByUserId(Long userId, List<Posting> posts);
+    List<Long> getAllIdsInListViewedByUserId(Long userId, List<Posting> posts);
 
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.comments l WHERE l.userId = :userId AND p.confirmed = true AND l.posting IN :posts")
-  List<Long> getAllIdsInListCommentedByUserId(Long userId, List<Posting> posts);
+    List<Long> getAllIdsInListCommentedByUserId(Long userId, List<Posting> posts);
 
     @Query("SELECT p FROM Posting p WHERE p.confirmed = true AND p.userId = :userId")
     List<Posting> findAllUnconfirmedPostsByUserId(Long userId);
 
 
-  @Query("SELECT p FROM Posting p WHERE p.confirmed !=true AND p.userId IN :userIds")
-  Page<Posting> findAllUnconfirmedPostsByUserIdIn(List<Long> userIds, Pageable pageable);
+    @Query("SELECT p FROM Posting p WHERE p.confirmed !=true AND p.userId IN :userIds")
+    Page<Posting> findAllUnconfirmedPostsByUserIdIn(List<Long> userIds, Pageable pageable);
+
+    @Query("SELECT p FROM Posting p " +
+            "LEFT JOIN p.poll poll " +
+            "LEFT JOIN p.fairViews fairView " +
+            "LEFT JOIN p.tags tag " +
+            "WHERE p.confirmed = true AND (" +
+            "LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(poll.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(fairView.content) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(tag.tag.name) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+            ")")
+    List<Posting> searchByKeyword(@Param("keyword") String keyword);
+
+
+
+
+
 }
