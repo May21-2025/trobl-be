@@ -20,8 +20,8 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     @Query(
             """
                     SELECT p FROM Posting p LEFT JOIN p.postLikes l
-                    LEFT JOIN FETCH p.poll poll
-                    LEFT JOIN FETCH poll.pollOptions
+                    LEFT JOIN p.poll poll
+                    LEFT JOIN  poll.pollOptions
                     WHERE p.postType = : postingType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true
                     ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
                     LIMIT :count
@@ -31,8 +31,8 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     @Query(
             """
                     SELECT p FROM Posting p LEFT JOIN p.postLikes l
-                    LEFT JOIN FETCH p.poll poll
-                    LEFT JOIN FETCH poll.pollOptions
+                    LEFT JOIN p.poll poll
+                    LEFT JOIN poll.pollOptions
                     WHERE p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.postLikes) DESC
                     LIMIT :count
                     """)
@@ -43,8 +43,8 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
 
     @Query("""
             SELECT p FROM Posting p
-            LEFT JOIN FETCH p.poll poll
-            LEFT JOIN FETCH poll.pollOptions
+            LEFT JOIN  p.poll poll
+            LEFT JOIN  poll.pollOptions
             WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.shareCount DESC LIMIT :count
             """)
     List<Posting> findTopPostsByShares(int count, PostingType postingType);
@@ -84,7 +84,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     Optional<Posting> getPostWithOnePairView(@Param("postId") Long postId);
 
     @Query(value = """
-            SELECT * FROM posting 
+            SELECT * FROM posting p
             WHERE post_type = :postingType AND p.confirmed = true 
             ORDER BY RANDOM() 
             LIMIT :count

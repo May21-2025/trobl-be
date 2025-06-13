@@ -85,7 +85,6 @@ public class PostingServiceImpl implements PostingService {
                     case "vote" -> postRepository.findTopPostsByVotes(10);
                     default -> postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo, PostingType.POLL);
                 };
-
         Map<Long, Integer> commentMaps = commentService.getPostCommentMap(posts);
         List<PostDto.Card> response = new ArrayList<>();
         for (Posting post : posts) {
