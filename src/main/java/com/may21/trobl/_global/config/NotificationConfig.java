@@ -20,15 +20,6 @@ import java.util.Locale;
 public class NotificationConfig {
 
     @Bean
-    public MessageSource messageSource() {
-        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
-        messageSource.setBasename("messages/notification-messages");
-        messageSource.setDefaultEncoding("UTF-8");
-        messageSource.setCacheSeconds(3600);
-        return messageSource;
-    }
-
-    @Bean
     @Primary
     public LocaleResolver customLocaleResolver() {
         SessionLocaleResolver resolver = new SessionLocaleResolver();
