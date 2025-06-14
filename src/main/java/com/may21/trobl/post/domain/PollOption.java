@@ -14,7 +14,6 @@ public class PollOption {
   private Long id;
 
   @Setter private String name;
-  @Setter private String content;
 
   @Setter private Integer index;
 
@@ -29,8 +28,7 @@ public class PollOption {
   private Poll poll;
 
   @Builder
-  public PollOption(String name, String content, int index, Poll poll) {
-    this.content = content;
+  public PollOption(String name, int index, Poll poll) {
     this.name = name;
     this.poll = poll;
     this.index = index;

@@ -150,7 +150,6 @@ public class PostingServiceImpl implements PostingService {
                         PollOption.builder()
                                 .name(pollOptionRequest.getName())
                                 .poll(poll)
-                                .content(pollOptionRequest.getContent())
                                 .index(i)
                                 .build();
                 pollOptions.add(pollOption);
@@ -225,7 +224,6 @@ public class PostingServiceImpl implements PostingService {
                 PollOption pollOption =
                         PollOption.builder()
                                 .name(pollOptionRequest.getName())
-                                .content(pollOptionRequest.getContent())
                                 .index(i)
                                 .poll(poll)
                                 .build();
@@ -238,9 +236,8 @@ public class PostingServiceImpl implements PostingService {
                                 .findFirst()
                                 .orElse(
                                         new PollOption(
-                                                pollOptionRequest.getName(), pollOptionRequest.getContent(), i, poll));
+                                                pollOptionRequest.getName(),  i, poll));
                 existingOption.setName(pollOptionRequest.getName());
-                existingOption.setContent(pollOptionRequest.getContent());
                 existingOption.setIndex(i);
             }
         }

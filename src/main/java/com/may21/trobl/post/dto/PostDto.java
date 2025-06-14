@@ -213,7 +213,6 @@ public class PostDto {
   public static class PollItem {
     private Long pollOptionId;
     private String name;
-    private String content;
     private int voteCount = 0;
     private int index = 0;
     private boolean voted = false;
@@ -221,7 +220,6 @@ public class PostDto {
     public PollItem(PollOption polloption) {
       this.pollOptionId = polloption.getId();
       this.name = decodeHtml(polloption.getName());
-      this.content = decodeHtml(polloption.getContent());
       this.voteCount = polloption.getVoteCount();
       this.index = polloption.getIndex();
     }
