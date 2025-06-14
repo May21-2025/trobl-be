@@ -17,7 +17,7 @@ public class CommentDto {
 
     @Getter
     public static class Response {
-        private Long id;
+        private Long commentId;
         private String content;
         private Long userId;
         private Long parentCommentId;
@@ -28,7 +28,7 @@ public class CommentDto {
         private boolean liked;
 
         public Response(Comment comment, User user, boolean liked) {
-            this.id = comment.getId();
+            this.commentId = comment.getId();
             this.content = comment.getContent();
             this.userId = user.getId();
             this.nickname = user.getNickname();

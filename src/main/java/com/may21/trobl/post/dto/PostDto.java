@@ -123,6 +123,8 @@ public class PostDto {
     private boolean bookmarked;
     private String postType;
     private List<TagDto.Response> tags;
+    private int commentCount;
+    private int likeCount;
 
     public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags, boolean liked, boolean bookmarked) {
       super(post, user);
@@ -136,6 +138,8 @@ public class PostDto {
       this.liked = liked;
       this.bookmarked = bookmarked;
         this.tags = TagDto.Response.fromTagList(tags);
+        this.commentCount = post.getComments().size();
+        this.likeCount = post.getPostLikes().size();
     }
   }
 
@@ -234,7 +238,7 @@ public class PostDto {
   }
 
   public record PostListDto(
-          Long id,
+          Long postId,
           String title,
           String content,
           String nickname,

@@ -307,7 +307,7 @@ public class NotificationServiceImpl implements NotificationService{
                     commentSnippet ,
                     Map.of(
                             "postId", postId.toString(),
-                            "commentId", commentDto.getId().toString()
+                            "commentId", commentDto.getCommentId().toString()
                     ),
                     NotificationStrategy.IMMEDIATE
             );
@@ -319,7 +319,7 @@ public class NotificationServiceImpl implements NotificationService{
                     commentSnippet,
                     Map.of(
                             "postId", postId.toString(),
-                            "commentId", commentDto.getId().toString()
+                            "commentId", commentDto.getCommentId().toString()
                     ),
                     NotificationStrategy.IMMEDIATE
             );
