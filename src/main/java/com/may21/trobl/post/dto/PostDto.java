@@ -94,14 +94,15 @@ public class PostDto {
     private Long userId;
     private LocalDateTime createdAt;
     private int voteCount;
-    private PollDto pollDto;
+    private PollDto poll;
 
     public QuickPoll(Posting post) {
       super(post, null);
       Poll poll = post.getPoll();
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
-      this.pollDto = new PollDto(poll);
+      PollDto pollDto = new PollDto(poll);
+      this.poll = pollDto;
       int voteCount = 0;
       for(PollItem pollItem : pollDto.getPollOptions()) {
         voteCount += pollItem.getVoteCount();
@@ -114,7 +115,7 @@ public class PostDto {
   public static class Detail extends BasicPostWithTitle {
     private Long userId;
     private LocalDateTime createdAt;
-    private PollDto pollDto;
+    private PollDto poll;
     private List<OpinionItem> opinions;
     private String content;
     private int shareCount;
@@ -127,7 +128,7 @@ public class PostDto {
       super(post, user);
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
-      this.pollDto = post.getPoll() != null ? new PollDto(post.getPoll()) : null;
+      this.poll = post.getPoll() != null ? new PollDto(post.getPoll()) : null;
       this.opinions = OpinionItem.fromPairViews(post.getFairViews(), userMap);
       this.shareCount = post.getShareCount();
       this.postType = post.getPostType().name();

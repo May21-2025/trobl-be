@@ -23,6 +23,9 @@ public class TagServiceImpl implements TagService {
 
     @Override
     public Set<Tag> createTags(List<TagDto.Request> tagRequests) {
+        if (tagRequests == null || tagRequests.isEmpty()) {
+            return new HashSet<>();
+        }
         List<Long>  existingTagIds = new ArrayList<>();
         List<String> tagNames = new ArrayList<>();
         List<TagDto.Request> newTagRequests = new ArrayList<>();

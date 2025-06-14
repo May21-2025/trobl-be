@@ -44,7 +44,7 @@ public class PostingController {
     }
 
     @GetMapping("/top-list")
-    public ResponseEntity<Message> getTopListPostsView(@RequestParam String type, @RequestParam(required = false, defaultValue = "10") int count) {
+    public ResponseEntity<Message> getTopListPostsView(@RequestParam(required = false, defaultValue = "all") String type, @RequestParam(required = false, defaultValue = "10") int count) {
         List<PostDto.Card> response = postingService.getTop10Views(type);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }

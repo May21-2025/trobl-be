@@ -22,7 +22,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
                     SELECT p FROM Posting p LEFT JOIN p.postLikes l
                     LEFT JOIN p.poll poll
                     LEFT JOIN  poll.pollOptions
-                    WHERE p.postType = : postingType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true
+                    WHERE p.postType = :postingType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true
                     ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
                     LIMIT :count
                     """)
@@ -55,12 +55,12 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
                     + "LIMIT :count")
     List<Posting> findTopPostsByComments(int count, PostingType postingType);
 
-    @Query("""
+    @Query(""" 
             SELECT p
             FROM Posting p
             LEFT JOIN p.poll poll
-                LEFT JOIN poll.pollOptions po
-            LEFT JOIN po.pollVotes pv
+                JOIN poll.pollOptions po
+            JOIN po.pollVotes pv
                 WHERE p.confirmed = true
             GROUP BY p
             ORDER BY COUNT(pv) DESC

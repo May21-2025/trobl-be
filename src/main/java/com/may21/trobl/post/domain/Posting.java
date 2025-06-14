@@ -11,6 +11,7 @@ import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -26,7 +27,6 @@ public class Posting extends ContentEntity {
 
   private PostingType postType;
 
-  @Setter
   @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Poll> poll;
 
@@ -94,6 +94,9 @@ public class Posting extends ContentEntity {
   public void addFairView(FairView fairView) {
     if(fairView == null) {
       throw new IllegalArgumentException("FairView cannot be null");
+    }
+    if(this.fairViews ==null){
+      this.fairViews = new ArrayList<>();
     }
     this.fairViews.add(fairView);
   }
