@@ -39,7 +39,7 @@ public class CommentController {
             @RequestBody CommentDto.Request request,
             @PathVariable Long commentId,
             @AuthenticationPrincipal User user) {
-        CommentDto.Response response = commentService.updateComment(commentId,request, user.getId());
+        CommentDto.Response response = commentService.updateComment(user.getId(), request, commentId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

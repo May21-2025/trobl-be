@@ -17,7 +17,7 @@ public interface CommentService {
   CommentDto.Response createComment(Long postId, CommentDto.Request request, Long id);
 
   @Transactional
-  CommentDto.Response updateComment(Long request, CommentDto.Request id, Long commentId);
+  CommentDto.Response updateComment(Long userId, CommentDto.Request request, Long commentId);
 
   @Transactional
   boolean likeComment(Long commentId, Long id);
