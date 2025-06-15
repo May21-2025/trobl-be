@@ -20,7 +20,7 @@ public interface CommentService {
   CommentDto.Response updateComment(Long userId, CommentDto.Request request, Long commentId);
 
   @Transactional
-  boolean likeComment(Long commentId, Long id);
+  CommentDto.Response likeComment(Long commentId, Long id);
 
   @Transactional
   boolean deleteComment(Long id, Long commentId);
@@ -30,4 +30,7 @@ public interface CommentService {
 
   @Transactional(readOnly = true)
     Map<Long, Integer> getPostCommentMap(List<Posting> posts);
+
+  @Transactional(readOnly = true)
+  boolean existsByPostIdAndUserId(Long postId, Long userId);
 }

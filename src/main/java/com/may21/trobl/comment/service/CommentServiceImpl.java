@@ -88,22 +88,26 @@ public class CommentServiceImpl implements CommentService {
   }
 
   @Override
-  public boolean likeComment(Long commentId, Long userId) {
+  public CommentDto.Response likeComment(Long commentId, Long userId) {
     boolean liked = true;
     CommentLike commentLike =
             likeRepository.findByCommentIdAndUserId(commentId, userId).orElse(null);
+    Comment comment =
+            commentRepository
+                    .findById(commentId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
     if (commentLike == null) {
-      Comment comment =
-              commentRepository
-                      .findById(commentId)
-                      .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
       commentLike = new CommentLike(comment, userId);
       likeRepository.save(commentLike);
     } else {
       liked = false;
       likeRepository.deleteByEntity(commentLike);
     }
-    return liked;
+    User commentOwner =
+            userRepository
+                    .findById(comment.getUserId())
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    return new CommentDto.Response(comment, commentOwner,liked);
   }
 
   @Override
@@ -166,5 +170,10 @@ public class CommentServiceImpl implements CommentService {
     }
 
     return postCommentMap;
+  }
+
+  @Override
+  public boolean existsByPostIdAndUserId(Long postId, Long userId) {
+    return commentRepository.existsByPostingIdAndUserId(postId, userId);
   }
 }

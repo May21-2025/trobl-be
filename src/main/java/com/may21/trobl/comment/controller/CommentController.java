@@ -55,8 +55,8 @@ public class CommentController {
     public ResponseEntity<Message> likeComment(
             @PathVariable Long commentId,
             @AuthenticationPrincipal User user) {
-        boolean response = commentService.likeComment(commentId, user.getId());
-        if(response) notificationService.sendCommentLikeNotification(commentId, user.getId());
+        CommentDto.Response response = commentService.likeComment(commentId, user.getId());
+        if(response.isLiked()) notificationService.sendCommentLikeNotification(commentId, user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
