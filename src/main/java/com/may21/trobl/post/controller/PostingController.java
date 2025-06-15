@@ -99,8 +99,8 @@ public class PostingController {
     @PutMapping("/{postId}/like")
     public ResponseEntity<Message> likePost(
             @PathVariable Long postId, @AuthenticationPrincipal User user) {
-        boolean response = postingService.likePost(postId, user.getId());
-        if (response) notificationService.sendPostLikeNotification(postId, user.getId());
+        PostDto.ListItem response = postingService.likePost(postId, user.getId());
+        if (response.isLiked()) notificationService.sendPostLikeNotification(postId, user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

@@ -1,10 +1,8 @@
 package com.may21.trobl.post.service;
 
-import com.may21.trobl._global.Message;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
-import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
@@ -26,14 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Service
 @RequiredArgsConstructor
@@ -99,7 +90,6 @@ public class PostingServiceImpl implements PostingService {
                 postRepository
                         .findById(postId)
                         .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
-        post.incrementViewCount();
         User owner =
                 userRepository
                         .findById(post.getUserId())
@@ -299,21 +289,22 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
-    public boolean likePost(Long postId, Long userId) {
+    public PostDto.ListItem likePost(Long postId, Long userId) {
         boolean liked = true;
         PostLike postLike = likeRepository.findByPostingIdAndUserId(postId, userId).orElse(null);
+        Posting post =
+                postRepository
+                        .findById(postId)
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
         if (postLike == null) {
-            Posting post =
-                    postRepository
-                            .findById(postId)
-                            .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
             postLike = new PostLike(post, userId);
             likeRepository.save(postLike);
         } else {
             liked = false;
             likeRepository.deleteByEntity(postLike);
         }
-        return liked;
+        boolean commented = commentService.existsByPostIdAndUserId(postId, userId);
+        return new PostDto.ListItem(post, null, liked,true, commented);
     }
 
     @Override

@@ -35,7 +35,7 @@ public interface PostingService {
     boolean viewPost(Long postId, Long userId);
 
     @Transactional
-    boolean likePost(Long postId, Long userId);
+    PostDto.ListItem likePost(Long postId, Long userId);
 
     @Transactional
     boolean deletePost(Long userId, Long postId);
