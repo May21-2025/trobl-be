@@ -96,7 +96,7 @@ public class JwtTokenUtil {
 
   /** RefreshToken로 Access Token 생성 */
   public String generateTokenFromRefreshToken(User user, RefreshToken refreshToken, String deviceId) {
-  Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.HOURS);
+  Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.DAYS);
 if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED);
     byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
     Key restoredKey = Keys.hmacShaKeyFor(decodedKey);

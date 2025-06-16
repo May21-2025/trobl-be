@@ -128,4 +128,18 @@ public class Posting extends ContentEntity {
       poll.setPosting(this);
     }
   }
+
+  public List<Comment> getComments() {
+    if (comments == null) {
+      return new ArrayList<>();
+    }
+    return comments;
+  }
+
+  public List<PostLike> getPostLikes() {
+    if (postLikes == null) {
+      return new ArrayList<>();
+    }
+    return postLikes;
+  }
 }

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -21,4 +22,10 @@ public interface VoteRepository extends JpaRepository<PollVote,Long> {
 
     @Query("SELECT DISTINCT p.pollOption.poll.posting FROM PollVote p WHERE p.userId = :userId")
     Page<Posting> findVotedPostsByUserId(Long userId, Pageable pageable);
+
+    @Query("SELECT p.pollOption.id FROM PollVote p WHERE p.userId = :userId AND p.pollOption.poll.posting IN :posts")
+    List<Long> findVotedOptionIdsByUserId(List<Posting> posts, Long userId);
+
+    @Query("SELECT p.pollOption.id FROM PollVote p WHERE p.pollOption.poll.posting = :post AND p.userId = :userId")
+    List<Long> findVotedPostByUserId(Posting post, Long userId);
 }

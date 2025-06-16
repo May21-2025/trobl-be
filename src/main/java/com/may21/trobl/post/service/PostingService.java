@@ -51,7 +51,7 @@ public interface PostingService {
     PostDto.Detail addPairView(Long postId, Long userId, PostDto.OpinionItem opinionItem);
 
     @Transactional(readOnly = true)
-    List<PostDto.QuickPoll> getRandomQuickPoll();
+    List<PostDto.QuickPoll> getRandomQuickPoll(Long userId);
 
     @Transactional
     boolean bookmarkPost(Long postId, Long userId);

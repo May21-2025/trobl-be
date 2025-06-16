@@ -107,7 +107,8 @@ public class PostingServiceImpl implements PostingService {
             }
         }
         List<Tag> tags = tagService.getPostTags(post);
-        return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked);
+        List<Long> votedOptionIds = voteRepository.findVotedPostByUserId(post, user != null ? user.getId() : null);
+        return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked,votedOptionIds);
     }
 
     @Override
@@ -164,7 +165,7 @@ public class PostingServiceImpl implements PostingService {
         Map<Long, User> userMap = new HashMap<>();
         userMap.put(userId, user);
         List<Tag> tagList = tags.stream().toList();
-        return new PostDto.Detail(post, user, userMap, tagList, false, false);
+        return new PostDto.Detail(post, user, userMap, tagList, false, false, List.of());
     }
 
     @Override
@@ -189,6 +190,7 @@ public class PostingServiceImpl implements PostingService {
         List<TagMapping> tagResponses = tagService.updateTags(tags, post);
         post.setTags(tagResponses);
         postRepository.save(post);
+        List<Long> votedOptionIds = voteRepository.findVotedPostByUserId(post, userId);
         List<Tag> tagList = tags.stream().toList();
         Map<Long, User> userMap = new HashMap<>();
         return new PostDto.Detail(
@@ -196,7 +198,7 @@ public class PostingServiceImpl implements PostingService {
                 userRepository
                         .findById(userId)
                         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
-                userMap, tagList, false, false);
+                userMap, tagList, false, false,votedOptionIds);
     }
 
     private List<PollOption> updatePollOptions(
@@ -393,15 +395,17 @@ public class PostingServiceImpl implements PostingService {
         Map<Long, User> userMap = new HashMap<>();
         userMap.put(userId, user);
         post.addFairView(fairView);
-        return new PostDto.Detail(post, user, userMap, List.of(), false, false);
+
+        return new PostDto.Detail(post, user, userMap, List.of(), false, false, List.of());
     }
 
     @Override
-    public List<PostDto.QuickPoll> getRandomQuickPoll() {
+    public List<PostDto.QuickPoll> getRandomQuickPoll(Long userId) {
         List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL);
         List<PostDto.QuickPoll> response = new ArrayList<>();
+        List<Long> votedOptionIds = voteRepository.findVotedOptionIdsByUserId(posts,userId);
         for (Posting post : posts) {
-            response.add(new PostDto.QuickPoll(post));
+            response.add(new PostDto.QuickPoll(post,votedOptionIds));
         }
         return response;
     }

@@ -31,7 +31,7 @@ public class PostDto {
 
     protected BasePostDto(Posting post, User user) {
       this.postId = post.getId();
-      this.username = user != null ? user.getNickname() : post.getNickname();
+      this.username = post.getNickname();
       this.viewCount = post.getViewCount();
     }
   }
@@ -96,12 +96,12 @@ public class PostDto {
     private int voteCount;
     private PollDto poll;
 
-    public QuickPoll(Posting post) {
+    public QuickPoll(Posting post, List<Long> votedOptionIds) {
       super(post, null);
       Poll poll = post.getPoll();
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
-      PollDto pollDto = new PollDto(poll);
+      PollDto pollDto = new PollDto(poll, votedOptionIds);
       this.poll = pollDto;
       int voteCount = 0;
       for(PollItem pollItem : pollDto.getPollOptions()) {
@@ -126,11 +126,11 @@ public class PostDto {
     private int commentCount;
     private int likeCount;
 
-    public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags, boolean liked, boolean bookmarked) {
+    public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags, boolean liked, boolean bookmarked, List<Long> votedOptionIds) {
       super(post, user);
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
-      this.poll = post.getPoll() != null ? new PollDto(post.getPoll()) : null;
+      this.poll = post.getPoll() != null ? new PollDto(post.getPoll(),votedOptionIds) : null;
       this.opinions = OpinionItem.fromPairViews(post.getFairViews(), userMap);
       this.shareCount = post.getShareCount();
       this.postType = post.getPostType().name();
@@ -150,10 +150,10 @@ public class PostDto {
     private String title;
     private List<PollItem> pollOptions;
 
-    public PollDto(Poll poll) {
+    public PollDto(Poll poll, List<Long> votedOptionIds) {
       this.pollId = poll.getId();
       this.title = poll.getTitle();
-      this.pollOptions = PollItem.fromPollOption(poll.getPollOptions());
+      this.pollOptions = PollItem.fromPollOption(poll.getPollOptions(),votedOptionIds);
     }
   }
 
@@ -221,17 +221,19 @@ public class PostDto {
     private int index = 0;
     private boolean voted = false;
 
-    public PollItem(PollOption polloption) {
+    public PollItem(PollOption polloption, boolean voted) {
       this.pollOptionId = polloption.getId();
       this.name = decodeHtml(polloption.getName());
       this.voteCount = polloption.getVoteCount();
       this.index = polloption.getIndex();
+        this.voted = voted;
     }
 
-    public static List<PollItem> fromPollOption(List<PollOption> pollOptions) {
+    public static List<PollItem> fromPollOption(List<PollOption> pollOptions, List<Long> votedOptionIds) {
       List<PollItem> pollList = new ArrayList<>();
       for (PollOption polloption : pollOptions) {
-        pollList.add(new PollItem(polloption));
+        boolean voted = votedOptionIds != null && votedOptionIds.contains(polloption.getId());
+        pollList.add(new PollItem(polloption,voted));
       }
       return pollList;
     }
