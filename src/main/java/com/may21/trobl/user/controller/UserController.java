@@ -78,6 +78,7 @@ public class UserController {
   @PatchMapping("/nickname")
   public ResponseEntity<Message> updateNickname(@AuthenticationPrincipal User user,@RequestParam String nickname) {
     boolean response = userService.updateNickname(user.getId(),nickname);
+    postingService.setNickname(user.getId(), nickname);
     return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
   }
   @GetMapping("/notifications")

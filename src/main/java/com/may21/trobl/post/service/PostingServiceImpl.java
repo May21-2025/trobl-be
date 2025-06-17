@@ -177,9 +177,8 @@ public class PostingServiceImpl implements PostingService {
         if (!post.getUserId().equals(userId)) {
             throw new BusinessException(ExceptionCode.POST_NOT_AUTHORIZED);
         }
-        post.setTitle(request.getTitle());
-        post.setContent(request.getContent());
-        if (post.getPostType() != PostingType.POLL && request.getPollId() != null) {
+        post.update(request);
+        if (post.getPostType() == PostingType.POLL && request.getPollId() != null) {
             Long pollId = request.getPollId();
             Poll poll = pollRepository.findById(pollId).orElseThrow(() -> new BusinessException(ExceptionCode.POLL_NOT_FOUND));
             poll.setTitle(request.getPollTitle());
@@ -188,7 +187,8 @@ public class PostingServiceImpl implements PostingService {
         }
         Set<Tag> tags = tagService.createTags(request.getTags());
         List<TagMapping> tagResponses = tagService.updateTags(tags, post);
-        post.setTags(tagResponses);
+        post.getTags().clear();
+        post.getTags().addAll(tagResponses);
         postRepository.save(post);
         List<Long> votedOptionIds = voteRepository.findVotedPostByUserId(post, userId);
         List<Tag> tagList = tags.stream().toList();
@@ -201,10 +201,10 @@ public class PostingServiceImpl implements PostingService {
                 userMap, tagList, false, false,votedOptionIds);
     }
 
-    private List<PollOption> updatePollOptions(
+    public List<PollOption> updatePollOptions(
             List<PostDto.PollItem> pollOptionsRequest, Poll poll) {
         List<PollOption> pollOptions = poll.getPollOptions();
-        List<PollOption> newPollOptions = new ArrayList<>();
+        List<PollOption> updatedOptions = new ArrayList<>();
         List<Long> pollOptionIds =
                 pollOptionsRequest.stream().map(PostDto.PollItem::getPollOptionId).toList();
 
@@ -219,7 +219,7 @@ public class PostingServiceImpl implements PostingService {
                                 .index(i)
                                 .poll(poll)
                                 .build();
-                newPollOptions.add(pollOption);
+                updatedOptions.add(pollOption);
             } else {
                 // Update existing poll option
                 PollOption existingOption =
@@ -229,11 +229,12 @@ public class PostingServiceImpl implements PostingService {
                                 .orElse(
                                         new PollOption(
                                                 pollOptionRequest.getName(),  i, poll));
-                existingOption.setName(pollOptionRequest.getName());
+                if(pollOptionRequest.getName() != null && !pollOptionRequest.getName().equals(existingOption.getName()))
+                    existingOption.setName(pollOptionRequest.getName());
                 existingOption.setIndex(i);
+                updatedOptions.add(existingOption);
             }
         }
-
         // Find and remove poll options that are not in the request
         List<PollOption> optionsToRemove =
                 pollOptions.stream().filter(option -> !pollOptionIds.contains(option.getId())).toList();
@@ -245,12 +246,11 @@ public class PostingServiceImpl implements PostingService {
         }
 
         // Add new poll options to the post
-        if (!newPollOptions.isEmpty()) {
-            pollOptions.addAll(newPollOptions);
-            pollOptionRepository.saveAll(newPollOptions);
+        if (!updatedOptions.isEmpty()) {
+            pollOptionRepository.saveAll(updatedOptions);
         }
-        poll.setPollOptions(pollOptions);
-        return pollOptions;
+        poll.setPollOptions(updatedOptions);
+        return updatedOptions;
     }
 
     @Override
@@ -540,6 +540,15 @@ public class PostingServiceImpl implements PostingService {
         // If no posts found, return an empty list
         log.info("No posts found for keyword: {}", keyword);
         return List.of();
+    }
+
+    @Override
+    public void setNickname(Long userId, String nickname) {
+        List<Posting> posts = postRepository.findAllByUserId(userId);
+        for (Posting post : posts) {
+            post.setNickname(nickname);
+        }
+
     }
 
 

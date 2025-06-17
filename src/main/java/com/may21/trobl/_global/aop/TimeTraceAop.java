@@ -61,7 +61,7 @@ public class TimeTraceAop {
     log.info("\n\n{}\n\n{}\n\n", color("STAGE : " + stage, BROWN), color(asciiLogo, TROBL_PINK));
   }
 
-  @Around("execution(* com.may21.trobl..presentation..*(..))")
+  @Around("execution(* com.may21.trobl..controller..*(..))")
   public Object traceExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
     if ("prod".equalsIgnoreCase(stage)) return joinPoint.proceed();
 

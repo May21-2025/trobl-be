@@ -124,7 +124,5 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     List<Posting> searchByKeyword(@Param("keyword") String keyword);
 
 
-
-
-
+    List<Posting> findAllByUserId(Long userId);
 }

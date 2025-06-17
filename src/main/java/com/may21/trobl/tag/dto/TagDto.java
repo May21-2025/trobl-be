@@ -21,12 +21,11 @@ public class TagDto {
     public static class Response {
         private Long tagId;
         private String name;
-        private String color;
         private int count;
 
         public static List<Response> fromTagList(List<Tag> tags) {
             return tags.stream()
-                    .map(tag -> new Response(tag.getId(), tag.getName(), tag.getColor(), tag.getCount()))
+                    .map(tag -> new Response(tag.getId(), tag.getName(), tag.getCount()))
                     .toList();
         }
     }

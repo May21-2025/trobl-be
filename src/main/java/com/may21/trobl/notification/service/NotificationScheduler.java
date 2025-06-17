@@ -187,40 +187,40 @@ public class NotificationScheduler {
         String language = user.getLanguage() != null ? user.getLanguage().getCode() : "ko";
         return new Locale(language);
     }
-    /**
-     * 매일 오전 9시 - 콘텐츠 추천 및 인기글 알림
-     */
-    @Scheduled(cron = "0 0 9 * * *")
-    public void sendDailyRecommendations() {
-        log.info("Starting daily content recommendations at 9 AM");
-        // 추천 알고리즘에 따른 콘텐츠 추천 로직
-        // notificationService.sendContentRecommendationNotification(...);
-    }
-
-    /**
-     * 매월 1일 오전 10시 - 커뮤니티 분석 알림
-     */
-    @Scheduled(cron = "0 0 10 1 * *")
-    public void sendMonthlyAnalysis() {
-        log.info("Starting monthly community analysis notifications");
-        // 모든 활성 사용자에게 커뮤니티 분석 알림
-        // notificationService.sendCommunityAnalysisNotification(...);
-    }
-
-    /**
-     * 10분마다 - 일괄 알림 처리
-     */
-    @Scheduled(fixedRate = 600000)
-    public void processBatchNotifications() {
-        notificationService.processBatchNotifications();
-    }
-
-    /**
-     * 1분마다 - 예약 알림 처리
-     */
-    @Scheduled(fixedRate = 60000)
-    public void processScheduledNotifications() {
-        notificationService.processScheduledNotifications();
-    }
+//    /**
+//     * 매일 오전 9시 - 콘텐츠 추천 및 인기글 알림
+//     */
+//    @Scheduled(cron = "0 0 9 * * *")
+//    public void sendDailyRecommendations() {
+//        log.info("Starting daily content recommendations at 9 AM");
+//        // 추천 알고리즘에 따른 콘텐츠 추천 로직
+//        // notificationService.sendContentRecommendationNotification(...);
+//    }
+//
+//    /**
+//     * 매월 1일 오전 10시 - 커뮤니티 분석 알림
+//     */
+//    @Scheduled(cron = "0 0 10 1 * *")
+//    public void sendMonthlyAnalysis() {
+//        log.info("Starting monthly community analysis notifications");
+//        // 모든 활성 사용자에게 커뮤니티 분석 알림
+//        // notificationService.sendCommunityAnalysisNotification(...);
+//    }
+//
+//    /**
+//     * 10분마다 - 일괄 알림 처리
+//     */
+//    @Scheduled(fixedRate = 600000)
+//    public void processBatchNotifications() {
+//        notificationService.processBatchNotifications();
+//    }
+//
+//    /**
+//     * 1분마다 - 예약 알림 처리
+//     */
+//    @Scheduled(fixedRate = 60000)
+//    public void processScheduledNotifications() {
+//        notificationService.processScheduledNotifications();
+//    }
 }
 

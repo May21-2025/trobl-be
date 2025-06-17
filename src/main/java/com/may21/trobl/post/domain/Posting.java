@@ -4,6 +4,7 @@ import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.comment.domain.Comment;
+import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.tag.domain.TagMapping;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,7 +24,7 @@ public class Posting extends ContentEntity {
   @GeneratedValue(strategy = GenerationType.SEQUENCE)
   private Long id;
 
-  private String nickname;
+  @Setter private String nickname;
 
   private PostingType postType;
 
@@ -141,5 +142,21 @@ public class Posting extends ContentEntity {
       return new ArrayList<>();
     }
     return postLikes;
+  }
+
+  public List<TagMapping> getTags() {
+    if (tags == null) {
+      return new ArrayList<>();
+    }
+    return tags;
+  }
+
+  public void update(PostDto.Request request) {
+    if (request.getTitle() != null) {
+      this.setTitle(request.getTitle());
+    }
+    if (request.getContent() != null) {
+      this.setContent(request.getContent());
+    }
   }
 }

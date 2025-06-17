@@ -101,7 +101,7 @@ if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessExce
     byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
     Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
     Long userId = refreshToken.getUserId();
-    String token = Jwts.builder()
+    return Jwts.builder()
             .subject(user.getUsername())
             .claim("userId", userId)
             .id(refreshToken.getTokenId())
@@ -109,7 +109,6 @@ if(!Objects.equals(deviceId, refreshToken.getDeviceId())) throw new BusinessExce
             .expiration(Date.from(expiryDate))
             .signWith(restoredKey)
             .compact();
-    return token;
   }
 
   public RefreshToken generateRefreshToken(User user, String deviceId, String parentTokenId) {

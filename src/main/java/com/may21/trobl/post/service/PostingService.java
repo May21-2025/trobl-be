@@ -72,4 +72,7 @@ public interface PostingService {
 
     @Transactional(readOnly = true)
     List<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword);
+
+    @Transactional
+    void setNickname(Long id, String nickname);
 }
