@@ -54,10 +54,12 @@ public class PostDto {
   @NoArgsConstructor
   public static class Card extends BasicPostWithTitle {
     private int commentCount;
+    private int likeCount;
 
     public Card(Posting post, int commentCount) {
       super(post, null); // username은 Posting 기반
       this.commentCount = commentCount;
+      likeCount = post.getLikeCount();
     }
   }
 
@@ -76,8 +78,8 @@ public class PostDto {
     public ListItem(Posting post, User user, Boolean liked, Boolean viewed, Boolean commented) {
       super(post, user);
       this.createdAt = post.getCreatedAt();
-      this.commentCount = post.getComments().size();
-      this.likeCount = post.getPostLikes().size();
+      this.commentCount = post.getCommentCount();
+      this.likeCount = post.getLikeCount();
       this.liked = Boolean.TRUE.equals(liked);
       this.viewed = Boolean.TRUE.equals(viewed);
       this.commented = Boolean.TRUE.equals(commented);
@@ -96,12 +98,12 @@ public class PostDto {
     private int voteCount;
     private PollDto poll;
 
-    public QuickPoll(Posting post, List<Long> votedOptionIds) {
+    public QuickPoll(Posting post, List<Long> votedOptionIds, boolean isOwner) {
       super(post, null);
       Poll poll = post.getPoll();
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
-      PollDto pollDto = new PollDto(poll, votedOptionIds);
+      PollDto pollDto = new PollDto(poll, votedOptionIds, isOwner);
       this.poll = pollDto;
       int voteCount = 0;
       for(PollItem pollItem : pollDto.getPollOptions()) {
@@ -126,11 +128,11 @@ public class PostDto {
     private int commentCount;
     private int likeCount;
 
-    public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags, boolean liked, boolean bookmarked, List<Long> votedOptionIds) {
+    public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags, boolean liked, boolean bookmarked, List<Long> postIds, boolean isOwner) {
       super(post, user);
       this.userId = post.getUserId();
       this.createdAt = post.getCreatedAt();
-      this.poll = post.getPoll() != null ? new PollDto(post.getPoll(),votedOptionIds) : null;
+      this.poll = post.getPoll() != null ? new PollDto(post.getPoll(),postIds,isOwner) : null;
       this.opinions = OpinionItem.fromPairViews(post.getFairViews(), userMap);
       this.shareCount = post.getShareCount();
       this.postType = post.getPostType().name();
@@ -148,12 +150,24 @@ public class PostDto {
   public static class PollDto {
     private Long pollId;
     private String title;
+    private boolean showPollResult;
     private List<PollItem> pollOptions;
 
-    public PollDto(Poll poll, List<Long> votedOptionIds) {
+    public PollDto(Poll poll, List<Long> votedOptionIds, boolean isOwner) {
       this.pollId = poll.getId();
       this.title = poll.getTitle();
+
       this.pollOptions = PollItem.fromPollOption(poll.getPollOptions(),votedOptionIds);
+
+      boolean hasVoted = false;
+      for (PollItem pollItem : pollOptions) {
+      if(pollItem.isVoted()) {
+        hasVoted = true;
+        break;
+      }
+
+      }
+        this.showPollResult = isOwner || hasVoted;
     }
   }
 
