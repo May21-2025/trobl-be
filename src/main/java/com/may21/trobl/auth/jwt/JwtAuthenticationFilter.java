@@ -32,6 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     try {
       String token = jwtTokenUtil.getTokenFromRequest(request);
 
+
       if (token == null) {
         request.setAttribute("exception", ExceptionCode.TOKEN_MISSING);
       } else {
@@ -59,8 +60,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     } catch (ExpiredJwtException e) {
       request.setAttribute("exception", ExceptionCode.ACCESS_TOKEN_EXPIRED);
     } catch (Exception e) {
-      log.error("JWT 필터 오류: {}", e.getMessage());
-      request.setAttribute("exception", ExceptionCode.TOKEN_PARSE_FAILED);
+      //log only when not GET
+        if (!request.getMethod().equalsIgnoreCase("GET")) {
+          log.error("JWT 필터 오류: {}", e.getMessage());
+          request.setAttribute("exception", ExceptionCode.TOKEN_PARSE_FAILED);
+        }
     }
 
     filterChain.doFilter(request, response);

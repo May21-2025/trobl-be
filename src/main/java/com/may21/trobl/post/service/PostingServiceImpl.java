@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -85,7 +86,7 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
-    public PostDto.Detail getPostDetail(Long postId, User user) {
+    public PostDto.Detail getPostDetail(Long postId, Long userId) {
         Posting post =
                 postRepository
                         .findById(postId)
@@ -94,21 +95,22 @@ public class PostingServiceImpl implements PostingService {
                 userRepository
                         .findById(post.getUserId())
                         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        boolean isOwner = post.getUserId().equals(userId);
         Map<Long, User> userMap = new HashMap<>();
         boolean liked = false;
         boolean bookmarked = false;
-        if (user != null) {
-            liked = likeRepository.existsByPostingIdAndUserId(postId, user.getId());
-            bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, user.getId());
-            if (viewRepository.existsByPostIdAndUserId(postId, user.getId())) {
+        if (userId != null) {
+            liked = likeRepository.existsByPostingIdAndUserId(postId, userId);
+            bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, userId);
+            if (viewRepository.existsByPostIdAndUserId(postId, userId)) {
                 post.incrementViewCount();
             } else {
-                viewRepository.save(new PostView(post, user.getId()));
+                viewRepository.save(new PostView(post, userId));
             }
         }
         List<Tag> tags = tagService.getPostTags(post);
-        List<Long> votedOptionIds = voteRepository.findVotedPostByUserId(post, user != null ? user.getId() : null);
-        return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked,votedOptionIds);
+        List<Long> votedOptionIds = userId ==null ? List.of() : voteRepository.findVotedPostByUserId(post, userId);
+        return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked,votedOptionIds,isOwner);
     }
 
     @Override
@@ -165,7 +167,7 @@ public class PostingServiceImpl implements PostingService {
         Map<Long, User> userMap = new HashMap<>();
         userMap.put(userId, user);
         List<Tag> tagList = tags.stream().toList();
-        return new PostDto.Detail(post, user, userMap, tagList, false, false, List.of());
+        return new PostDto.Detail(post, user, userMap, tagList, false, false, List.of(), true);
     }
 
     @Override
@@ -198,7 +200,7 @@ public class PostingServiceImpl implements PostingService {
                 userRepository
                         .findById(userId)
                         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
-                userMap, tagList, false, false,votedOptionIds);
+                userMap, tagList, false, false,votedOptionIds, true);
     }
 
     public List<PollOption> updatePollOptions(
@@ -396,16 +398,19 @@ public class PostingServiceImpl implements PostingService {
         userMap.put(userId, user);
         post.addFairView(fairView);
 
-        return new PostDto.Detail(post, user, userMap, List.of(), false, false, List.of());
+        return new PostDto.Detail(post, user, userMap, List.of(), false, false, List.of(), true);
     }
 
     @Override
     public List<PostDto.QuickPoll> getRandomQuickPoll(Long userId) {
+
         List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL);
         List<PostDto.QuickPoll> response = new ArrayList<>();
         List<Long> votedOptionIds = voteRepository.findVotedOptionIdsByUserId(posts,userId);
         for (Posting post : posts) {
-            response.add(new PostDto.QuickPoll(post,votedOptionIds));
+
+            boolean isOwner = post.getUserId().equals(userId);
+            response.add(new PostDto.QuickPoll(post,votedOptionIds,isOwner));
         }
         return response;
     }
@@ -537,8 +542,6 @@ public class PostingServiceImpl implements PostingService {
         if (!response.isEmpty()) {
             return response;
         }
-        // If no posts found, return an empty list
-        log.info("No posts found for keyword: {}", keyword);
         return List.of();
     }
 
@@ -551,5 +554,10 @@ public class PostingServiceImpl implements PostingService {
 
     }
 
-
+    @CacheEvict(value = "topPosts", allEntries = true)
+    @Override
+    public void evictAllTopPosts() {
+        log.info("Evicting all cached top posts");
+        // This method will clear the cache for all top posts
+    }
 }

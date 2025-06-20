@@ -159,4 +159,18 @@ public class Posting extends ContentEntity {
       this.setContent(request.getContent());
     }
   }
+
+  public int getLikeCount() {
+    if (postLikes == null) {
+      return 0;
+    }
+    return postLikes.size();
+  }
+
+  public int getCommentCount() {
+    if (comments == null) {
+      return 0;
+    }
+    return comments.size();
+  }
 }

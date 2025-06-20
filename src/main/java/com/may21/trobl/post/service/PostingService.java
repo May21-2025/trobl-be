@@ -1,7 +1,7 @@
 package com.may21.trobl.post.service;
 
 import com.may21.trobl.post.dto.PostDto;
-import com.may21.trobl.user.domain.User;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +17,7 @@ public interface PostingService {
     List<PostDto.Card> getTop10Views(String type);
 
     @Transactional
-    PostDto.Detail getPostDetail(Long postId, User user);
+    PostDto.Detail getPostDetail(Long postId, Long userId);
 
     @Transactional
     PostDto.Detail createPost(PostDto.Request request, Long id);
@@ -40,8 +40,10 @@ public interface PostingService {
     @Transactional
     boolean deletePost(Long userId, Long postId);
 
+    @Transactional(readOnly = true)
     Page<PostDto.ListItem> getMyPosts(Long userId, int page, int size);
 
+    @Transactional(readOnly = true)
     Page<PostDto.ListItem> getLikedPosts(Long userId, int page, int size);
 
     @Transactional(readOnly = true)
@@ -75,4 +77,7 @@ public interface PostingService {
 
     @Transactional
     void setNickname(Long id, String nickname);
+
+    @CacheEvict(value = "topPosts", allEntries = true)
+    void evictAllTopPosts();
 }

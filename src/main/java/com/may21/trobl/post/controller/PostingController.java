@@ -7,6 +7,7 @@ import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
 import com.may21.trobl.user.domain.User;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -68,8 +69,13 @@ public class PostingController {
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<Message> getPostDetail(@PathVariable Long postId, @AuthenticationPrincipal User user) {
-        PostDto.Detail response = postingService.getPostDetail(postId, user);
+    public ResponseEntity<Message> getPostDetail(@PathVariable Long postId, @AuthenticationPrincipal User user, HttpServletRequest request) {
+            if (user == null) {
+                String authHeader = request.getHeader("Authorization");
+                System.out.println("🔴 user is null - Authorization 헤더: " + authHeader);
+            }
+            Long userId = user != null ? user.getId() : null;
+        PostDto.Detail response = postingService.getPostDetail(postId, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -151,5 +157,10 @@ public class PostingController {
         Long userId = user != null ? user.getId() : null;
         List<PostDto.ListItem> response = postingService.searchPostsByKeyword(userId, keyword);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @GetMapping("/cache-reset")
+    public ResponseEntity<Message> resetCache() {
+        postingService.evictAllTopPosts();
+        return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
     }
 }
