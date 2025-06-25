@@ -5,12 +5,13 @@ import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.user.domain.User;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/postings/{postId}/comments")
@@ -26,11 +27,12 @@ public class CommentController {
         List<CommentDto.Response> response = commentService.getComments(postId, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PostMapping("")
     public ResponseEntity<Message> createComment(@PathVariable Long postId,
-            @RequestBody CommentDto.Request request, @AuthenticationPrincipal User user) {
-        CommentDto.Response response = commentService.createComment(postId,request, user.getId());
-        notificationService.sendNewCommentNotification(postId,response);
+                                                 @RequestBody CommentDto.Request request, @AuthenticationPrincipal User user) {
+        CommentDto.Response response = commentService.createComment(postId, request, user.getId());
+        notificationService.sendNewCommentNotification(postId, response);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -47,7 +49,7 @@ public class CommentController {
     public ResponseEntity<Message> deleteComment(
             @PathVariable Long commentId,
             @AuthenticationPrincipal User user) {
-        boolean response = commentService.deleteComment(user.getId(),commentId);
+        boolean response = commentService.deleteComment(user.getId(), commentId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -56,7 +58,7 @@ public class CommentController {
             @PathVariable Long commentId,
             @AuthenticationPrincipal User user) {
         CommentDto.Response response = commentService.likeComment(commentId, user.getId());
-        if(response.isLiked()) notificationService.sendCommentLikeNotification(commentId, user.getId());
+        if (response.isLiked()) notificationService.sendCommentLikeNotification(commentId, user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

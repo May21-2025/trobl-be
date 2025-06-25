@@ -20,157 +20,161 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 public class Posting extends ContentEntity {
-  @Id
-  @GeneratedValue(strategy = GenerationType.SEQUENCE)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    private Long id;
 
-  @Setter private String nickname;
+    @Setter
+    private String nickname;
 
-  private PostingType postType;
+    private PostingType postType;
 
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Poll> poll;
+    @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Poll> poll;
 
-  @Setter
-  @BatchSize(size = 10)
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<FairView> fairViews;
+    @Setter
+    @BatchSize(size = 10)
+    @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FairView> fairViews;
 
-  @Setter
-  @BatchSize(size = 10)
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-  private List<PostLike> postLikes;
+    @Setter
+    @BatchSize(size = 10)
+    @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<PostLike> postLikes;
 
-  @BatchSize(size = 10)
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-  private List<Comment> comments;
+    @BatchSize(size = 10)
+    @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Comment> comments;
 
-  @BatchSize(size = 10)
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-  private List<PostView> views;
+    @BatchSize(size = 10)
+    @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<PostView> views;
 
-  @BatchSize(size = 10)
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
+    @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PostBookmark> bookmarks;
 
-  @Setter
-  @BatchSize(size = 10)
-  @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-  private List<TagMapping> tags;
+    @Setter
+    @BatchSize(size = 10)
+    @OneToMany(mappedBy = "posting", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<TagMapping> tags;
 
 
-  @Setter private int viewCount;
+    @Setter
+    private int viewCount;
 
-  @Setter private int shareCount;
+    @Setter
+    private int shareCount;
 
-  @CreatedDate private LocalDateTime createdAt;
+    @CreatedDate
+    private LocalDateTime createdAt;
 
-  @Setter
-  private Boolean confirmed;
+    @Setter
+    private Boolean confirmed;
 
-  @Builder
-  public Posting(
-      String title, PostingType postType, String content, Long userId, String nickname) {
-    super(title, content, userId);
-    this.nickname = nickname;
-    this.postType = postType;
-    this.viewCount = 0;
-    this.shareCount = 0;
-    this.confirmed = postType != PostingType.FAIR_VIEW;
-  }
-
-  public void incrementViewCount() {
-    this.viewCount++;
-  }
-
-  public void incrementShareCount() {
-    this.shareCount++;
-  }
-
-  public int getViewCount() {
-    int viewsNum = views==null ? 0 : views.size();
-    return viewCount+ viewsNum;
-  }
-
-  public void addFairView(FairView fairView) {
-    if(fairView == null) {
-      throw new IllegalArgumentException("FairView cannot be null");
+    @Builder
+    public Posting(
+            String title, PostingType postType, String content, Long userId, String nickname) {
+        super(title, content, userId);
+        this.nickname = nickname;
+        this.postType = postType;
+        this.viewCount = 0;
+        this.shareCount = 0;
+        this.confirmed = postType != PostingType.FAIR_VIEW;
     }
-    if(this.fairViews ==null){
-      this.fairViews = new ArrayList<>();
-    }
-    this.fairViews.add(fairView);
-  }
 
-  public Poll getPoll() {
-    if (poll == null || poll.isEmpty()) {
-      return null;
+    public void incrementViewCount() {
+        this.viewCount++;
     }
-    if(poll.size() > 1) {
-      //delete all except the first one
-        for (int i = 1; i < poll.size(); i++) {
-            Poll p = poll.get(i);
-            p.setPosting(null);
+
+    public void incrementShareCount() {
+        this.shareCount++;
+    }
+
+    public int getViewCount() {
+        int viewsNum = views == null ? 0 : views.size();
+        return viewCount + viewsNum;
+    }
+
+    public void addFairView(FairView fairView) {
+        if (fairView == null) {
+            throw new IllegalArgumentException("FairView cannot be null");
         }
-        poll = poll.subList(0, 1);
+        if (this.fairViews == null) {
+            this.fairViews = new ArrayList<>();
+        }
+        this.fairViews.add(fairView);
     }
-    return poll.getFirst();
-  }
 
-  public void setPoll(Poll poll) {
-    //if this.poll has one throw exception
-    if (this.poll != null && !this.poll.isEmpty()) {
-      throw new BusinessException(ExceptionCode.FORBIDDEN, "Posting already has a poll");
+    public Poll getPoll() {
+        if (poll == null || poll.isEmpty()) {
+            return null;
+        }
+        if (poll.size() > 1) {
+            //delete all except the first one
+            for (int i = 1; i < poll.size(); i++) {
+                Poll p = poll.get(i);
+                p.setPosting(null);
+            }
+            poll = poll.subList(0, 1);
+        }
+        return poll.getFirst();
     }
-    if (poll == null) {
-      this.poll = null;
-    } else {
-      this.poll = List.of(poll);
-      poll.setPosting(this);
-    }
-  }
 
-  public List<Comment> getComments() {
-    if (comments == null) {
-      return new ArrayList<>();
+    public void setPoll(Poll poll) {
+        //if this.poll has one throw exception
+        if (this.poll != null && !this.poll.isEmpty()) {
+            throw new BusinessException(ExceptionCode.FORBIDDEN, "Posting already has a poll");
+        }
+        if (poll == null) {
+            this.poll = null;
+        } else {
+            this.poll = List.of(poll);
+            poll.setPosting(this);
+        }
     }
-    return comments;
-  }
 
-  public List<PostLike> getPostLikes() {
-    if (postLikes == null) {
-      return new ArrayList<>();
+    public List<Comment> getComments() {
+        if (comments == null) {
+            return new ArrayList<>();
+        }
+        return comments;
     }
-    return postLikes;
-  }
 
-  public List<TagMapping> getTags() {
-    if (tags == null) {
-      return new ArrayList<>();
+    public List<PostLike> getPostLikes() {
+        if (postLikes == null) {
+            return new ArrayList<>();
+        }
+        return postLikes;
     }
-    return tags;
-  }
 
-  public void update(PostDto.Request request) {
-    if (request.getTitle() != null) {
-      this.setTitle(request.getTitle());
+    public List<TagMapping> getTags() {
+        if (tags == null) {
+            return new ArrayList<>();
+        }
+        return tags;
     }
-    if (request.getContent() != null) {
-      this.setContent(request.getContent());
-    }
-  }
 
-  public int getLikeCount() {
-    if (postLikes == null) {
-      return 0;
+    public void update(PostDto.Request request) {
+        if (request.getTitle() != null) {
+            this.setTitle(request.getTitle());
+        }
+        if (request.getContent() != null) {
+            this.setContent(request.getContent());
+        }
     }
-    return postLikes.size();
-  }
 
-  public int getCommentCount() {
-    if (comments == null) {
-      return 0;
+    public int getLikeCount() {
+        if (postLikes == null) {
+            return 0;
+        }
+        return postLikes.size();
     }
-    return comments.size();
-  }
+
+    public int getCommentCount() {
+        if (comments == null) {
+            return 0;
+        }
+        return comments.size();
+    }
 }

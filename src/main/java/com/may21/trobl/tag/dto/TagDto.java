@@ -10,7 +10,7 @@ public class TagDto {
 
     @Getter
     @AllArgsConstructor
-    public static class Request{
+    public static class Request {
         private Long tagId;
         private String name;
         private String color;

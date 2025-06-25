@@ -70,11 +70,11 @@ public class PostingController {
 
     @GetMapping("/{postId}")
     public ResponseEntity<Message> getPostDetail(@PathVariable Long postId, @AuthenticationPrincipal User user, HttpServletRequest request) {
-            if (user == null) {
-                String authHeader = request.getHeader("Authorization");
-                System.out.println("🔴 user is null - Authorization 헤더: " + authHeader);
-            }
-            Long userId = user != null ? user.getId() : null;
+        if (user == null) {
+            String authHeader = request.getHeader("Authorization");
+            System.out.println("🔴 user is null - Authorization 헤더: " + authHeader);
+        }
+        Long userId = user != null ? user.getId() : null;
         PostDto.Detail response = postingService.getPostDetail(postId, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
@@ -158,6 +158,7 @@ public class PostingController {
         List<PostDto.ListItem> response = postingService.searchPostsByKeyword(userId, keyword);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/cache-reset")
     public ResponseEntity<Message> resetCache() {
         postingService.evictAllTopPosts();

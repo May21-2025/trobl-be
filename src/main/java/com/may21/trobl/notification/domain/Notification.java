@@ -35,10 +35,6 @@ public class Notification {
     @CreatedDate
     private LocalDateTime createdAt;
 
-    public void markAsRead() {
-        this.isRead = true;
-    }
-
     @Builder
     public Notification(Long userId, NotificationType type, String title, String body, String data, LocalDateTime scheduledTime) {
         this.userId = userId;
@@ -49,6 +45,10 @@ public class Notification {
         this.isRead = false;
         this.scheduledTime = scheduledTime;
         this.createdAt = LocalDateTime.now();
+    }
+
+    public void markAsRead() {
+        this.isRead = true;
     }
 }
 

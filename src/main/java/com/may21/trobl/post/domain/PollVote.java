@@ -15,27 +15,29 @@ import java.time.LocalDate;
 @Getter
 @EntityListeners(AuditingEntityListener.class)
 @Table(
-    uniqueConstraints =
+        uniqueConstraints =
         @UniqueConstraint(
-            name = "unique_user_poll_option",
-            columnNames = {"userId", "pollOption_id"}))
+                name = "unique_user_poll_option",
+                columnNames = {"userId", "pollOption_id"}))
 public class PollVote {
 
-  @Id
-  @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+    private Long id;
 
-  private Long userId;
+    private Long userId;
 
-  private Long pollId;
+    private Long pollId;
 
-  @ManyToOne private PollOption pollOption;
+    @ManyToOne
+    private PollOption pollOption;
 
-  @CreatedDate private LocalDate createdAt;
+    @CreatedDate
+    private LocalDate createdAt;
 
-  public PollVote(PollOption pollOption, Long userId) {
-    this.pollId = pollOption.getPoll().getId();
-    this.pollOption = pollOption;
-    this.userId = userId;
-  }
+    public PollVote(PollOption pollOption, Long userId) {
+        this.pollId = pollOption.getPoll().getId();
+        this.pollOption = pollOption;
+        this.userId = userId;
+    }
 }

@@ -1,5 +1,7 @@
 package com.may21.trobl.notification.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.may21.trobl._global.enums.NotificationStrategy;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.exception.BusinessException;
@@ -13,8 +15,12 @@ import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.post.domain.PostRepository;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.user.domain.User;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.may21.trobl.user.domain.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -22,18 +28,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.may21.trobl.user.domain.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
-
 import static com.may21.trobl._global.utility.Utility.toJson;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class NotificationServiceImpl implements NotificationService{
+public class NotificationServiceImpl implements NotificationService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final NotificationRepository notificationRepository;
@@ -41,7 +41,6 @@ public class NotificationServiceImpl implements NotificationService{
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
-
 
 
     /**
@@ -304,7 +303,7 @@ public class NotificationServiceImpl implements NotificationService{
                     receiverUserId,
                     NotificationType.COMMENT,
                     "새 댓글이 달렸어요! ✨",
-                    commentSnippet ,
+                    commentSnippet,
                     Map.of(
                             "postId", postId.toString(),
                             "commentId", commentDto.getCommentId().toString()
@@ -379,14 +378,13 @@ public class NotificationServiceImpl implements NotificationService{
     }
 
 
-
     @Override
     public boolean markAsRead(Long notificationId, Long userId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.NOTIFICATION_NOT_FOUND));
-        if(!notification.getUserId()
+        if (!notification.getUserId()
                 .equals(userId)) throw new BusinessException(ExceptionCode.FORBIDDEN)
-            ;
+                ;
         notification.markAsRead();
         return true;
     }

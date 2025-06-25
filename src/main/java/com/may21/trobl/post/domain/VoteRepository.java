@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface VoteRepository extends JpaRepository<PollVote,Long> {
+public interface VoteRepository extends JpaRepository<PollVote, Long> {
 
     Optional<PollVote> findByPollOptionIdAndUserId(Long pollOptionId, Long userId);
 

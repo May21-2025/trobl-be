@@ -7,64 +7,64 @@ import java.time.LocalDate;
 
 public class UserDto {
 
-  @Getter
-  @AllArgsConstructor
-  public static class Info {
-    private final Long userId;
-    private final String name;
-    private final String createdAt;
-    private final String updatedAt;
-  }
-
-  @Getter
-  public class InfoDetail extends Info {
-    private final String email;
-    private final String phoneNumber;
-    private final String address;
-
-    public InfoDetail(
-        Long userId,
-        String name,
-        String createdAt,
-        String updatedAt,
-        String email,
-        String phoneNumber,
-        String address) {
-      super(userId, name, createdAt, updatedAt);
-      this.email = email;
-      this.phoneNumber = phoneNumber;
-      this.address = address;
+    @Getter
+    @AllArgsConstructor
+    public static class Info {
+        private final Long userId;
+        private final String name;
+        private final String createdAt;
+        private final String updatedAt;
     }
-  }
 
-  @Getter
-  public class AlertSetting {
-    private final boolean emailNotification;
-    private final boolean pushNotification;
+    @Getter
+    public class InfoDetail extends Info {
+        private final String email;
+        private final String phoneNumber;
+        private final String address;
 
-    public AlertSetting(boolean emailNotification, boolean pushNotification) {
-      this.emailNotification = emailNotification;
-      this.pushNotification = pushNotification;
+        public InfoDetail(
+                Long userId,
+                String name,
+                String createdAt,
+                String updatedAt,
+                String email,
+                String phoneNumber,
+                String address) {
+            super(userId, name, createdAt, updatedAt);
+            this.email = email;
+            this.phoneNumber = phoneNumber;
+            this.address = address;
+        }
     }
-  }
 
-  @Getter
-  public class InfoRequest {
-    private final LocalDate marriageDate;
-    private final String partnerEmail;
+    @Getter
+    public class AlertSetting {
+        private final boolean emailNotification;
+        private final boolean pushNotification;
 
-    public InfoRequest(LocalDate marriageDate, String partnerEmail) {
-      this.marriageDate = marriageDate;
-      this.partnerEmail = partnerEmail;
+        public AlertSetting(boolean emailNotification, boolean pushNotification) {
+            this.emailNotification = emailNotification;
+            this.pushNotification = pushNotification;
+        }
     }
-  }
 
-  @Getter
-  @AllArgsConstructor
-  public class NotificationSetting {
-    private final boolean post;
-    private final boolean comment;
-    private final boolean like;
-    private final boolean view;
-  }
+    @Getter
+    public class InfoRequest {
+        private final LocalDate marriageDate;
+        private final String partnerEmail;
+
+        public InfoRequest(LocalDate marriageDate, String partnerEmail) {
+            this.marriageDate = marriageDate;
+            this.partnerEmail = partnerEmail;
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public class NotificationSetting {
+        private final boolean post;
+        private final boolean comment;
+        private final boolean like;
+        private final boolean view;
+    }
 }

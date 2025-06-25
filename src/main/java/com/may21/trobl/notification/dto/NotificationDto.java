@@ -23,10 +23,10 @@ public class NotificationDto {
 
     @Getter
     public static class SendRequest {
-        private Long userId;
-        private String title;
-        private String body;
-        private Map<String, String> data;
+        private final Long userId;
+        private final String title;
+        private final String body;
+        private final Map<String, String> data;
 
         @Builder
         public SendRequest(Long userId, String title, String body, Map<String, String> data) {

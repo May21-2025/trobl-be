@@ -9,21 +9,22 @@ import lombok.Setter;
 @MappedSuperclass
 @Getter
 public abstract class ContentEntity extends Timestamped {
-  private Long userId;
+    private Long userId;
 
-  @Setter private String title;
+    @Setter
+    private String title;
 
-  @Setter
-  @Column(columnDefinition = "text")
-  private String content;
+    @Setter
+    @Column(columnDefinition = "text")
+    private String content;
 
-  protected ContentEntity(String title, String content, Long userId) {
-    this.title = title;
-    this.content = content;
-    this.userId = userId;
-  }
+    protected ContentEntity(String title, String content, Long userId) {
+        this.title = title;
+        this.content = content;
+        this.userId = userId;
+    }
 
-  protected ContentEntity() {
-    super();
-  }
+    protected ContentEntity() {
+        super();
+    }
 }

@@ -4,23 +4,23 @@ import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.user.domain.User;
 
 public interface AuthorizationService {
-  AuthDto.SignUpResponse registerAdminUser(AuthDto.SignUpRequest signUpDto);
+    AuthDto.SignUpResponse registerAdminUser(AuthDto.SignUpRequest signUpDto);
 
-  boolean checkIfUserUnregisteredIn30days(String email);
+    boolean checkIfUserUnregisteredIn30days(String email);
 
-  boolean confirmSignUp(String code, String email);
+    boolean confirmSignUp(String code, String email);
 
-  boolean resendConfirmationCode(String email);
+    boolean resendConfirmationCode(String email);
 
-  AuthDto.Response signIn(AuthDto.LoginRequest signRequestDto);
+    AuthDto.Response signIn(AuthDto.LoginRequest signRequestDto);
 
-  boolean changePassword(AuthDto.ChangePasswordRequest userDto, User user);
+    boolean changePassword(AuthDto.ChangePasswordRequest userDto, User user);
 
-  boolean forgotPassword(String email);
+    boolean forgotPassword(String email);
 
-  boolean forgotPasswordConfirm(AuthDto.ForgetPasswordRequest cognitoUserDto);
+    boolean forgotPasswordConfirm(AuthDto.ForgetPasswordRequest cognitoUserDto);
 
-  boolean logout(Long id);
+    boolean logout(Long id);
 
-  boolean unregister(Long id);
+    boolean unregister(Long id);
 }

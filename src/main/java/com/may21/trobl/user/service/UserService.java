@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 @Slf4j
@@ -27,175 +26,176 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class UserService implements UserDetailsService {
 
-  private static final int MAX_FAILED_ATTEMPTS = 5;
-  private final UserRepository userRepository;
-  @Lazy private final PasswordEncoder passwordEncoder;
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private final UserRepository userRepository;
+    @Lazy
+    private final PasswordEncoder passwordEncoder;
 
-  @Override
-  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    return userRepository
-        .findByUsername(username)
-        .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username));
-  }
-
-  @Transactional
-  public User registerAdminUser(AuthDto.SignUpRequest signUpDto) {
-    String username = signUpDto.getUsername();
-    String password = signUpDto.getPassword();
-    String nickname = signUpDto.getNickname();
-    String email = signUpDto.getEmail();
-
-    if (userRepository.existsByUsername(username)) {
-      throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username));
     }
-    User user =
-        User.builder()
-            .username(username)
-            .encryptEmail(passwordEncoder.encode(email))
-            .encryptPassword(passwordEncoder.encode(password))
-            .nickname(nickname)
-            .role(RoleType.ADMIN)
-            .build();
-    return userRepository.save(user);
-  }
 
-  @Transactional
-  public void incrementFailedLoginAttempts(String username) {
-    User user =
-        userRepository
-            .findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username));
+    @Transactional
+    public User registerAdminUser(AuthDto.SignUpRequest signUpDto) {
+        String username = signUpDto.getUsername();
+        String password = signUpDto.getPassword();
+        String nickname = signUpDto.getNickname();
+        String email = signUpDto.getEmail();
 
-    userRepository.incrementFailedLoginAttempts(username);
-
-    // 최대 실패 횟수 초과 시 계정 잠금
-    if (user.getFailedLoginAttempts() + 1 >= MAX_FAILED_ATTEMPTS) {
-      userRepository.updateAccountLockStatus(username, false);
-      log.warn("계정이 잠겼습니다. 사용자: {}", username);
+        if (userRepository.existsByUsername(username)) {
+            throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
+        }
+        User user =
+                User.builder()
+                        .username(username)
+                        .encryptEmail(passwordEncoder.encode(email))
+                        .encryptPassword(passwordEncoder.encode(password))
+                        .nickname(nickname)
+                        .role(RoleType.ADMIN)
+                        .build();
+        return userRepository.save(user);
     }
-  }
 
-  @Transactional
-  public void resetFailedLoginAttempts(String username) {
-    userRepository.resetFailedLoginAttempts(username);
-  }
+    @Transactional
+    public void incrementFailedLoginAttempts(String username) {
+        User user =
+                userRepository
+                        .findByUsername(username)
+                        .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username));
 
-  @Transactional
-  public void changePassword(String username, String newPassword) {
-    User user = userRepository.findByUsername(username).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-    user.updatePassword(passwordEncoder.encode(newPassword));
-  }
+        userRepository.incrementFailedLoginAttempts(username);
 
-  @Transactional
-  public UserDto.Info updateUserLanguage(Long userId, String language) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-  }
-
-  public UserDto.Info getUserData(Long userId) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-  }
-
-  public UserDto.InfoDetail getUserInfoDetail(Long userId) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-  }
-
-  @Transactional
-  public UserDto.Info updateUserProfile(UserDto.InfoRequest userRequestDto, Long userId) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-  }
-
-  public UserDto.AlertSetting getEmailAlarmStatus(Long userId) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-  }
-
-  @Transactional
-  public void setEmailAlarmStatus(UserDto.AlertSetting request, Long userId) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-  }
-
-  @Transactional
-  public User createOAuthUser(OAuthUserInfo userInfo) {
-    String username = userInfo.getProviderId();
-    String email = userInfo.getEmail();
-    String provider = userInfo.getProvider();
-
-    if (userRepository.existsByUsername(username)) {
-      throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
+        // 최대 실패 횟수 초과 시 계정 잠금
+        if (user.getFailedLoginAttempts() + 1 >= MAX_FAILED_ATTEMPTS) {
+            userRepository.updateAccountLockStatus(username, false);
+            log.warn("계정이 잠겼습니다. 사용자: {}", username);
+        }
     }
-    User user =
-        User.builder()
-            .username(username)
-            .encryptEmail(passwordEncoder.encode(email))
-            .provider(provider)
-            .nickname("user1")
-            .role(RoleType.USER)
-            .build();
-    return userRepository.save(user);
-  }
+
+    @Transactional
+    public void resetFailedLoginAttempts(String username) {
+        userRepository.resetFailedLoginAttempts(username);
+    }
+
+    @Transactional
+    public void changePassword(String username, String newPassword) {
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        user.updatePassword(passwordEncoder.encode(newPassword));
+    }
+
+    @Transactional
+    public UserDto.Info updateUserLanguage(Long userId, String language) {
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    }
+
+    public UserDto.Info getUserData(Long userId) {
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    }
+
+    public UserDto.InfoDetail getUserInfoDetail(Long userId) {
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    }
+
+    @Transactional
+    public UserDto.Info updateUserProfile(UserDto.InfoRequest userRequestDto, Long userId) {
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    }
+
+    public UserDto.AlertSetting getEmailAlarmStatus(Long userId) {
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    }
+
+    @Transactional
+    public void setEmailAlarmStatus(UserDto.AlertSetting request, Long userId) {
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    }
+
+    @Transactional
+    public User createOAuthUser(OAuthUserInfo userInfo) {
+        String username = userInfo.getProviderId();
+        String email = userInfo.getEmail();
+        String provider = userInfo.getProvider();
+
+        if (userRepository.existsByUsername(username)) {
+            throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
+        }
+        User user =
+                User.builder()
+                        .username(username)
+                        .encryptEmail(passwordEncoder.encode(email))
+                        .provider(provider)
+                        .nickname("user1")
+                        .role(RoleType.USER)
+                        .build();
+        return userRepository.save(user);
+    }
 
     public UserDto.NotificationSetting getUsersNotification(Long id) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
     }
 
-  @Transactional
-  public UserDto.NotificationSetting updateNotificationSetting(Long id, String type, boolean enabled) {
-    throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-  }
-
-  public boolean isNicknameAvailable(String nickname) {
-    if (nickname == null || nickname.isEmpty()) {
-      throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
-    }
-    if (nickname.length() > 10) {
-      throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
-    }
-    return !userRepository.existsByNickname(nickname);
-  }
-
-  @Transactional
-  public boolean updateNickname(Long userId, String nickname) {
-    if (nickname == null || nickname.isEmpty()) {
-      throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
-    }
-    User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-    if (user.getNicknameUpdatedAt().plusDays(30).isAfter(LocalDate.now())) {
-      throw new BusinessException(ExceptionCode.NICKNAME_UPDATE_RESTRICTED);
+    @Transactional
+    public UserDto.NotificationSetting updateNotificationSetting(Long id, String type, boolean enabled) {
+        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
     }
 
-    if (Objects.equals(user.getNickname(), nickname)) {
-      throw new BusinessException(ExceptionCode.NICKNAME_EQUAL_TO_EXISTING);
-    }
-    if (nickname.length() > 10) {
-      throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
-    }
-    if (userRepository.existsByNickname(nickname)) {
-      throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
-    }
-    user.updateNickname(nickname);
-    return true;
-  }
-
-  @Transactional
-  public boolean updateInformation(Long userId, UserDto.InfoRequest requestBody) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-    user.updateInformation(requestBody);
-    return true;
-  }
-
-  @Transactional
-  public boolean matchPartner(Long id, String partnerId) {
-    User user = userRepository.findById(id)
-        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-    User partner = userRepository.findByUsername(partnerId)
-        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-
-    if (user.getPartnerId() != null || partner.getPartnerId() != null) {
-      throw new BusinessException(ExceptionCode.RESTRICTED);
+    public boolean isNicknameAvailable(String nickname) {
+        if (nickname == null || nickname.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        if (nickname.length() > 10) {
+            throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
+        }
+        return !userRepository.existsByNickname(nickname);
     }
 
-    user.setPartner(partner);
-    partner.setPartner(user);
-    return true;
-  }
+    @Transactional
+    public boolean updateNickname(Long userId, String nickname) {
+        if (nickname == null || nickname.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        if (user.getNicknameUpdatedAt().plusDays(30).isAfter(LocalDate.now())) {
+            throw new BusinessException(ExceptionCode.NICKNAME_UPDATE_RESTRICTED);
+        }
+
+        if (Objects.equals(user.getNickname(), nickname)) {
+            throw new BusinessException(ExceptionCode.NICKNAME_EQUAL_TO_EXISTING);
+        }
+        if (nickname.length() > 10) {
+            throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
+        }
+        if (userRepository.existsByNickname(nickname)) {
+            throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
+        }
+        user.updateNickname(nickname);
+        return true;
+    }
+
+    @Transactional
+    public boolean updateInformation(Long userId, UserDto.InfoRequest requestBody) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        user.updateInformation(requestBody);
+        return true;
+    }
+
+    @Transactional
+    public boolean matchPartner(Long id, String partnerId) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        User partner = userRepository.findByUsername(partnerId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+        if (user.getPartnerId() != null || partner.getPartnerId() != null) {
+            throw new BusinessException(ExceptionCode.RESTRICTED);
+        }
+
+        user.setPartner(partner);
+        partner.setPartner(user);
+        return true;
+    }
 }

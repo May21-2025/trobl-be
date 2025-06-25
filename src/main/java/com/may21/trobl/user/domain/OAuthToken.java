@@ -9,12 +9,12 @@ import java.util.Date;
 
 @Entity
 public class OAuthToken {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  private String token;
-  private String provider;
-  private Long userId;
-  private Date expiryDate;
+    private String token;
+    private String provider;
+    private Long userId;
+    private Date expiryDate;
 }

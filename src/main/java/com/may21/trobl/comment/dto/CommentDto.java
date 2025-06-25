@@ -17,15 +17,15 @@ public class CommentDto {
 
     @Getter
     public static class Response {
-        private Long commentId;
-        private String content;
-        private Long userId;
-        private Long parentCommentId;
-        private Long postId;
-        private String nickname;
-        private LocalDateTime createdAt;
-        private int likeCount;
-        private boolean liked;
+        private final Long commentId;
+        private final String content;
+        private final Long userId;
+        private final Long parentCommentId;
+        private final Long postId;
+        private final String nickname;
+        private final LocalDateTime createdAt;
+        private final int likeCount;
+        private final boolean liked;
 
         public Response(Comment comment, User user, boolean liked) {
             this.commentId = comment.getId();
@@ -41,7 +41,7 @@ public class CommentDto {
     }
 
     public static class RecentInfo extends Response {
-        private String postTitle;
+        private final String postTitle;
 
         public RecentInfo(Posting post, Comment comment, User user, boolean liked) {
             super(comment, user, liked);

@@ -9,13 +9,13 @@ import org.springframework.web.context.annotation.RequestScope;
 @Getter
 public class ApiQueryCounter {
 
-  private int count;
+    private int count;
 
-  public void increaseCount() {
-    count++;
-  }
+    public void increaseCount() {
+        count++;
+    }
 
-  public void reset(){
-    count = 0;
-  }
+    public void reset() {
+        count = 0;
+    }
 }

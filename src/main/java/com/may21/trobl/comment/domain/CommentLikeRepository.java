@@ -12,14 +12,14 @@ import java.util.Optional;
 public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> {
 
 
-  @Modifying
-  @Query("DELETE FROM CommentLike p WHERE p = :like")
-  void deleteByEntity(CommentLike like);
+    @Modifying
+    @Query("DELETE FROM CommentLike p WHERE p = :like")
+    void deleteByEntity(CommentLike like);
 
-  Optional<CommentLike> findByCommentIdAndUserId(Long commentId, Long userId);
+    Optional<CommentLike> findByCommentIdAndUserId(Long commentId, Long userId);
 
-  @Query("SELECT cl FROM CommentLike cl WHERE cl.userId = :userId AND cl.comment IN :comments")
-  List<CommentLike> findByUserIdAndInComments(Long userId, List<Comment> comments);
+    @Query("SELECT cl FROM CommentLike cl WHERE cl.userId = :userId AND cl.comment IN :comments")
+    List<CommentLike> findByUserIdAndInComments(Long userId, List<Comment> comments);
 
-  CommentLike findByUserIdAndComment(Long userId, Comment comment);
+    CommentLike findByUserIdAndComment(Long userId, Comment comment);
 }

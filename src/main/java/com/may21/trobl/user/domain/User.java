@@ -8,16 +8,19 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.domain.NotificationSetting;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
-
-import java.time.LocalDate;
-import java.util.*;
-
-import lombok.*;
-import org.apache.commons.codec.language.bm.Languages;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 @Entity
 @NoArgsConstructor
@@ -26,133 +29,133 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 @Table(name = "app_users")
 public class User implements UserDetails, OAuth2User {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Column(nullable = false, unique = true)
-  private String username;
+    @Column(nullable = false, unique = true)
+    private String username;
 
-  @Column(nullable = false)
-  private String password;
+    @Column(nullable = false)
+    private String password;
 
-  private String nickname;
-  private String email;
+    private String nickname;
+    private String email;
 
-  private boolean married;
+    private boolean married;
 
-  private Language language;
+    private Language language;
 
-  private LocalDate weddingAnniversaryDate;
+    private LocalDate weddingAnniversaryDate;
 
-  private LocalDate nicknameUpdatedAt;
+    private LocalDate nicknameUpdatedAt;
 
-  private Long partnerId;
+    private Long partnerId;
 
-  @OneToOne(cascade = CascadeType.ALL)
-  private NotificationSetting setting;
+    @OneToOne(cascade = CascadeType.ALL)
+    private NotificationSetting setting;
 
-  @ElementCollection(fetch = FetchType.EAGER)
-  @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-  @Column(name = "role")
-  private List<String> roles;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    private List<String> roles;
 
-  private String provider;
-  private int failedLoginAttempts;
+    private String provider;
+    private int failedLoginAttempts;
 
-  private boolean accountNonExpired = true;
-  private boolean accountNonLocked = true;
-  private boolean credentialsNonExpired = true;
-  private boolean enabled = true;
+    private boolean accountNonExpired = true;
+    private boolean accountNonLocked = true;
+    private boolean credentialsNonExpired = true;
+    private boolean enabled = true;
 
-  public void setPartner(User partner) {
-    this.partnerId = partner.getId();
-  }
+    public User(Long userId, String subject, String s, Collection<GrantedAuthority> authorities) {
+        this.id = userId;
+        this.username = subject;
+        this.password = s;
+        this.roles =
+                authorities.stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .map(role -> role.replace("ROLE_", ""))
+                        .toList();
+        this.accountNonExpired = true;
+        this.accountNonLocked = true;
+        this.credentialsNonExpired = true;
+        this.enabled = true;
+    }
 
-  public User(Long userId, String subject, String s, Collection<GrantedAuthority> authorities) {
-    this.id = userId;
-    this.username = subject;
-    this.password = s;
-    this.roles =
-        authorities.stream()
-            .map(GrantedAuthority::getAuthority)
-            .map(role -> role.replace("ROLE_", ""))
-            .toList();
-    this.accountNonExpired = true;
-    this.accountNonLocked = true;
-    this.credentialsNonExpired = true;
-    this.enabled = true;
-  }
+    @Builder
+    public User(String username, String encryptPassword, String encryptEmail, String nickname, String provider, RoleType role) {
+        this.username = username;
+        this.email = encryptEmail;
+        this.provider = provider == null ? "NONE" : provider;
+        this.password = encryptPassword == null ? "oauth" : encryptPassword;
+        this.nickname = nickname;
+        this.roles = List.of(role.name());
+    }
 
-  @Override
-  public String getPassword() {
-    return this.password;
-  }
+    public void setPartner(User partner) {
+        this.partnerId = partner.getId();
+    }
 
-  @Override
-  public Map<String, Object> getAttributes() {
-    return Map.of("id", id, "username", username, "nickname", nickname);
-  }
+    @Override
+    public String getPassword() {
+        return this.password;
+    }
 
-  @Override
-  public String getName() {
-    return this.username;
-  }
+    @Override
+    public Map<String, Object> getAttributes() {
+        return Map.of("id", id, "username", username, "nickname", nickname);
+    }
 
-  @Override
-  public Collection<? extends GrantedAuthority> getAuthorities() {
-    return roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList();
-  }
+    @Override
+    public String getName() {
+        return this.username;
+    }
 
-  @Override
-  public boolean isAccountNonExpired() {
-    return this.accountNonExpired;
-  }
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList();
+    }
 
-  @Override
-  public boolean isAccountNonLocked() {
-    return this.accountNonLocked;
-  }
+    @Override
+    public boolean isAccountNonExpired() {
+        return this.accountNonExpired;
+    }
 
-  @Override
-  public boolean isCredentialsNonExpired() {
-    return this.credentialsNonExpired;
-  }
+    @Override
+    public boolean isAccountNonLocked() {
+        return this.accountNonLocked;
+    }
 
-  @Override
-  public boolean isEnabled() {
-    return enabled;
-  }
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return this.credentialsNonExpired;
+    }
 
-  @Builder
-  public User(String username, String encryptPassword, String encryptEmail, String nickname, String provider, RoleType role) {
-    this.username = username;
-    this.email = encryptEmail;
-    this.provider = provider ==null ? "NONE" : provider;
-    this.password = encryptPassword ==null ?  "oauth": encryptPassword;
-    this.nickname = nickname;
-    this.roles = List.of(role.name());
-  }
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     public void updatePassword(String encodePassword) {
-    this.password = encodePassword;
+        this.password = encodePassword;
     }
 
     public void updateNickname(String nickname) {
-    if (nickname == null || nickname.isEmpty()) {
-      throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
-    }
-    this.nickname = nickname;
-    this.nicknameUpdatedAt = LocalDate.now();
+        if (nickname == null || nickname.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        this.nickname = nickname;
+        this.nicknameUpdatedAt = LocalDate.now();
     }
 
-  public void updateInformation(UserDto.InfoRequest requestBody) {
-    if (requestBody.getMarriageDate() != null) {
-      this.weddingAnniversaryDate = requestBody.getMarriageDate();
-      this.married = true;
+    public void updateInformation(UserDto.InfoRequest requestBody) {
+        if (requestBody.getMarriageDate() != null) {
+            this.weddingAnniversaryDate = requestBody.getMarriageDate();
+            this.married = true;
+        }
     }
-  }
 
-  public void setNotification(NotificationType type, Boolean enabled) {
-  }
+    public void setNotification(NotificationType type, Boolean enabled) {
+    }
 }

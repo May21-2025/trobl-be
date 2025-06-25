@@ -26,12 +26,12 @@ public class TagServiceImpl implements TagService {
         if (tagRequests == null || tagRequests.isEmpty()) {
             return new HashSet<>();
         }
-        List<Long>  existingTagIds = new ArrayList<>();
+        List<Long> existingTagIds = new ArrayList<>();
         List<String> tagNames = new ArrayList<>();
         List<TagDto.Request> newTagRequests = new ArrayList<>();
         for (TagDto.Request tagRequest : tagRequests) {
             Long tagId = tagRequest.getTagId();
-            if(tagId != null) {
+            if (tagId != null) {
                 existingTagIds.add(tagId);
             } else {
                 newTagRequests.add(tagRequest);
@@ -43,7 +43,7 @@ public class TagServiceImpl implements TagService {
                 .toList();
         List<Tag> newTags = new ArrayList<>();
         for (TagDto.Request tagRequest : newTagRequests) {
-            if(existingTagNames.contains(tagRequest.getName())) continue;
+            if (existingTagNames.contains(tagRequest.getName())) continue;
             Tag tag = new Tag(tagRequest.getName(), tagRequest.getColor());
             newTags.add(tag);
         }
@@ -55,7 +55,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
-    public List<TagMapping> createTagMapping(Set<Tag> tags, Posting post){
+    public List<TagMapping> createTagMapping(Set<Tag> tags, Posting post) {
         List<TagMapping> tagMappings = new ArrayList<>();
         for (Tag tag : tags) {
             TagMapping tagMapping = new TagMapping(tag, post);
@@ -65,7 +65,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
-    public List<TagDto.Response> getStaticTags(){
+    public List<TagDto.Response> getStaticTags() {
         List<Tag> tags = tagRepository.findStaticTags();
         return TagDto.Response.fromTagList(tags);
     }

@@ -19,110 +19,116 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
-  private final UserService userService;
-  private final PostingService postingService;
-  private final CommentService commentService;
+    private final UserService userService;
+    private final PostingService postingService;
+    private final CommentService commentService;
 
 
-  @GetMapping("/bookmarks")
-  public ResponseEntity<Message> getBookmarkedPosts(@AuthenticationPrincipal User user,
-                                                    @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-    Page<PostDto.ListItem> response = postingService.getBookmarkedPosts(user.getId(), page, size);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
+    @GetMapping("/bookmarks")
+    public ResponseEntity<Message> getBookmarkedPosts(@AuthenticationPrincipal User user,
+                                                      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Page<PostDto.ListItem> response = postingService.getBookmarkedPosts(user.getId(), page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 
-  @PatchMapping("/bookmarks")
-  public ResponseEntity<Message> updateNotificationSetting(@AuthenticationPrincipal User user, @RequestParam String type, @RequestParam boolean enabled) {
-    UserDto.NotificationSetting response = userService.updateNotificationSetting(user.getId(), type, enabled);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-  @GetMapping("/comments")
-  public ResponseEntity<Message> getMyComments(@AuthenticationPrincipal User user,
-                                               @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-    Page<CommentDto.RecentInfo> response = commentService.getMyComments(user.getId(), page, size);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-  // EMAIL ALARM SETTING
-  @GetMapping("/email-alarm")
-  public ResponseEntity<Message> getEmailSettings(@AuthenticationPrincipal User user) {
-    UserDto.AlertSetting response = userService.getEmailAlarmStatus(user.getId());
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
+    @PatchMapping("/bookmarks")
+    public ResponseEntity<Message> updateNotificationSetting(@AuthenticationPrincipal User user, @RequestParam String type, @RequestParam boolean enabled) {
+        UserDto.NotificationSetting response = userService.updateNotificationSetting(user.getId(), type, enabled);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 
-  @PutMapping("/email-alarm")
-  public ResponseEntity<Message> setEmailAlarmStatus(
-          @RequestBody UserDto.AlertSetting request, @AuthenticationPrincipal User user) {
-    userService.setEmailAlarmStatus(request, user.getId());
-    return new ResponseEntity<>(Message.success(null), HttpStatus.OK);
-  }
-
-  @GetMapping("/info")
-  public ResponseEntity<Message> getUserData( @AuthenticationPrincipal User user) {
-    UserDto.Info response = userService.getUserData(user.getId());
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-
-
-  @GetMapping("/likes")
-  public ResponseEntity<Message> getLikedPosts(@AuthenticationPrincipal User user,
-                                               @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-    Page<PostDto.ListItem> response = postingService.getLikedPosts(user.getId(), page, size);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-
-  @PatchMapping("/marriage-info")
-  public ResponseEntity<Message> updateInformation(@AuthenticationPrincipal User user,@RequestBody UserDto.InfoRequest requestBody) {
-    boolean response = userService.updateInformation(user.getId(),requestBody);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-  @PatchMapping("/nickname")
-  public ResponseEntity<Message> updateNickname(@AuthenticationPrincipal User user,@RequestParam String nickname) {
-    boolean response = userService.updateNickname(user.getId(),nickname);
-    postingService.setNickname(user.getId(), nickname);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-  @GetMapping("/notifications")
-  public ResponseEntity<Message> getUsersNotification(@AuthenticationPrincipal User user) {
-    UserDto.NotificationSetting response = userService.getUsersNotification(user.getId());
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-
-  @GetMapping("/profiles")
-  public ResponseEntity<Message> getUserProfile(@AuthenticationPrincipal User user) {
-    UserDto.InfoDetail response = userService.getUserInfoDetail(user.getId());
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-
-  @PutMapping("/profiles")
-  public ResponseEntity<Message> updateUserProfile(
-          @RequestBody UserDto.InfoRequest userRequestDto,
-          @AuthenticationPrincipal User user) {
-    UserDto.Info response = userService.updateUserProfile(userRequestDto, user.getId());
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-
-  @GetMapping("/posts")
-  public ResponseEntity<Message> getMyPosts(@AuthenticationPrincipal User user,
-                                            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-    Page<PostDto.ListItem> response = postingService.getMyPosts(user.getId(), page, size);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-  @PatchMapping("/partner")
-  public ResponseEntity<Message> matchPartner(@AuthenticationPrincipal User user,@RequestParam String partnerId) {
-    boolean response = userService.matchPartner(user.getId(),partnerId);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-
-  @GetMapping("/visits")
-  public ResponseEntity<Message> getVisitedPosts(@AuthenticationPrincipal User user,
+    @GetMapping("/comments")
+    public ResponseEntity<Message> getMyComments(@AuthenticationPrincipal User user,
                                                  @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-    Page<PostDto.ListItem> response = postingService.getVisitedPosts(user.getId(), page, size);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
-  @GetMapping("/voted")
-  public ResponseEntity<Message> getVotedPosts(@AuthenticationPrincipal User user,
-                                               @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-    Page<PostDto.ListItem> response = postingService.getVotedPosts(user.getId(), page, size);
-    return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-  }
+        Page<CommentDto.RecentInfo> response = commentService.getMyComments(user.getId(), page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    // EMAIL ALARM SETTING
+    @GetMapping("/email-alarm")
+    public ResponseEntity<Message> getEmailSettings(@AuthenticationPrincipal User user) {
+        UserDto.AlertSetting response = userService.getEmailAlarmStatus(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PutMapping("/email-alarm")
+    public ResponseEntity<Message> setEmailAlarmStatus(
+            @RequestBody UserDto.AlertSetting request, @AuthenticationPrincipal User user) {
+        userService.setEmailAlarmStatus(request, user.getId());
+        return new ResponseEntity<>(Message.success(null), HttpStatus.OK);
+    }
+
+    @GetMapping("/info")
+    public ResponseEntity<Message> getUserData(@AuthenticationPrincipal User user) {
+        UserDto.Info response = userService.getUserData(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+
+    @GetMapping("/likes")
+    public ResponseEntity<Message> getLikedPosts(@AuthenticationPrincipal User user,
+                                                 @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Page<PostDto.ListItem> response = postingService.getLikedPosts(user.getId(), page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PatchMapping("/marriage-info")
+    public ResponseEntity<Message> updateInformation(@AuthenticationPrincipal User user, @RequestBody UserDto.InfoRequest requestBody) {
+        boolean response = userService.updateInformation(user.getId(), requestBody);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PatchMapping("/nickname")
+    public ResponseEntity<Message> updateNickname(@AuthenticationPrincipal User user, @RequestParam String nickname) {
+        boolean response = userService.updateNickname(user.getId(), nickname);
+        postingService.setNickname(user.getId(), nickname);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/notifications")
+    public ResponseEntity<Message> getUsersNotification(@AuthenticationPrincipal User user) {
+        UserDto.NotificationSetting response = userService.getUsersNotification(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/profiles")
+    public ResponseEntity<Message> getUserProfile(@AuthenticationPrincipal User user) {
+        UserDto.InfoDetail response = userService.getUserInfoDetail(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PutMapping("/profiles")
+    public ResponseEntity<Message> updateUserProfile(
+            @RequestBody UserDto.InfoRequest userRequestDto,
+            @AuthenticationPrincipal User user) {
+        UserDto.Info response = userService.updateUserProfile(userRequestDto, user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/posts")
+    public ResponseEntity<Message> getMyPosts(@AuthenticationPrincipal User user,
+                                              @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Page<PostDto.ListItem> response = postingService.getMyPosts(user.getId(), page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PatchMapping("/partner")
+    public ResponseEntity<Message> matchPartner(@AuthenticationPrincipal User user, @RequestParam String partnerId) {
+        boolean response = userService.matchPartner(user.getId(), partnerId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/visits")
+    public ResponseEntity<Message> getVisitedPosts(@AuthenticationPrincipal User user,
+                                                   @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Page<PostDto.ListItem> response = postingService.getVisitedPosts(user.getId(), page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/voted")
+    public ResponseEntity<Message> getVotedPosts(@AuthenticationPrincipal User user,
+                                                 @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Page<PostDto.ListItem> response = postingService.getVotedPosts(user.getId(), page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 }

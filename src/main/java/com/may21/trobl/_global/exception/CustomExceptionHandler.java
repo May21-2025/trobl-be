@@ -12,51 +12,51 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @Slf4j
 @RestControllerAdvice
 public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
-  private final ExceptionHandleService errorLogService;
+    private final ExceptionHandleService errorLogService;
 
-  public CustomExceptionHandler(
-      ExceptionHandleService errorLogService) {
-    this.errorLogService = errorLogService;
-  }
+    public CustomExceptionHandler(
+            ExceptionHandleService errorLogService) {
+        this.errorLogService = errorLogService;
+    }
 
-  private static void logError(ExceptionCode code, ExceptionLog errorLog, StackTraceElement stack) {
-    String number =
-        errorLog.getCodeLineNumber() == -1 ? "" : errorLog.getCodeLineNumber().toString();
-    log.error(
-        """
+    private static void logError(ExceptionCode code, ExceptionLog errorLog, StackTraceElement stack) {
+        String number =
+                errorLog.getCodeLineNumber() == -1 ? "" : errorLog.getCodeLineNumber().toString();
+        log.error(
+                """
+                        
+                        ************************************
+                            Error Details
+                          - Code       : {}
+                          - Message    : {}
+                          - From       : {} {} {}
+                          - Path       : {}
+                        ************************************
+                        """,
+                code.getCode(),
+                errorLog.getMessage(),
+                errorLog.getServiceName(),
+                errorLog.getMethodName(),
+                number,
+                stack == null ? "" : stack);
+    }
 
-                ************************************
-                    Error Details
-                  - Code       : {}
-                  - Message    : {}
-                  - From       : {} {} {}
-                  - Path       : {}
-                ************************************
-                """,
-        code.getCode(),
-        errorLog.getMessage(),
-        errorLog.getServiceName(),
-        errorLog.getMethodName(),
-        number,
-        stack == null ? "" : stack);
-  }
+    @ExceptionHandler(BusinessException.class)
+    protected ResponseEntity<Message> handleBusinessException(final BusinessException e) {
+        final ExceptionCode errorCode = e.getErrorCode();
+        ExceptionLog errorLog = ExceptionHandleService.getExceptionLog(e);
+        StackTraceElement stack = e.getStackTrace()[0];
+        logError(errorCode, errorLog, stack);
+        return new ResponseEntity<>(Message.fail(errorCode), errorCode.getStatus());
+    }
 
-  @ExceptionHandler(BusinessException.class)
-  protected ResponseEntity<Message> handleBusinessException(final BusinessException e) {
-    final ExceptionCode errorCode = e.getErrorCode();
-    ExceptionLog errorLog = ExceptionHandleService.getExceptionLog(e);
-    StackTraceElement stack = e.getStackTrace()[0];
-    logError(errorCode, errorLog, stack);
-    return new ResponseEntity<>(Message.fail(errorCode), errorCode.getStatus());
-  }
+    @ExceptionHandler(Exception.class)
+    protected ResponseEntity<Message> handleGlobalException(final Exception e) {
+        ExceptionLog errorLog = errorLogService.saveErrorLog(e);
+        ExceptionCode code = ExceptionCode.INTERNAL_SERVER_ERROR;
+        StackTraceElement stack = e.getStackTrace()[0];
+        logError(code, errorLog, stack);
 
-  @ExceptionHandler(Exception.class)
-  protected ResponseEntity<Message> handleGlobalException(final Exception e) {
-    ExceptionLog errorLog = errorLogService.saveErrorLog(e);
-    ExceptionCode code = ExceptionCode.INTERNAL_SERVER_ERROR;
-    StackTraceElement stack = e.getStackTrace()[0];
-    logError(code, errorLog, stack);
-
-    return new ResponseEntity<>(Message.fail(code), HttpStatus.INTERNAL_SERVER_ERROR);
-  }
+        return new ResponseEntity<>(Message.fail(code), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

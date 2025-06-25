@@ -25,46 +25,46 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-  private final JwtTokenUtil jwtTokenUtil;
-  private final UserDetailsService userDetailsService;
-  private final CustomOAuth2UserService customOAuth2UserService;
-  private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final JwtTokenUtil jwtTokenUtil;
+    private final UserDetailsService userDetailsService;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
-  @Bean
-  public JwtAuthenticationFilter jwtAuthenticationFilter() {
-    return new JwtAuthenticationFilter(jwtTokenUtil, userDetailsService);
-  }
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtTokenUtil, userDetailsService);
+    }
 
-  @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    return http.csrf(AbstractHttpConfigurer::disable)
-        .cors(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/auth/**").permitAll() // ✅ 회원가입, 로그인은 인증 없이
-                    .requestMatchers(HttpMethod.GET, "/**").permitAll()
-                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    // ✅ POST, PUT, DELETE 요청은 인증 필요
-                    .requestMatchers(HttpMethod.POST, "/**")
-                    .authenticated()
-                    .requestMatchers(HttpMethod.PUT, "/**")
-                    .authenticated()
-                    .requestMatchers(HttpMethod.DELETE, "/**")
-                    .authenticated()
-                    .requestMatchers(HttpMethod.PATCH, "/**")
-                    .authenticated()
-                    .anyRequest()
-                    .authenticated())
-            .oauth2Login(oauth2 ->
-                    oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-            )
-            .exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint))
-            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .build();
-  }
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http.csrf(AbstractHttpConfigurer::disable)
+                .cors(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**").permitAll() // ✅ 회원가입, 로그인은 인증 없이
+                        .requestMatchers(HttpMethod.GET, "/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // ✅ POST, PUT, DELETE 요청은 인증 필요
+                        .requestMatchers(HttpMethod.POST, "/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/**")
+                        .authenticated()
+                        .anyRequest()
+                        .authenticated())
+                .oauth2Login(oauth2 ->
+                        oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                )
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(customAuthenticationEntryPoint))
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .build();
+    }
 
-  @Bean
-  public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
-    return http.getSharedObject(AuthenticationManagerBuilder.class).build();
-  }
+    @Bean
+    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+        return http.getSharedObject(AuthenticationManagerBuilder.class).build();
+    }
 }

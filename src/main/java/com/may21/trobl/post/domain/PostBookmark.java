@@ -24,7 +24,8 @@ public class PostBookmark {
 
     private Long userId;
 
-    @ManyToOne private Posting posting;
+    @ManyToOne
+    private Posting posting;
 
     @CreatedDate
     private LocalDate createdAt;

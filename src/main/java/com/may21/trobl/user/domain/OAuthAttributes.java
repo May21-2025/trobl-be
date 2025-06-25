@@ -1,65 +1,66 @@
 package com.may21.trobl.user.domain;
 
-import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.Map;
+
 @Getter
 public class OAuthAttributes {
-  private Map<String, Object> attributes;
-  private String nameAttributeKey;
-  private String email;
-  private String providerId;
+    private final Map<String, Object> attributes;
+    private final String nameAttributeKey;
+    private final String email;
+    private final String providerId;
 
-  @Builder
-  public OAuthAttributes(
-      Map<String, Object> attributes, String nameAttributeKey, String email, String providerId) {
-    this.attributes = attributes;
-    this.nameAttributeKey = nameAttributeKey;
-    this.email = email;
-    this.providerId = providerId;
-  }
-
-  public static OAuthAttributes of(
-      String registrationId, String userNameAttributeName, Map<String, Object> attributes) {
-    if ("kakao".equals(registrationId)) {
-      return ofKakao(userNameAttributeName, attributes);
-    } else if ("apple".equals(registrationId)) {
-      return ofApple(userNameAttributeName, attributes);
+    @Builder
+    public OAuthAttributes(
+            Map<String, Object> attributes, String nameAttributeKey, String email, String providerId) {
+        this.attributes = attributes;
+        this.nameAttributeKey = nameAttributeKey;
+        this.email = email;
+        this.providerId = providerId;
     }
 
-    return ofGoogle(userNameAttributeName, attributes);
-  }
+    public static OAuthAttributes of(
+            String registrationId, String userNameAttributeName, Map<String, Object> attributes) {
+        if ("kakao".equals(registrationId)) {
+            return ofKakao(userNameAttributeName, attributes);
+        } else if ("apple".equals(registrationId)) {
+            return ofApple(userNameAttributeName, attributes);
+        }
 
-  private static OAuthAttributes ofGoogle(
-      String userNameAttributeName, Map<String, Object> attributes) {
-    return OAuthAttributes.builder()
-        .email((String) attributes.get("email"))
-        .providerId((String) attributes.get(userNameAttributeName))
-        .attributes(attributes)
-        .nameAttributeKey(userNameAttributeName)
-        .build();
-  }
+        return ofGoogle(userNameAttributeName, attributes);
+    }
 
-  private static OAuthAttributes ofKakao(
-      String userNameAttributeName, Map<String, Object> attributes) {
-    Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+    private static OAuthAttributes ofGoogle(
+            String userNameAttributeName, Map<String, Object> attributes) {
+        return OAuthAttributes.builder()
+                .email((String) attributes.get("email"))
+                .providerId((String) attributes.get(userNameAttributeName))
+                .attributes(attributes)
+                .nameAttributeKey(userNameAttributeName)
+                .build();
+    }
 
-    return OAuthAttributes.builder()
-        .email((String) kakaoAccount.get("email"))
-        .providerId(String.valueOf(attributes.get(userNameAttributeName)))
-        .attributes(attributes)
-        .nameAttributeKey(userNameAttributeName)
-        .build();
-  }
+    private static OAuthAttributes ofKakao(
+            String userNameAttributeName, Map<String, Object> attributes) {
+        Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
 
-  private static OAuthAttributes ofApple(
-      String userNameAttributeName, Map<String, Object> attributes) {
-    return OAuthAttributes.builder()
-        .email((String) attributes.get("email"))
-        .providerId((String) attributes.get(userNameAttributeName))
-        .attributes(attributes)
-        .nameAttributeKey(userNameAttributeName)
-        .build();
-  }
+        return OAuthAttributes.builder()
+                .email((String) kakaoAccount.get("email"))
+                .providerId(String.valueOf(attributes.get(userNameAttributeName)))
+                .attributes(attributes)
+                .nameAttributeKey(userNameAttributeName)
+                .build();
+    }
+
+    private static OAuthAttributes ofApple(
+            String userNameAttributeName, Map<String, Object> attributes) {
+        return OAuthAttributes.builder()
+                .email((String) attributes.get("email"))
+                .providerId((String) attributes.get(userNameAttributeName))
+                .attributes(attributes)
+                .nameAttributeKey(userNameAttributeName)
+                .build();
+    }
 }

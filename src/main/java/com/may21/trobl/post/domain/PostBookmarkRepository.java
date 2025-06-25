@@ -1,6 +1,5 @@
 package com.may21.trobl.post.domain;
 
-import jakarta.persistence.OneToMany;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

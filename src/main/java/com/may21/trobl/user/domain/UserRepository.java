@@ -1,12 +1,13 @@
 package com.may21.trobl.user.domain;
 
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -35,8 +36,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByIdIn(List<Long> userIds);
 
     boolean existsByNickname(String nickname);
-    
+
     Optional<User> findPartnerById(Long id);
 
-    List<User>  findPartnerAndUserById(Long userId);
+    List<User> findPartnerAndUserById(Long userId);
 }

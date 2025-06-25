@@ -11,12 +11,6 @@ import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.service.TagService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
-
-import java.time.LocalDate;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,6 +20,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -109,8 +108,8 @@ public class PostingServiceImpl implements PostingService {
             }
         }
         List<Tag> tags = tagService.getPostTags(post);
-        List<Long> votedOptionIds = userId ==null ? List.of() : voteRepository.findVotedPostByUserId(post, userId);
-        return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked,votedOptionIds,isOwner);
+        List<Long> votedOptionIds = userId == null ? List.of() : voteRepository.findVotedPostByUserId(post, userId);
+        return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked, votedOptionIds, isOwner);
     }
 
     @Override
@@ -200,7 +199,7 @@ public class PostingServiceImpl implements PostingService {
                 userRepository
                         .findById(userId)
                         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
-                userMap, tagList, false, false,votedOptionIds, true);
+                userMap, tagList, false, false, votedOptionIds, true);
     }
 
     public List<PollOption> updatePollOptions(
@@ -230,8 +229,8 @@ public class PostingServiceImpl implements PostingService {
                                 .findFirst()
                                 .orElse(
                                         new PollOption(
-                                                pollOptionRequest.getName(),  i, poll));
-                if(pollOptionRequest.getName() != null && !pollOptionRequest.getName().equals(existingOption.getName()))
+                                                pollOptionRequest.getName(), i, poll));
+                if (pollOptionRequest.getName() != null && !pollOptionRequest.getName().equals(existingOption.getName()))
                     existingOption.setName(pollOptionRequest.getName());
                 existingOption.setIndex(i);
                 updatedOptions.add(existingOption);
@@ -308,7 +307,7 @@ public class PostingServiceImpl implements PostingService {
             likeRepository.deleteByEntity(postLike);
         }
         boolean commented = commentService.existsByPostIdAndUserId(postId, userId);
-        return new PostDto.ListItem(post, null, liked,true, commented);
+        return new PostDto.ListItem(post, null, liked, true, commented);
     }
 
     @Override
@@ -406,11 +405,11 @@ public class PostingServiceImpl implements PostingService {
 
         List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL);
         List<PostDto.QuickPoll> response = new ArrayList<>();
-        List<Long> votedOptionIds = voteRepository.findVotedOptionIdsByUserId(posts,userId);
+        List<Long> votedOptionIds = voteRepository.findVotedOptionIdsByUserId(posts, userId);
         for (Posting post : posts) {
 
             boolean isOwner = post.getUserId().equals(userId);
-            response.add(new PostDto.QuickPoll(post,votedOptionIds,isOwner));
+            response.add(new PostDto.QuickPoll(post, votedOptionIds, isOwner));
         }
         return response;
     }

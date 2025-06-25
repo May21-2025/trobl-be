@@ -40,7 +40,7 @@ public class Comment extends Timestamped {
 
 
     @Builder
-   public Comment(User user, Posting post, Comment comment, String content) {
+    public Comment(User user, Posting post, Comment comment, String content) {
         this.userId = user.getId();
         this.content = content;
         this.posting = post;
@@ -48,6 +48,6 @@ public class Comment extends Timestamped {
     }
 
     public int getLikeCount() {
-        return commentLikes ==null? 0 :commentLikes.size();
+        return commentLikes == null ? 0 : commentLikes.size();
     }
 }
