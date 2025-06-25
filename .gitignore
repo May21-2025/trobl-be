@@ -42,3 +42,6 @@ out/
 emojiData.json
 src/main/resources/mock-gcp-credentials.json
 gradle
+src/main/resources
+src/main/.DS_Store
+.DS_Store
