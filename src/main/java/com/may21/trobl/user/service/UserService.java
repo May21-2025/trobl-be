@@ -1,5 +1,6 @@
 package com.may21.trobl.user.service;
 
+import com.may21.trobl._global.enums.OAuthType;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
@@ -196,6 +197,32 @@ public class UserService implements UserDetailsService {
 
         user.setPartner(partner);
         partner.setPartner(user);
+        return true;
+    }
+
+    public User createUser(String email, OAuthType oAuthType) {
+        if (email == null || email.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        if (userRepository.existsByUsername(email)) {
+            throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
+        }
+        User user =
+                User.builder()
+                        .username(email)
+                        .encryptEmail(passwordEncoder.encode(email))
+                        .provider(oAuthType.name())
+                        .nickname("")
+                        .role(RoleType.USER)
+                        .build();
+        return userRepository.save(user);
+    }
+
+    public boolean unregister(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+        userRepository.delete(user);
         return true;
     }
 }

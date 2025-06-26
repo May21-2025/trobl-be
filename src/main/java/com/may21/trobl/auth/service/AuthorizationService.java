@@ -23,4 +23,5 @@ public interface AuthorizationService {
     boolean logout(Long id);
 
     boolean unregister(Long id);
+
 }

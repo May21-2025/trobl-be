@@ -55,6 +55,7 @@ public class AuthDto {
         }
     }
 
+    @Getter
     public class ChangePasswordRequest {
         private final String oldPassword;
         private final String newPassword;
@@ -65,11 +66,27 @@ public class AuthDto {
         }
     }
 
+    @Getter
     public class ForgetPasswordRequest {
         private final String email;
 
         public ForgetPasswordRequest(String email) {
             this.email = email;
+        }
+    }
+
+    @Getter
+    public static class Token {
+        private final String accessToken;
+        private final String refreshToken;
+        private final int expiresIn;
+        private final String idToken;
+
+        public Token(String accessToken, String refreshToken, String idToken, int expiresIn) {
+            this.accessToken = accessToken;
+            this.refreshToken = refreshToken;
+            this.expiresIn = expiresIn;
+            this.idToken = idToken;
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.may21.trobl.user.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl.auth.service.AuthorizationService;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.post.dto.PostDto;
@@ -13,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +25,8 @@ public class UserController {
     private final UserService userService;
     private final PostingService postingService;
     private final CommentService commentService;
+    private final AuthorizationService authorizationService;
+    private final DefaultOAuth2UserService defaultOAuth2UserService;
 
 
     @GetMapping("/bookmarks")
@@ -129,6 +134,12 @@ public class UserController {
     public ResponseEntity<Message> getVotedPosts(@AuthenticationPrincipal User user,
                                                  @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Page<PostDto.ListItem> response = postingService.getVotedPosts(user.getId(), page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/unregister")
+    public ResponseEntity<Message> unregister(@AuthenticationPrincipal User user)  {
+        boolean response = authorizationService.unregister(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }
