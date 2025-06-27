@@ -1,6 +1,6 @@
 package com.may21.trobl._global.enums;
 
-public enum OAuthType {
+public enum OAuthProvider {
     NONE("none"),
     GOOGLE("google"),
     APPLE("apple"),
@@ -10,7 +10,7 @@ public enum OAuthType {
     private final String title;
 
 
-    OAuthType(String title) {
+    OAuthProvider(String title) {
         this.title = title;
     }
 }

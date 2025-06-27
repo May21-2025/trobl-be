@@ -1,6 +1,6 @@
 package com.may21.trobl.auth.service;
 
-import com.may21.trobl._global.enums.OAuthType;
+import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.auth.AuthDto;
@@ -80,13 +80,13 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     public boolean unregister(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        OAuthType type = user.getAttribute("OAuth") != null ? OAuthType.valueOf(user.getAttribute("OAuth")) : OAuthType.NONE;
+        OAuthProvider type = user.getAttribute("OAuth") != null ? OAuthProvider.valueOf(user.getAttribute("OAuth")) : OAuthProvider.NONE;
         unlinkOAuth(type, user);
         userRepository.delete(user);
         return true;
     }
 
-    public void unlinkOAuth(OAuthType type, User user){
+    public void unlinkOAuth(OAuthProvider type, User user){
         if (type == null || user == null) {
             throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
         }

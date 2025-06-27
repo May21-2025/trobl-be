@@ -244,7 +244,7 @@ public class JwtTokenUtil {
         return new TokenInfo("Bearer", accessToken, refreshToken.getToken());
     }
 
-    private String hashToken(String token) {
+    public static String hashToken(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));

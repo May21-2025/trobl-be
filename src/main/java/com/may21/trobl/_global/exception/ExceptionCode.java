@@ -38,6 +38,9 @@ public enum ExceptionCode {
     GOOGLE_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "O004", "구글 토큰이 유효하지 않습니다."),
     GOOGLE_LOGIN_FAILED(HttpStatus.BAD_REQUEST, "O005", "구글 로그인에 실패했습니다."),
     GOOGLE_CODE_INVALID(HttpStatus.BAD_REQUEST, "O006", "구글 코드가 유효하지 않습니다."),
+    GOOGLE_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "O007", "구글 사용자 정보를 찾을 수 없습니다."),
+    AUTHENTICATION_FAILED (HttpStatus.UNAUTHORIZED, "O008", "인증에 실패했습니다."),
+
     // POST P000
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "P000", "게시글을 찾을 수 없습니다."),
     POST_NOT_AUTHORIZED(HttpStatus.FORBIDDEN, "P001", "게시글에 대한 권한이 없습니다."),

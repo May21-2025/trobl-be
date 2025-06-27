@@ -13,8 +13,8 @@ public class OAuthToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long userId;
     private String token;
     private String provider;
-    private Long userId;
     private Date expiryDate;
 }

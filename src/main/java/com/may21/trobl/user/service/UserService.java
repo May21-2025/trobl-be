@@ -1,6 +1,6 @@
 package com.may21.trobl.user.service;
 
-import com.may21.trobl._global.enums.OAuthType;
+import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
@@ -200,7 +200,7 @@ public class UserService implements UserDetailsService {
         return true;
     }
 
-    public User createUser(String email, OAuthType oAuthType) {
+    public User createUser(String email, OAuthProvider oAuthProvider) {
         if (email == null || email.isEmpty()) {
             throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
         }
@@ -211,7 +211,7 @@ public class UserService implements UserDetailsService {
                 User.builder()
                         .username(email)
                         .encryptEmail(passwordEncoder.encode(email))
-                        .provider(oAuthType.name())
+                        .provider(oAuthProvider.name())
                         .nickname("")
                         .role(RoleType.USER)
                         .build();

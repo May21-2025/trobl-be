@@ -2,6 +2,7 @@ package com.may21.trobl.user.domain;
 
 import com.may21.trobl._global.enums.Language;
 import com.may21.trobl._global.enums.NotificationType;
+import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
@@ -52,6 +53,8 @@ public class User implements UserDetails, OAuth2User {
 
     private Long partnerId;
 
+    private OAuthProvider oauthProvider;
+
     @OneToOne(cascade = CascadeType.ALL)
     private NotificationSetting setting;
 
@@ -60,6 +63,8 @@ public class User implements UserDetails, OAuth2User {
     @Column(name = "role")
     private List<String> roles;
 
+    private OAuthProvider oAuthProvider = OAuthProvider.NONE;
+
     private String provider;
     private int failedLoginAttempts;
 
@@ -67,6 +72,7 @@ public class User implements UserDetails, OAuth2User {
     private boolean accountNonLocked = true;
     private boolean credentialsNonExpired = true;
     private boolean enabled = true;
+
 
     public User(Long userId, String subject, String s, Collection<GrantedAuthority> authorities) {
         this.id = userId;
