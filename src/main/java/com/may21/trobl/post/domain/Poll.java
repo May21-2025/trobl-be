@@ -20,6 +20,7 @@ public class Poll {
     @Setter
     private String title;
 
+    @Setter
     private Boolean allowMultipleVotes = false;
 
     @Setter

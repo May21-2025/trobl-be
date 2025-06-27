@@ -13,6 +13,7 @@ public class AuthDto {
     public static class LoginRequest {
         private String username;
         private String password;
+        private Map<String, String> oAuthData;
     }
 
 

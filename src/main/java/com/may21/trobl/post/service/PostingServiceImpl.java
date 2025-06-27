@@ -179,9 +179,17 @@ public class PostingServiceImpl implements PostingService {
         post.update(request);
         if (post.getPostType() == PostingType.POLL && request.getPollId() != null) {
             Long pollId = request.getPollId();
+            PostDto.PollDto pollDto = request.getPoll();
+            String pollTitle = pollDto.getTitle();
+            Boolean allowMultipleVotes = pollDto.isAllowMultipleVotes();
             Poll poll = pollRepository.findById(pollId).orElseThrow(() -> new BusinessException(ExceptionCode.POLL_NOT_FOUND));
-            poll.setTitle(request.getPollTitle());
-            List<PostDto.PollItem> pollOptionsRequest = request.getPoll().getPollOptions();
+            if (pollTitle != null && !pollTitle.equals(poll.getTitle())) {
+                poll.setTitle(pollTitle);
+            }
+            if (!allowMultipleVotes.equals(poll.isAllowedMultipleVotes())) {
+                poll.setAllowMultipleVotes(allowMultipleVotes);
+            }
+            List<PostDto.PollItem> pollOptionsRequest = pollDto.getPollOptions();
             updatePollOptions(pollOptionsRequest, poll);
         }
         Set<Tag> tags = tagService.createTags(request.getTags());

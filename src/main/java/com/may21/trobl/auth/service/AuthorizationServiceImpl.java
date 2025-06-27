@@ -5,6 +5,8 @@ import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.notification.service.NotificationService;
+import com.may21.trobl.oAuth.AppleOAuthService;
+import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import com.may21.trobl.user.service.UserService;
@@ -13,12 +15,16 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class AuthorizationServiceImpl implements AuthorizationService {
     private final UserService userService;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final GoogleOAuthService googleOAuthService;
+    private final AppleOAuthService appleOAuthService;
     @Lazy
     private final PasswordEncoder passwordEncoder;
 
@@ -48,11 +54,41 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     public AuthDto.Response signIn(AuthDto.LoginRequest signRequestDto) {
         String username = signRequestDto.getUsername();
         String password = signRequestDto.getPassword();
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new BusinessException(ExceptionCode.INVALID_PASSWORD);
+        Map<String, String> oAuthData = signRequestDto.getOAuthData();
+        User user = null;
+        if (username == null && (oAuthData != null && !oAuthData.isEmpty())) {
+            String provider = oAuthData.get("provider");
+            if (provider == null || provider.isEmpty()) {
+                throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            }
+            OAuthProvider oAuthProvider = OAuthProvider.fromString(provider);
+            switch (oAuthProvider) {
+                case GOOGLE -> {
+                    String accessToken = oAuthData.get("accessToken");
+                    String idToken = oAuthData.get("idToken");
+                    if (accessToken == null || accessToken.isEmpty()) {
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                    }
+                    username = googleOAuthService.getEmailFromGoogleToken(accessToken);
+                }
+                case APPLE -> {
+                    String identityToken = oAuthData.get("identityToken");
+                    if (identityToken == null || identityToken.isEmpty()) {
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                    }
+                    username = appleOAuthService.getEmailFromAppleToken(identityToken);
+                }
+            }
+            user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        } else {
+            user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            if (!passwordEncoder.matches(password, user.getPassword())) {
+                throw new BusinessException(ExceptionCode.INVALID_PASSWORD);
+            }
         }
+
         return new AuthDto.Response(user);
     }
 
@@ -86,7 +122,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         return true;
     }
 
-    public void unlinkOAuth(OAuthProvider type, User user){
+    public void unlinkOAuth(OAuthProvider type, User user) {
         if (type == null || user == null) {
             throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
         }
