@@ -101,10 +101,8 @@ public class PostingServiceImpl implements PostingService {
         if (userId != null) {
             liked = likeRepository.existsByPostingIdAndUserId(postId, userId);
             bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, userId);
-            if (viewRepository.existsByPostIdAndUserId(postId, userId)) {
-                post.incrementViewCount();
-            } else {
-                viewRepository.save(new PostView(post, userId));
+            if (!viewRepository.existsByPostIdAndUserId(postId, userId)) {
+        viewRepository.save(new PostView(post, userId));
             }
         }
         List<Tag> tags = tagService.getPostTags(post);
@@ -131,7 +129,7 @@ public class PostingServiceImpl implements PostingService {
                         .build();
         postRepository.save(post);
         if (postType == PostingType.POLL) {
-            Poll poll = new Poll(request.getPollTitle(), post);
+            Poll poll = new Poll(request.getPollTitle(), post, request.isAllowMultipleVotes());
             pollRepository.save(poll);
 
             List<PostDto.PollItem> pollOptionsRequest = request.getPoll().getPollOptions();

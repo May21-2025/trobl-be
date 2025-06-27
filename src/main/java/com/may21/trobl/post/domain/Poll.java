@@ -20,6 +20,8 @@ public class Poll {
     @Setter
     private String title;
 
+    private Boolean allowMultipleVotes = false;
+
     @Setter
     @OneToMany(
             mappedBy = "poll",
@@ -32,10 +34,14 @@ public class Poll {
     @ManyToOne(fetch = FetchType.LAZY)
     private Posting posting;
 
-    public Poll(String pollTitle, Posting post) {
+    public Poll(String pollTitle, Posting post, Boolean allowMultipleVotes) {
         this.title = pollTitle;
         this.posting = post;
+        this.allowMultipleVotes = allowMultipleVotes != null && allowMultipleVotes;
     }
 
 
+    public boolean isAllowedMultipleVotes() {
+        return allowMultipleVotes != null && allowMultipleVotes;
+    }
 }

@@ -149,13 +149,14 @@ public class PostDto {
     public static class PollDto {
         private Long pollId;
         private String title;
+        private boolean allowMultipleVotes ;
         private boolean showPollResult;
         private List<PollItem> pollOptions;
 
         public PollDto(Poll poll, List<Long> votedOptionIds, boolean isOwner) {
             this.pollId = poll.getId();
             this.title = poll.getTitle();
-
+            this.allowMultipleVotes = poll.isAllowedMultipleVotes();
             this.pollOptions = PollItem.fromPollOption(poll.getPollOptions(), votedOptionIds);
 
             boolean hasVoted = false;
@@ -205,6 +206,7 @@ public class PostDto {
         private String postType;
         private OpinionItem optionItem;
         private PollDto poll;
+        private Boolean allowMultipleVotes;
         private List<TagDto.Request> tags;
 
         public String getTitle() {
@@ -221,6 +223,10 @@ public class PostDto {
 
         public String getContent() {
             return escapeHtml(content);
+        }
+
+        public boolean isAllowMultipleVotes() {
+            return allowMultipleVotes != null && allowMultipleVotes;
         }
 
     }
