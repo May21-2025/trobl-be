@@ -4,6 +4,8 @@ import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.Map;
+
 public class AuthDto {
 
     @Getter
@@ -28,7 +30,7 @@ public class AuthDto {
         private String username;
         private String password;
         private String nickname;
-        private String email;
+        private Map<String, String> oAuthData;
     }
 
     @Getter

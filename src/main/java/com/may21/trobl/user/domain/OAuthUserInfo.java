@@ -10,12 +10,14 @@ public class OAuthUserInfo {
     private final String provider;
     private final String providerId;
     private final String email;
+    private final Map<String, String> data;
 
     @Builder
-    public OAuthUserInfo(String provider, String providerId, String email) {
+    public OAuthUserInfo(String provider, String providerId, String email, Map<String, String> data) {
         this.provider = provider;
         this.providerId = providerId;
         this.email = email;
+        this.data = data;
     }
 
     public static OAuthUserInfo of(

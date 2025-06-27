@@ -23,8 +23,8 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public AuthDto.SignUpResponse registerAdminUser(AuthDto.SignUpRequest signUpDto) {
-        User user = userService.registerAdminUser(signUpDto);
+    public AuthDto.SignUpResponse registerUser(AuthDto.SignUpRequest signUpDto) {
+        User user = userService.registerUser(signUpDto);
         notificationService.setNotificationSetting(user);
         return new AuthDto.SignUpResponse(user);
     }

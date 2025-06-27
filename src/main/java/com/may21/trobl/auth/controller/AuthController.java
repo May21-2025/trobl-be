@@ -28,7 +28,7 @@ public class AuthController {
 
     @PostMapping("/sign-up")
     public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto) {
-        AuthDto.SignUpResponse response = authorizationService.registerAdminUser(signUpDto);
+        AuthDto.SignUpResponse response = authorizationService.registerUser(signUpDto);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

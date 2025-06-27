@@ -5,6 +5,8 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.auth.AuthDto;
+import com.may21.trobl.oAuth.AppleOAuthService;
+import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.OAuthUserInfo;
 import com.may21.trobl.user.domain.User;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Objects;
 
 @Slf4j
@@ -31,6 +34,8 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     @Lazy
     private final PasswordEncoder passwordEncoder;
+    private final GoogleOAuthService googleOAuthService;
+    private final AppleOAuthService appleOAuthService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -40,11 +45,36 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public User registerAdminUser(AuthDto.SignUpRequest signUpDto) {
+    public User registerUser(AuthDto.SignUpRequest signUpDto) {
         String username = signUpDto.getUsername();
         String password = signUpDto.getPassword();
         String nickname = signUpDto.getNickname();
-        String email = signUpDto.getEmail();
+
+        Map<String, String> oAuthData = signUpDto.getOAuthData();
+        if(oAuthData != null && !oAuthData.isEmpty()) {
+            String provider = oAuthData.get("provider");
+            if (username ==null && (provider == null || provider.isEmpty())) {
+                throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            }
+            OAuthProvider oAuthProvider = OAuthProvider.fromString(provider);
+            switch (oAuthProvider) {
+                case GOOGLE -> {
+                    String accessToken = oAuthData.get("accessToken");
+                    String idToken = oAuthData.get("idToken");
+                    if (accessToken == null || accessToken.isEmpty()) {
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                    }
+                    username = googleOAuthService.getEmailFromGoogleToken(accessToken);
+                }
+                case APPLE -> {
+                    String identityToken = oAuthData.get("identityToken");
+                    if (identityToken == null || identityToken.isEmpty()) {
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                    }
+                    username = appleOAuthService.getEmailFromAppleToken(identityToken);
+                }
+            }
+        }
 
         if (userRepository.existsByUsername(username)) {
             throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
@@ -52,7 +82,6 @@ public class UserService implements UserDetailsService {
         User user =
                 User.builder()
                         .username(username)
-                        .encryptEmail(passwordEncoder.encode(email))
                         .encryptPassword(passwordEncoder.encode(password))
                         .nickname(nickname)
                         .role(RoleType.ADMIN)

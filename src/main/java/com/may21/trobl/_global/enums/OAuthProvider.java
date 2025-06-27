@@ -13,4 +13,13 @@ public enum OAuthProvider {
     OAuthProvider(String title) {
         this.title = title;
     }
+
+    public static OAuthProvider fromString(String provider) {
+        for (OAuthProvider oAuthProvider : OAuthProvider.values()) {
+            if (oAuthProvider.title.equalsIgnoreCase(provider)) {
+                return oAuthProvider;
+            }
+        }
+        return NONE;
+    }
 }

@@ -26,7 +26,6 @@ public class UserController {
     private final PostingService postingService;
     private final CommentService commentService;
     private final AuthorizationService authorizationService;
-    private final DefaultOAuth2UserService defaultOAuth2UserService;
 
 
     @GetMapping("/bookmarks")

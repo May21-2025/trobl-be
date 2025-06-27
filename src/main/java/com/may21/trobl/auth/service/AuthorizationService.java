@@ -4,7 +4,7 @@ import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.user.domain.User;
 
 public interface AuthorizationService {
-    AuthDto.SignUpResponse registerAdminUser(AuthDto.SignUpRequest signUpDto);
+    AuthDto.SignUpResponse registerUser(AuthDto.SignUpRequest signUpDto);
 
     boolean checkIfUserUnregisteredIn30days(String email);
 
