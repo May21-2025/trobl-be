@@ -22,7 +22,7 @@ public class Advertisement {
 
     private Integer priority;
 
-    private Boolean isActive;
+    private Boolean active;
 
     private LocalDateTime startDate;
 
@@ -36,5 +36,13 @@ public class Advertisement {
     private List<AdRecord> records;
 
     public String getImageUrl(AdType adType) {
+        if (adType == AdType.BANNER_AD) {
+            return "https://example.com/banner/" + id + ".jpg";
+        } else if (adType == AdType.BIG_BANNER_AD) {
+            return "https://example.com/interstitial/" + id + ".jpg";
+        } else if (adType == AdType.FAIR_VIEW_AD) {
+            return "https://example.com/native/" + id + ".jpg";
+        }
+        return null;
     }
 }

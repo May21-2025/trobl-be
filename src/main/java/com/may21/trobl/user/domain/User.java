@@ -63,8 +63,6 @@ public class User implements UserDetails, OAuth2User {
     @Column(name = "role")
     private List<String> roles;
 
-    private OAuthProvider oAuthProvider = OAuthProvider.NONE;
-
     private String provider;
     private int failedLoginAttempts;
 
@@ -163,5 +161,10 @@ public class User implements UserDetails, OAuth2User {
     }
 
     public void setNotification(NotificationType type, Boolean enabled) {
+    }
+
+    public OAuthProvider getOauthProvider() {
+        if (oauthProvider == null) return OAuthProvider.NONE;
+        return oauthProvider;
     }
 }

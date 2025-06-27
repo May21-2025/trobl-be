@@ -23,14 +23,13 @@ import java.util.Map;
 public class GoogleOAuthService {
     private final UserRepository userRepository;
 
-    RestTemplate restTemplate;
     String userinfoUrl = "https://www.googleapis.com/oauth2/v1/userinfo";
     String revokeUri = "https://oauth2.googleapis.com/revoke";
 
     public User getUserFromGoogleToken(String accessToken) {
         String email = getEmailFromGoogleToken(accessToken);
         User user = userRepository.findByEmail(email).orElse(null);
-        if (user != null && user.getOAuthProvider() != OAuthProvider.GOOGLE)
+        if (user != null && user.getOauthProvider() != OAuthProvider.GOOGLE)
             throw new BusinessException(ExceptionCode.GOOGLE_USER_NOT_FOUND);
         return user;
     }
