@@ -1,5 +1,6 @@
 package com.may21.trobl.user.domain;
 
+import com.may21.trobl._global.component.GlobalValues;
 import com.may21.trobl._global.enums.Language;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.enums.OAuthProvider;
@@ -7,7 +8,6 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.domain.NotificationSetting;
-import com.may21.trobl.storage.GoogleCloudStorageService;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,7 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -35,7 +34,7 @@ import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_
 @Getter
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "app_users")
-public class User implements UserDetails, OAuth2User  {
+public class User implements UserDetails, OAuth2User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -60,6 +59,10 @@ public class User implements UserDetails, OAuth2User  {
 
     private Long partnerId;
 
+    private String address;
+
+    private String thumbnailKey;
+
     private OAuthProvider oauthProvider;
 
     @OneToOne(cascade = CascadeType.ALL)
@@ -77,6 +80,9 @@ public class User implements UserDetails, OAuth2User  {
     private boolean accountNonLocked = true;
     private boolean credentialsNonExpired = true;
     private boolean enabled = true;
+
+    @CreatedDate
+    private LocalDate signUpDate;
 
 
     public User(Long userId, String subject, String s, Collection<GrantedAuthority> authorities) {
@@ -102,6 +108,31 @@ public class User implements UserDetails, OAuth2User  {
         this.password = encryptPassword == null ? "oauth" : encryptPassword;
         this.nickname = nickname;
         this.roles = List.of(role.name());
+    }
+
+    public void update(UserDto.Request request) {
+        String newNickname = request.getNickname();
+        String newAddress = request.getAddress();
+        LocalDate newWeddingAnniversaryDate = request.getWeddingAnniversaryDate();
+        Boolean newMarried = request.getMarried();
+        String imageKey = request.getImageKey();
+        if (newNickname != null && !newNickname.isEmpty()) {
+            this.updateNickname(newNickname);
+        }
+        if (newAddress != null && !newAddress.isEmpty()) {
+            this.address = newAddress;
+        }
+        if (newWeddingAnniversaryDate != null) {
+            this.weddingAnniversaryDate = newWeddingAnniversaryDate;
+            this.married = newMarried != null ? newMarried : false;
+        }
+        if (imageKey != null) {
+            this.thumbnailKey = imageKey.isEmpty() ? null : imageKey;
+        }
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailKey == null ? null : GlobalValues.getCdnUrl() + USER_PROFILE_IMAGE_PATH + thumbnailKey;
     }
 
     public void setPartner(User partner) {
