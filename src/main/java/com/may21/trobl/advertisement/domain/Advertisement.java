@@ -1,11 +1,14 @@
 package com.may21.trobl.advertisement.domain;
 
+import com.may21.trobl._global.component.GlobalValues;
 import com.may21.trobl._global.enums.AdType;
 import jakarta.persistence.*;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.may21.trobl._global.component.GlobalValues.AD_IMAGE_PATH;
 
 @Entity
 @Getter
@@ -36,13 +39,7 @@ public class Advertisement {
     private List<AdRecord> records;
 
     public String getImageUrl(AdType adType) {
-        if (adType == AdType.BANNER_AD) {
-            return "https://example.com/banner/" + id + ".jpg";
-        } else if (adType == AdType.BIG_BANNER_AD) {
-            return "https://example.com/interstitial/" + id + ".jpg";
-        } else if (adType == AdType.FAIR_VIEW_AD) {
-            return "https://example.com/native/" + id + ".jpg";
-        }
-        return null;
+        String path = AD_IMAGE_PATH + "/" + brandName + "/" + adType.name().toLowerCase() + ".png";
+        return GlobalValues.getCdnUrl() + path;
     }
 }

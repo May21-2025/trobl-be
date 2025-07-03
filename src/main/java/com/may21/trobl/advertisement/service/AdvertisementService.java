@@ -37,12 +37,9 @@ public class AdvertisementService {
 
         recordAdView(selectedAd, adType, userId);
 
-        return convertToDto(selectedAd, adType);
-    }
-
-    private static AdvertisementDto.Response convertToDto(Advertisement selectedAd, AdType adType) {
         return new AdvertisementDto.Response(selectedAd, adType);
     }
+
 
     /**
      * 가중치 기반 선택 알고리즘

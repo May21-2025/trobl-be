@@ -13,13 +13,16 @@ public class GlobalValues {
 
 
     public static final String USER_PROFILE_IMAGE_PATH = "public/thumbnails/users/";
+    public static final String AD_IMAGE_PATH = "public/ads/";
+
     public static String getBEVersion() {
         return MAIN_VERSION + "." + DEV_VERSION + "." + STAGE_VERSION;
     }
 
     private static String cdnKey;
 
-    @Getter private static String cdnUrl;
+    @Getter
+    private static String cdnUrl;
 
     private static void initUrl() {
         if (cdnKey != null) {
