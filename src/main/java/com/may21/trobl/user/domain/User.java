@@ -8,6 +8,7 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.domain.NotificationSetting;
+import com.may21.trobl.storage.GoogleCloudStorageService;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -34,7 +35,7 @@ import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_
 @Getter
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "app_users")
-public class User implements UserDetails, OAuth2User {
+public class User implements UserDetails, OAuth2User  {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
