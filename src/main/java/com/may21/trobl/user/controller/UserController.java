@@ -6,6 +6,7 @@ import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
+import com.may21.trobl.storage.StorageService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.service.UserService;
@@ -14,9 +15,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/users")
@@ -26,6 +26,7 @@ public class UserController {
     private final PostingService postingService;
     private final CommentService commentService;
     private final AuthorizationService authorizationService;
+    private final StorageService storageService;
 
 
     @GetMapping("/bookmarks")
@@ -34,6 +35,7 @@ public class UserController {
         Page<PostDto.ListItem> response = postingService.getBookmarkedPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
 
     @PatchMapping("/bookmarks")
     public ResponseEntity<Message> updateNotificationSetting(@AuthenticationPrincipal User user, @RequestParam String type, @RequestParam boolean enabled) {
@@ -102,10 +104,10 @@ public class UserController {
     }
 
     @PutMapping("/profiles")
-    public ResponseEntity<Message> updateUserProfile(
-            @RequestBody UserDto.InfoRequest userRequestDto,
-            @AuthenticationPrincipal User user) {
-        UserDto.Info response = userService.updateUserProfile(userRequestDto, user.getId());
+    public ResponseEntity<Message> updateUserProfile(@AuthenticationPrincipal User user, @RequestParam(required = false) MultipartFile image, @RequestParam UserDto.Request request) {
+        String imageKey = storageService.uploadUserProfileImage(user.getId(), image);
+        request.setImageKey(imageKey);
+        UserDto.Info response = userService.updateUserProfile(user.getId(), request);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -137,7 +139,7 @@ public class UserController {
     }
 
     @GetMapping("/unregister")
-    public ResponseEntity<Message> unregister(@AuthenticationPrincipal User user)  {
+    public ResponseEntity<Message> unregister(@AuthenticationPrincipal User user) {
         boolean response = authorizationService.unregister(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
