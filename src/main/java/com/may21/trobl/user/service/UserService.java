@@ -51,9 +51,9 @@ public class UserService implements UserDetailsService {
         String nickname = signUpDto.getNickname();
 
         Map<String, String> oAuthData = signUpDto.getOAuthData();
-        if(oAuthData != null && !oAuthData.isEmpty()) {
+        if (oAuthData != null && !oAuthData.isEmpty()) {
             String provider = oAuthData.get("provider");
-            if (username ==null && (provider == null || provider.isEmpty())) {
+            if (username == null && (provider == null || provider.isEmpty())) {
                 throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
             }
             OAuthProvider oAuthProvider = OAuthProvider.fromString(provider);
@@ -130,8 +130,11 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public UserDto.Info updateUserProfile(UserDto.InfoRequest userRequestDto, Long userId) {
-        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+    public UserDto.Info updateUserProfile(Long userId, UserDto.Request request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        user.update(request);
+        return new UserDto.Info(user);
     }
 
     public UserDto.AlertSetting getEmailAlarmStatus(Long userId) {
@@ -253,5 +256,13 @@ public class UserService implements UserDetailsService {
 
         userRepository.delete(user);
         return true;
+    }
+
+    public User getUserByEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        return userRepository.findByUsername(email)
+                .orElse(null);
     }
 }

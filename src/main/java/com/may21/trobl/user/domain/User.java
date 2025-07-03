@@ -7,12 +7,16 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.domain.NotificationSetting;
+import com.may21.trobl.storage.GoogleCloudStorageService;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,12 +27,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_PATH;
+
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "app_users")
-public class User implements UserDetails, OAuth2User {
+public class User implements UserDetails, OAuth2User  {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

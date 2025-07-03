@@ -1,7 +1,10 @@
 package com.may21.trobl.user;
 
+import com.may21.trobl._global.component.GlobalValues;
+import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
@@ -11,29 +14,32 @@ public class UserDto {
     @AllArgsConstructor
     public static class Info {
         private final Long userId;
-        private final String name;
-        private final String createdAt;
-        private final String updatedAt;
+        private final String nickname;
+        private final String thumbnailUrl;
+
+        public Info(User user) {
+            this.userId = user.getId();
+            this.nickname = user.getNickname();
+            this.thumbnailUrl = user.getThumbnailKey() != null ?
+                    GlobalValues.getCdnUrl()+user.getThumbnailKey() : null;
+        }
     }
 
     @Getter
-    public class InfoDetail extends Info {
+    public static class InfoDetail extends Info {
         private final String email;
-        private final String phoneNumber;
         private final String address;
+        private final boolean married;
+        private final LocalDate marriedDate;
+        private final LocalDate signedUpAt;
 
-        public InfoDetail(
-                Long userId,
-                String name,
-                String createdAt,
-                String updatedAt,
-                String email,
-                String phoneNumber,
-                String address) {
-            super(userId, name, createdAt, updatedAt);
-            this.email = email;
-            this.phoneNumber = phoneNumber;
-            this.address = address;
+        public InfoDetail(User user) {
+            super(user);
+            this.email = user.getEmail();
+            this.address = user.getAddress();
+            this.married = user.isMarried();
+            this.marriedDate = user.getWeddingAnniversaryDate();
+            this.signedUpAt = user.getSignUpDate();
         }
     }
 
@@ -66,5 +72,15 @@ public class UserDto {
         private final boolean comment;
         private final boolean like;
         private final boolean view;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public class Request {
+        private final String nickname;
+        private final String address;
+        private final Boolean married;
+        private final LocalDate weddingAnniversaryDate;
+        @Setter  private String imageKey;
     }
 }

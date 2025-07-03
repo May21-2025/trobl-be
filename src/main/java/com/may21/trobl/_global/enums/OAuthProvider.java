@@ -4,6 +4,7 @@ public enum OAuthProvider {
     NONE("none"),
     GOOGLE("google"),
     APPLE("apple"),
+    KAKAO("kakao"),
     ;
 
 
