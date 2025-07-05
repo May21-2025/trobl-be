@@ -6,6 +6,8 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.report.ReportPost;
+import com.may21.trobl.report.ReportPostRepository;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.service.TagService;
@@ -41,6 +43,7 @@ public class PostingServiceImpl implements PostingService {
     private final PollRepository pollRepository;
     private final TagService tagService;
     private final CommentService commentService;
+    private final ReportPostRepository reportPostRepository;
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
@@ -102,7 +105,7 @@ public class PostingServiceImpl implements PostingService {
             liked = likeRepository.existsByPostingIdAndUserId(postId, userId);
             bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, userId);
             if (!viewRepository.existsByPostIdAndUserId(postId, userId)) {
-        viewRepository.save(new PostView(post, userId));
+                viewRepository.save(new PostView(post, userId));
             }
         }
         List<Tag> tags = tagService.getPostTags(post);
@@ -564,5 +567,21 @@ public class PostingServiceImpl implements PostingService {
     public void evictAllTopPosts() {
         log.info("Evicting all cached top posts");
         // This method will clear the cache for all top posts
+    }
+
+    @Override
+    public boolean reportPost(Long userId, Long postId, PostDto.ReportRequest reportRequest) {
+        Posting post =
+                postRepository
+                        .findById(postId)
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+        ReportPost reportPost = new ReportPost(post, userId, reportRequest);
+
+        int count = reportPostRepository.countReportPostByPostId(postId);
+        if (count >= 10) {
+            post.setReported(true);
+        }
+        reportPostRepository.save(reportPost);
+        return true;
     }
 }

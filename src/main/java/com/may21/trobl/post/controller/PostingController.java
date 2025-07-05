@@ -86,7 +86,14 @@ public class PostingController {
         boolean response = postingService.deletePost(user.getId(), postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-
+    @PutMapping("/{postId}/report")
+    public ResponseEntity<Message> reportPost(
+            @PathVariable Long postId,
+            @RequestBody PostDto.ReportRequest reportRequest,
+            @AuthenticationPrincipal User user) {
+        boolean response = postingService.reportPost(user.getId(), postId,reportRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     @PostMapping("/{postId}/fair-view")
     public ResponseEntity<Message> addPairView(
             @PathVariable Long postId,

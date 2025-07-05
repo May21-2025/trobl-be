@@ -272,4 +272,15 @@ public class PostDto {
     ) {
     }
 
+    @Getter
+    public class ReportRequest {
+        private String reportReason;
+        private String reportType;
+
+        public ReportRequest(String reportReason, String reportType) {
+            this.reportReason = reportReason;
+            this.reportType = reportType;
+        }
+
+    }
 }

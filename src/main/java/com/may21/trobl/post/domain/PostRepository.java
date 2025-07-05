@@ -22,7 +22,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
                     SELECT p FROM Posting p LEFT JOIN p.postLikes l
                     LEFT JOIN p.poll poll
                     LEFT JOIN  poll.pollOptions
-                    WHERE p.postType = :postingType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true
+                    WHERE p.reported !=true AND p.postType = :postingType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true
                     ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
                     LIMIT :count
                     """)
@@ -33,25 +33,25 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
                     SELECT p FROM Posting p LEFT JOIN p.postLikes l
                     LEFT JOIN p.poll poll
                     LEFT JOIN poll.pollOptions
-                    WHERE p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.postLikes) DESC
+                    WHERE p.reported !=true AND p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.postLikes) DESC
                     LIMIT :count
                     """)
     List<Posting> findTopPostsByLikes(int count, PostingType postingType);
 
-    @Query("SELECT p FROM Posting p " + "WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.viewCount DESC " + "LIMIT :count")
+    @Query("SELECT p FROM Posting p " + "WHERE p.reported !=true AND p.postType = :postingType AND p.confirmed = true ORDER BY p.viewCount DESC " + "LIMIT :count")
     List<Posting> findTopPostsByViews(int count, PostingType postingType);
 
     @Query("""
             SELECT p FROM Posting p
             LEFT JOIN  p.poll poll
             LEFT JOIN  poll.pollOptions
-            WHERE p.postType = :postingType AND p.confirmed = true ORDER BY p.shareCount DESC LIMIT :count
+            WHERE p.reported !=true AND p.postType = :postingType AND p.confirmed = true ORDER BY p.shareCount DESC LIMIT :count
             """)
     List<Posting> findTopPostsByShares(int count, PostingType postingType);
 
     @Query(
             "SELECT p FROM Posting p LEFT JOIN p.comments l "
-                    + "WHERE p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.comments) DESC "
+                    + "WHERE p.reported !=true AND p.postType = :postingType AND p.confirmed = true ORDER BY SIZE(p.comments) DESC "
                     + "LIMIT :count")
     List<Posting> findTopPostsByComments(int count, PostingType postingType);
 
@@ -61,7 +61,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             LEFT JOIN p.poll poll
                 JOIN poll.pollOptions po
             JOIN po.pollVotes pv
-                WHERE p.confirmed = true
+                WHERE p.reported !=true AND p.confirmed = true
             GROUP BY p
             ORDER BY COUNT(pv) DESC
             LIMIT :count
@@ -85,7 +85,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
 
     @Query(value = """
             SELECT * FROM posting p
-            WHERE post_type = :postingType AND p.confirmed = true 
+            WHERE p.reported !=true AND post_type = :postingType AND p.confirmed = true 
             ORDER BY RANDOM() 
             LIMIT :count
             """, nativeQuery = true)
@@ -114,7 +114,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             "LEFT JOIN p.poll poll " +
             "LEFT JOIN p.fairViews fairView " +
             "LEFT JOIN p.tags tag " +
-            "WHERE p.confirmed = true AND (" +
+            "WHERE p.reported !=true AND p.confirmed = true AND (" +
             "LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(poll.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +

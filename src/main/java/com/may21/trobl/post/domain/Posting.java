@@ -72,6 +72,9 @@ public class Posting extends ContentEntity {
     @Setter
     private Boolean confirmed;
 
+    @Setter
+    private Boolean reported;
+
     @Builder
     public Posting(
             String title, PostingType postType, String content, Long userId, String nickname) {

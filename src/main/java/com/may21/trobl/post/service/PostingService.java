@@ -80,4 +80,7 @@ public interface PostingService {
 
     @CacheEvict(value = "topPosts", allEntries = true)
     void evictAllTopPosts();
+
+    @Transactional
+    boolean reportPost(Long userId, Long postId, PostDto.ReportRequest reportRequest);
 }
