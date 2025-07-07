@@ -2,7 +2,6 @@ package com.may21.trobl.report;
 
 import com.may21.trobl._global.enums.ReportType;
 import com.may21.trobl._global.enums.TargetType;
-import com.may21.trobl.post.dto.PostDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -34,11 +33,7 @@ public class Report {
         this.targetId = targetId;
         this.targetType = targetType;
         this.reportedBy = userId;
-        this.reason = ReportType.fromStr(reportRequest.getReportType());
+        this.reason = reportRequest.getReportType();
         this.description = reportRequest.getReportReason() != null ? reportRequest.getReportReason() : "";
-
-
     }
-
-
 }

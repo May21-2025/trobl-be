@@ -206,7 +206,6 @@ public class PostDto {
         private String postType;
         private OpinionItem optionItem;
         private PollDto poll;
-        private Boolean allowMultipleVotes;
         private List<TagDto.Request> tags;
 
         public String getTitle() {
@@ -226,7 +225,7 @@ public class PostDto {
         }
 
         public boolean isAllowMultipleVotes() {
-            return allowMultipleVotes != null && allowMultipleVotes;
+            return poll.isAllowMultipleVotes();
         }
 
     }
