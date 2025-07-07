@@ -6,6 +6,7 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
+import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.user.domain.User;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -46,8 +47,9 @@ public class PostingController {
     }
 
     @GetMapping("/top-list")
-    public ResponseEntity<Message> getTopListPostsView(@RequestParam(required = false, defaultValue = "all") String type, @RequestParam(required = false, defaultValue = "10") int count) {
-        List<PostDto.Card> response = postingService.getTop10Views(type);
+    public ResponseEntity<Message> getTopListPostsView(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "all") String type, @RequestParam(required = false, defaultValue = "10") int count) {
+        Long userId = user != null ? user.getId() : null;
+        List<PostDto.Card> response = postingService.getTop10Views(type, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -86,14 +88,16 @@ public class PostingController {
         boolean response = postingService.deletePost(user.getId(), postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PutMapping("/{postId}/report")
     public ResponseEntity<Message> reportPost(
             @PathVariable Long postId,
-            @RequestBody PostDto.ReportRequest reportRequest,
+            @RequestBody ReportDto.Request reportRequest,
             @AuthenticationPrincipal User user) {
-        boolean response = postingService.reportPost(user.getId(), postId,reportRequest);
+        boolean response = postingService.reportPost(user.getId(), postId, reportRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PostMapping("/{postId}/fair-view")
     public ResponseEntity<Message> addPairView(
             @PathVariable Long postId,

@@ -1,13 +1,14 @@
 package com.may21.trobl.post.service;
 
 import com.may21.trobl._global.enums.PostingType;
+import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
-import com.may21.trobl.report.ReportPost;
-import com.may21.trobl.report.ReportPostRepository;
+import com.may21.trobl.report.ReportDto;
+import com.may21.trobl.report.ReportService;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.service.TagService;
@@ -43,11 +44,12 @@ public class PostingServiceImpl implements PostingService {
     private final PollRepository pollRepository;
     private final TagService tagService;
     private final CommentService commentService;
-    private final ReportPostRepository reportPostRepository;
+    private final ReportService reportService;
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
-        Page<Posting> posts = postRepository.findAll(pageable);
+        List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
+        Page<Posting> posts = postRepository.findAllExceptBlocked(pageable, blockedPostIds);
         Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
         List<User> users = userRepository.findAllById(userIds);
         List<Posting> postList = posts.stream().toList();
@@ -64,20 +66,22 @@ public class PostingServiceImpl implements PostingService {
                 });
     }
 
-    @Cacheable(value = "topPosts", key = "#type", condition = "#type != null")
+    @Cacheable(value = "topPosts", key = "#type + '_' + (#userId != null ? #userId : 'anonymous')",
+            condition = "#type != null")
     @Override
-    public List<PostDto.Card> getTop10Views(String type) {
+    public List<PostDto.Card> getTop10Views(String type, Long userId) {
 
         LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3);
-
+        List<Long> blockedPostIds = userId != null ? reportService.getBlockedTargetIds(userId, TargetType.POSTING) : List.of();
         List<Posting> posts =
                 switch (type.toLowerCase()) {
-                    case "like" -> postRepository.findTopPostsByLikes(10, PostingType.POLL);
-                    case "view" -> postRepository.findTopPostsByViews(10, PostingType.POLL);
-                    case "share" -> postRepository.findTopPostsByShares(10, PostingType.POLL);
-                    case "comment" -> postRepository.findTopPostsByComments(10, PostingType.POLL);
-                    case "vote" -> postRepository.findTopPostsByVotes(10);
-                    default -> postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo, PostingType.POLL);
+                    case "like" -> postRepository.findTopPostsByLikes(10, PostingType.POLL, blockedPostIds);
+                    case "view" -> postRepository.findTopPostsByViews(10, PostingType.POLL, blockedPostIds);
+                    case "share" -> postRepository.findTopPostsByShares(10, PostingType.POLL, blockedPostIds);
+                    case "comment" -> postRepository.findTopPostsByComments(10, PostingType.POLL, blockedPostIds);
+                    case "vote" -> postRepository.findTopPostsByVotes(10, blockedPostIds);
+                    default ->
+                            postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo, PostingType.POLL, blockedPostIds);
                 };
         Map<Long, Integer> commentMaps = commentService.getPostCommentMap(posts);
         List<PostDto.Card> response = new ArrayList<>();
@@ -115,7 +119,6 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public PostDto.Detail createPost(PostDto.Request request, Long userId) {
-
         User user =
                 userRepository
                         .findById(userId)
@@ -412,7 +415,8 @@ public class PostingServiceImpl implements PostingService {
     @Override
     public List<PostDto.QuickPoll> getRandomQuickPoll(Long userId) {
 
-        List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL);
+        List<Long> blockedPostIds = userId != null ? reportService.getBlockedTargetIds(userId, TargetType.POSTING) : List.of();
+        List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL,blockedPostIds);
         List<PostDto.QuickPoll> response = new ArrayList<>();
         List<Long> votedOptionIds = voteRepository.findVotedOptionIdsByUserId(posts, userId);
         for (Posting post : posts) {
@@ -528,7 +532,9 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public List<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword) {
-        List<Posting> posts = postRepository.searchByKeyword(keyword);
+
+        List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
+        List<Posting> posts = postRepository.searchByKeyword(keyword, blockedPostIds);
 
         if (posts.isEmpty()) {
             return List.of();
@@ -570,18 +576,15 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
-    public boolean reportPost(Long userId, Long postId, PostDto.ReportRequest reportRequest) {
+    public boolean reportPost(Long userId, Long postId, ReportDto.Request reportRequest) {
         Posting post =
                 postRepository
                         .findById(postId)
                         .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
-        ReportPost reportPost = new ReportPost(post, userId, reportRequest);
-
-        int count = reportPostRepository.countReportPostByPostId(postId);
-        if (count >= 10) {
+        int reportedCount = reportService.report(userId, postId, TargetType.POSTING, reportRequest);
+        if (reportedCount >= 10) {
             post.setReported(true);
         }
-        reportPostRepository.save(reportPost);
         return true;
     }
 }

@@ -4,6 +4,7 @@ import com.may21.trobl._global.Message;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.notification.service.NotificationService;
+import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -62,4 +63,12 @@ public class CommentController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
+    @PutMapping("/{commentId}/report")
+    public ResponseEntity<Message> reportPost(
+            @PathVariable Long commentId,
+            @RequestBody ReportDto.Request reportRequest,
+            @AuthenticationPrincipal User user) {
+        boolean response = commentService.reportComment(user.getId(), commentId,reportRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 }

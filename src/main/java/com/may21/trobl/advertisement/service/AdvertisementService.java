@@ -86,7 +86,7 @@ public class AdvertisementService {
 
         recordAdView(selectedAd, adType, userId);
 
-        return convertToDto(selectedAd, adType);
+        return new AdvertisementDto.Response(selectedAd, adType);
     }
 
     /**
@@ -107,7 +107,7 @@ public class AdvertisementService {
 
         recordAdView(selectedAd, adType, userId);
 
-        return convertToDto(selectedAd, adType);
+        return new AdvertisementDto.Response(selectedAd, adType);
     }
 
     /**

@@ -1,7 +1,7 @@
 package com.may21.trobl.report;
 
 import com.may21.trobl._global.enums.ReportType;
-import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl.post.dto.PostDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -12,14 +12,14 @@ import lombok.NoArgsConstructor;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReportPost {
+public class Report {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long postId;
-    private Long userId;
+    private Long targetId;
+    private TargetType targetType;
 
     private Long reportedBy;
 
@@ -30,13 +30,15 @@ public class ReportPost {
     private String description;
 
 
-    public ReportPost(Posting post, Long userId, PostDto.ReportRequest reportRequest) {
-        this.postId = post.getId();
-        this.userId = post.getUserId();
+    public Report(Long targetId, TargetType targetType, Long userId, ReportDto.Request reportRequest) {
+        this.targetId = targetId;
+        this.targetType = targetType;
         this.reportedBy = userId;
         this.reason = ReportType.fromStr(reportRequest.getReportType());
         this.description = reportRequest.getReportReason() != null ? reportRequest.getReportReason() : "";
 
+
     }
+
 
 }

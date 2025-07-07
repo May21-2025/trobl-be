@@ -30,7 +30,7 @@ public class GlobalValues {
         }
     }
 
-    @Value("${CDN_LB_IP}")
+    @Value("${CDN_LB_DOMAIN}")
     public void setCdUrl(String cdnKey) {
         GlobalValues.cdnKey = cdnKey;
         initUrl();

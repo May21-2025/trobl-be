@@ -27,7 +27,7 @@ public class CacheScheduler {
         // 미리 캐시 워밍업
         String[] types = {"like", "view", "share", "comment", "vote", "default"};
         for (String type : types) {
-            postingService.getTop10Views(type);
+            postingService.getTop10Views(type, null);
         }
     }
 }

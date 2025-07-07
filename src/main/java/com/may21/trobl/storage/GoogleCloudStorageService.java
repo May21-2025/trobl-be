@@ -35,11 +35,11 @@ public class GoogleCloudStorageService implements StorageService {
     @Value("${BUCKET_NAME}")
     private String bucketName;
 
-    @Value("${CDN_LB_IP}")
+    @Value("${CDN_LB_DOMAIN}")
     private String cdnLbIp;
 
     public String uploadPublicFile(MultipartFile file, String folder) throws IOException {
-        String fileName = folder + "/" + UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+        String fileName = folder + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
 
         BlobId blobId = BlobId.of(bucketName, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)

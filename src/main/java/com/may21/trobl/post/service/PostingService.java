@@ -1,6 +1,7 @@
 package com.may21.trobl.post.service;
 
 import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.report.ReportDto;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +15,7 @@ public interface PostingService {
     Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId);
 
     @Transactional(readOnly = true)
-    List<PostDto.Card> getTop10Views(String type);
+    List<PostDto.Card> getTop10Views(String type, Long userId);
 
     @Transactional
     PostDto.Detail getPostDetail(Long postId, Long userId);
@@ -82,5 +83,5 @@ public interface PostingService {
     void evictAllTopPosts();
 
     @Transactional
-    boolean reportPost(Long userId, Long postId, PostDto.ReportRequest reportRequest);
+    boolean reportPost(Long userId, Long postId, ReportDto.Request reportRequest);
 }

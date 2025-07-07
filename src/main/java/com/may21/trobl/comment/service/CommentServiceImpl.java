@@ -1,5 +1,6 @@
 package com.may21.trobl.comment.service;
 
+import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.comment.domain.Comment;
@@ -9,6 +10,8 @@ import com.may21.trobl.comment.domain.CommentRepository;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.post.domain.PostRepository;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.report.ReportDto;
+import com.may21.trobl.report.ReportService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +32,18 @@ public class CommentServiceImpl implements CommentService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final CommentLikeRepository likeRepository;
+    private final ReportService reportService;
 
     @Override
     public List<CommentDto.Response> getComments(Long postId, Long userId) {
         List<Comment> comments = commentRepository.findByPostId(postId);
+        List<Long> commentIds = comments.stream().map(Comment::getId).toList();
+        List<Long> blockedCommentIds = reportService.getBlockedTargetIds(userId, commentIds, TargetType.COMMENT);
+        if (!blockedCommentIds.isEmpty()) {
+            comments = comments.stream()
+                    .filter(comment -> !blockedCommentIds.contains(comment.getId()))
+                    .toList();
+        }
         List<Long> userIds = comments.stream().map(Comment::getUserId).distinct().toList();
         List<User> users = userRepository.findByIdIn(userIds);
         Map<Long, User> userMap =
@@ -175,5 +186,19 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public boolean existsByPostIdAndUserId(Long postId, Long userId) {
         return commentRepository.existsByPostingIdAndUserId(postId, userId);
+    }
+
+    @Override
+    public boolean reportComment(Long userId, Long commentId, ReportDto.Request reportRequest) {
+        Comment comment =
+                commentRepository
+                        .findById(commentId)
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
+
+        int reportedCount = reportService.report(userId, commentId, TargetType.COMMENT, reportRequest);
+        if (reportedCount >= 10) {
+            comment.setReported(true);
+        }
+        return true;
     }
 }

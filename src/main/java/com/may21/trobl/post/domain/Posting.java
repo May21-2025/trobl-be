@@ -84,6 +84,7 @@ public class Posting extends ContentEntity {
         this.viewCount = 0;
         this.shareCount = 0;
         this.confirmed = postType != PostingType.FAIR_VIEW;
+        this.reported = false;
     }
 
     public void incrementViewCount() {
@@ -179,5 +180,9 @@ public class Posting extends ContentEntity {
             return 0;
         }
         return comments.size();
+    }
+
+    public boolean isReported() {
+        return reported != null && reported;
     }
 }

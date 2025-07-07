@@ -2,6 +2,7 @@ package com.may21.trobl.comment.service;
 
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.report.ReportDto;
 import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,4 +34,7 @@ public interface CommentService {
 
     @Transactional(readOnly = true)
     boolean existsByPostIdAndUserId(Long postId, Long userId);
+
+    @Transactional
+    boolean reportComment(Long id, Long commentId, ReportDto.Request reportRequest);
 }

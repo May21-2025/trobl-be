@@ -24,6 +24,9 @@ public class Comment extends Timestamped {
     @Column(columnDefinition = "text")
     private String content;
 
+    @Setter
+    private Boolean reported = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     private Posting posting;
 
@@ -45,9 +48,14 @@ public class Comment extends Timestamped {
         this.content = content;
         this.posting = post;
         this.parentComment = comment;
+        this.reported = false;
     }
 
     public int getLikeCount() {
         return commentLikes == null ? 0 : commentLikes.size();
+    }
+
+    public boolean isReported() {
+        return reported != null && reported;
     }
 }
