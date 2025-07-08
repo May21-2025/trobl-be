@@ -1,6 +1,5 @@
 package com.may21.trobl.storage;
 
-import com.google.api.client.util.Value;
 import com.google.cloud.Binding;
 import com.google.cloud.Policy;
 import com.google.cloud.storage.Acl;
@@ -10,6 +9,7 @@ import com.google.cloud.storage.Storage;
 import com.may21.trobl._global.enums.ImageSize;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,10 +30,10 @@ import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_
 @Slf4j
 @RequiredArgsConstructor
 public class GoogleCloudStorageService implements StorageService {
-    private Storage storage;
+    private final Storage storage;
 
     @Value("${BUCKET_NAME}")
-    private String bucketName;
+    private String BUCKET_NAME;
 
     @Value("${CDN_LB_DOMAIN}")
     private String cdnLbIp;
@@ -41,7 +41,7 @@ public class GoogleCloudStorageService implements StorageService {
     public String uploadPublicFile(MultipartFile file, String folder) throws IOException {
         String fileName = folder + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
 
-        BlobId blobId = BlobId.of(bucketName, fileName);
+        BlobId blobId = BlobId.of(BUCKET_NAME, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                 .setContentType(file.getContentType())
                 .setAcl(Collections.singletonList(Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER))) // 공개 읽기 권한
@@ -54,7 +54,7 @@ public class GoogleCloudStorageService implements StorageService {
         if (cdnLbIp != null && !cdnLbIp.isEmpty()) {
             return String.format("https://%s/%s", cdnLbIp, fileName);
         } else {
-            return String.format("https://storage.googleapis.com/%s/%s", bucketName, fileName);
+            return String.format("https://storage.googleapis.com/%s/%s", BUCKET_NAME, fileName);
         }
     }
 
@@ -65,7 +65,7 @@ public class GoogleCloudStorageService implements StorageService {
         // 이미지 리사이징 (실제 구현시에는 BufferedImage 사용)
         byte[] optimizedImage = optimizeImage(file.getBytes(), size);
 
-        BlobId blobId = BlobId.of(bucketName, fileName);
+        BlobId blobId = BlobId.of(BUCKET_NAME, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                 .setContentType("image/webp") // WebP 형식으로 최적화
                 .setAcl(Collections.singletonList(Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER)))
@@ -88,7 +88,7 @@ public class GoogleCloudStorageService implements StorageService {
             return String.format("http://%s/%s", cdnLbIp, fileName);
         } else {
             // CDN이 비활성화되어 있으면 일반 Storage URL 반환
-            return String.format("https://storage.googleapis.com/%s/%s", bucketName, fileName);
+            return String.format("https://storage.googleapis.com/%s/%s", BUCKET_NAME, fileName);
         }
     }
 
@@ -101,7 +101,7 @@ public class GoogleCloudStorageService implements StorageService {
 
     // 버킷을 공개로 설정
     public void makeBucketPublic() {
-        Policy originalPolicy = storage.getIamPolicy(bucketName);
+        Policy originalPolicy = storage.getIamPolicy(BUCKET_NAME);
 
         // 새로운 바인딩 생성
         Binding newBinding = Binding.newBuilder()
@@ -118,12 +118,12 @@ public class GoogleCloudStorageService implements StorageService {
                 .setEtag(originalPolicy.getEtag())
                 .build();
 
-        storage.setIamPolicy(bucketName, updatedPolicy);
+        storage.setIamPolicy(BUCKET_NAME, updatedPolicy);
     }
 
     // 파일 삭제 (CDN 캐시 무효화 포함)
     public boolean deleteFileWithCacheInvalidation(String fileName) {
-        boolean deleted = storage.delete(BlobId.of(bucketName, fileName));
+        boolean deleted = storage.delete(BlobId.of(BUCKET_NAME, fileName));
         if (deleted && cdnLbIp != null && !cdnLbIp.isEmpty()) {
             // CDN 캐시 무효화 요청 (실제 구현 필요)
             invalidateCdnCache(fileName);
@@ -140,14 +140,14 @@ public class GoogleCloudStorageService implements StorageService {
     public String uploadUserProfileImage(Long userId, MultipartFile file) {
         try {
 
-            String thumbnailFileName = USER_PROFILE_IMAGE_PATH + userId+ ".webp";
+            String imageKey = userId+ ".webp";
+            String thumbnailFileName = USER_PROFILE_IMAGE_PATH + imageKey;
 
             byte[] thumbnailBytes = createThumbnail(file.getBytes(), 150, 150);
 
-            BlobId blobId = BlobId.of(bucketName, thumbnailFileName);
+            BlobId blobId = BlobId.of(BUCKET_NAME, thumbnailFileName);
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                     .setContentType("image/webp")
-                    .setAcl(Collections.singletonList(Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER)))
                     .setCacheControl("public, max-age=2592000") // 30일 캐싱
                     .setMetadata(Map.of(
                             "userId", String.valueOf(userId),
@@ -159,7 +159,7 @@ public class GoogleCloudStorageService implements StorageService {
 
             storage.create(blobInfo, thumbnailBytes);
 
-            return getCdnUrl(thumbnailFileName);
+            return imageKey;
 
         } catch (IOException e) {
             log.info(e.getMessage());
