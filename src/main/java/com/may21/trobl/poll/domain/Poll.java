@@ -1,5 +1,6 @@
-package com.may21.trobl.post.domain;
+package com.may21.trobl.poll.domain;
 
+import com.may21.trobl.post.domain.Posting;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

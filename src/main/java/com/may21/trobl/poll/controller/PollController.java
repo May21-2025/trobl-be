@@ -1,4 +1,4 @@
-package com.may21.trobl.post.controller;
+package com.may21.trobl.poll.controller;
 
 import com.may21.trobl._global.Message;
 import com.may21.trobl.post.service.PostingService;

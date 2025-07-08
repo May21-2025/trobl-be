@@ -5,6 +5,12 @@ import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.comment.service.CommentService;
+import com.may21.trobl.poll.domain.Poll;
+import com.may21.trobl.poll.domain.PollOption;
+import com.may21.trobl.poll.domain.PollVote;
+import com.may21.trobl.poll.repository.PollOptionRepository;
+import com.may21.trobl.poll.repository.PollRepository;
+import com.may21.trobl.poll.repository.VoteRepository;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.report.ReportDto;
@@ -16,6 +22,8 @@ import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -45,11 +53,13 @@ public class PostingServiceImpl implements PostingService {
     private final TagService tagService;
     private final CommentService commentService;
     private final ReportService reportService;
+    private final CacheManager cacheManager;
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
         List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
-        Page<Posting> posts = postRepository.findAllExceptBlocked(pageable, blockedPostIds);
+        List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, TargetType.USER);
+        Page<Posting> posts = postRepository.findAllExceptBlocked(pageable, blockedPostIds, blockedUserIds);
         Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
         List<User> users = userRepository.findAllById(userIds);
         List<Posting> postList = posts.stream().toList();
@@ -416,7 +426,7 @@ public class PostingServiceImpl implements PostingService {
     public List<PostDto.QuickPoll> getRandomQuickPoll(Long userId) {
 
         List<Long> blockedPostIds = userId != null ? reportService.getBlockedTargetIds(userId, TargetType.POSTING) : List.of();
-        List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL,blockedPostIds);
+        List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL, blockedPostIds);
         List<PostDto.QuickPoll> response = new ArrayList<>();
         List<Long> votedOptionIds = voteRepository.findVotedOptionIdsByUserId(posts, userId);
         for (Posting post : posts) {
@@ -534,7 +544,8 @@ public class PostingServiceImpl implements PostingService {
     public List<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword) {
 
         List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
-        List<Posting> posts = postRepository.searchByKeyword(keyword, blockedPostIds);
+        List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, TargetType.USER);
+        List<Posting> posts = postRepository.searchByKeyword(keyword, blockedPostIds, blockedUserIds);
 
         if (posts.isEmpty()) {
             return List.of();
@@ -585,6 +596,21 @@ public class PostingServiceImpl implements PostingService {
         if (reportedCount >= 10) {
             post.setReported(true);
         }
+        evictTopPostsCache(userId);
         return true;
+    }
+
+
+    private void evictTopPostsCache(Long userId) {
+        Cache cache = cacheManager.getCache("topPosts");
+        if (cache == null || userId == null) return;
+
+        List<String> types = List.of("like", "view", "share", "comment", "vote");
+        String userKey = userId.toString();
+
+        for (String type : types) {
+            String key = type + "_" + userKey;
+            cache.evictIfPresent(key);
+        }
     }
 }

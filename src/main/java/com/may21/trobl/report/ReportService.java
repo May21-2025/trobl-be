@@ -1,6 +1,8 @@
 package com.may21.trobl.report;
 
 import com.may21.trobl._global.enums.TargetType;
+import com.may21.trobl.comment.domain.Comment;
+import com.may21.trobl.post.domain.Posting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,5 +31,49 @@ public class ReportService {
 
     public List<Long> getBlockedTargetIds(Long userId, TargetType targetType) {
         return reportRepository.findIdsByReportedByAndTargetType(userId, targetType);
+    }
+
+    public List<Comment> filterBlockedComments(Long userId, List<Comment> comments) {
+        List<Long> commentIds = comments.stream()
+                .map(Comment::getId)
+                .toList();
+        List<Report> reports = reportRepository.getRelatedReports(userId, commentIds, TargetType.COMMENT, TargetType.USER);
+        List<Long> blockedCommentIds = reports.stream()
+                .filter(report -> report.getTargetType() == TargetType.COMMENT)
+                .map(Report::getTargetId)
+                .toList();
+        List<Long> blockedUserIds = reports.stream()
+                .filter(report -> report.getTargetType() == TargetType.USER)
+                .map(Report::getTargetId)
+                .toList();
+        if (!blockedCommentIds.isEmpty()) {
+            comments = comments.stream()
+                    .filter(comment -> !blockedCommentIds.contains(comment.getId())
+                            && !blockedUserIds.contains(comment.getUserId()))
+                    .toList();
+        }
+        return comments;
+    }
+
+    public List<Posting> filterBlockedPosts(Long userId, List<Posting> posts) {
+        List<Long> postIds = posts.stream()
+                .map(Posting::getId)
+                .toList();
+        List<Report> reports = reportRepository.getRelatedReports(userId, postIds, TargetType.POSTING, TargetType.USER);
+        List<Long> blockedPostIds = reports.stream()
+                .filter(report -> report.getTargetType() == TargetType.POSTING)
+                .map(Report::getTargetId)
+                .toList();
+        List<Long> blockedUserIds = reports.stream()
+                .filter(report -> report.getTargetType() == TargetType.USER)
+                .map(Report::getTargetId)
+                .toList();
+        if (!blockedPostIds.isEmpty()) {
+            posts = posts.stream()
+                    .filter(post -> !blockedPostIds.contains(post.getId())
+                            && !blockedUserIds.contains(post.getUserId()))
+                    .toList();
+        }
+        return posts;
     }
 }

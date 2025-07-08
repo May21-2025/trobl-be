@@ -1,5 +1,7 @@
-package com.may21.trobl.post.domain;
+package com.may21.trobl.poll.repository;
 
+import com.may21.trobl.poll.domain.PollVote;
+import com.may21.trobl.post.domain.Posting;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

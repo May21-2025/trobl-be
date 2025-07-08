@@ -24,4 +24,10 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     List<Long> findIdsByReportedByAndTargetType(Long userId, TargetType targetType);
 
     boolean existsByTargetIdAndTargetTypeAndReportedBy(Long targetId, TargetType targetType, Long reportedBy);
+
+    @Query("""
+            SELECT r FROM Report r
+            WHERE r.reportedBy = :userId AND ((r.targetType = :targetType AND r.targetId IN :commentIds) OR (r.targetType = :userType))
+            """)
+    List<Report> getRelatedReports(Long userId, List<Long> commentIds, TargetType targetType, TargetType userType);
 }

@@ -80,7 +80,7 @@ public class UserController {
     }
 
     @PatchMapping("/marriage-info")
-    public ResponseEntity<Message> updateInformation(@AuthenticationPrincipal User user, @RequestBody UserDto.InfoRequest requestBody) {
+    public ResponseEntity<Message> updateInformation(@AuthenticationPrincipal User user, @RequestBody UserDto.MarriedInfo requestBody) {
         boolean response = userService.updateInformation(user.getId(), requestBody);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
@@ -105,10 +105,9 @@ public class UserController {
     }
 
     @PutMapping("/profiles")
-    public ResponseEntity<Message> updateUserProfile(@AuthenticationPrincipal User user, @RequestParam(required = false) MultipartFile image, @RequestParam UserDto.Request request) {
+    public ResponseEntity<Message> updateUserProfileImage(@AuthenticationPrincipal User user, @RequestParam(required = false) MultipartFile image) {
         String imageKey = storageService.uploadUserProfileImage(user.getId(), image);
-        request.setImageKey(imageKey);
-        UserDto.Info response = userService.updateUserProfile(user.getId(), request);
+        UserDto.Info response = userService.updateUserProfileImage(user.getId(),imageKey);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

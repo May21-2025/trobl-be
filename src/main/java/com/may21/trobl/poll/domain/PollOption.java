@@ -1,4 +1,4 @@
-package com.may21.trobl.post.domain;
+package com.may21.trobl.poll.domain;
 
 import jakarta.persistence.*;
 import lombok.*;

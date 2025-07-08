@@ -1,5 +1,7 @@
-package com.may21.trobl.post.domain;
+package com.may21.trobl.poll.repository;
 
+import com.may21.trobl.poll.domain.Poll;
+import com.may21.trobl.poll.domain.PollOption;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

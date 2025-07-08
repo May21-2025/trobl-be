@@ -2,8 +2,8 @@ package com.may21.trobl.post.dto;
 
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl.post.domain.FairView;
-import com.may21.trobl.post.domain.Poll;
-import com.may21.trobl.post.domain.PollOption;
+import com.may21.trobl.poll.domain.Poll;
+import com.may21.trobl.poll.domain.PollOption;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.dto.TagDto;

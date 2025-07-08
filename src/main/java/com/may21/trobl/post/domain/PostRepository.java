@@ -106,18 +106,18 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             "LEFT JOIN p.poll poll " +
             "LEFT JOIN p.fairViews fairView " +
             "LEFT JOIN p.tags tag " +
-            "WHERE p.reported !=true AND p.id NOT IN :blockedPostIds AND p.confirmed = true AND (" +
+            "WHERE p.reported !=true AND p.id NOT IN :blockedPostIds AND p.userId NOT IN :blockedUserIds AND p.confirmed = true AND (" +
             "LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(poll.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(fairView.content) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(tag.tag.name) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
             ")")
-    List<Posting> searchByKeyword(@Param("keyword") String keyword, List<Long> blockedPostIds);
+    List<Posting> searchByKeyword(@Param("keyword") String keyword, List<Long> blockedPostIds, List<Long> blockedUserIds);
 
 
     List<Posting> findAllByUserId(Long userId);
 
-    @Query("SELECT p FROM Posting p WHERE p.reported !=true AND p.id NOT IN :blockedPostIds AND p.confirmed = true")
-    Page<Posting> findAllExceptBlocked(Pageable pageable, List<Long> blockedPostIds);
+    @Query("SELECT p FROM Posting p WHERE p.reported !=true AND p.id NOT IN :blockedPostIds AND p.userId NOT IN :blockedUserIds AND p.confirmed = true")
+    Page<Posting> findAllExceptBlocked(Pageable pageable, List<Long> blockedPostIds, List<Long> blockedUserIds);
 }

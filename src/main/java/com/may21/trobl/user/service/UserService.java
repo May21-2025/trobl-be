@@ -133,14 +133,6 @@ public class UserService implements UserDetailsService {
         throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
     }
 
-    @Transactional
-    public UserDto.Info updateUserProfile(Long userId, UserDto.Request request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        user.update(request);
-        return new UserDto.Info(user);
-    }
-
     public UserDto.AlertSetting getEmailAlarmStatus(Long userId) {
         throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
     }
@@ -213,7 +205,7 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public boolean updateInformation(Long userId, UserDto.InfoRequest requestBody) {
+    public boolean updateInformation(Long userId, UserDto.MarriedInfo requestBody) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         user.updateInformation(requestBody);
@@ -279,5 +271,12 @@ public class UserService implements UserDetailsService {
         }
         return reportService.report(userId, targetId, TargetType.USER, reportRequest) > 0;
 
+    }
+
+    public UserDto.Info updateUserProfileImage(Long userId, String imageKey) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        user.setThumbnailKey(imageKey);
+        return new UserDto.Info(user);
     }
 }

@@ -1,10 +1,8 @@
 package com.may21.trobl.user;
 
-import com.may21.trobl._global.component.GlobalValues;
 import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.LocalDate;
 
@@ -20,8 +18,7 @@ public class UserDto {
         public Info(User user) {
             this.userId = user.getId();
             this.nickname = user.getNickname();
-            this.thumbnailUrl = user.getThumbnailKey() != null ?
-                    GlobalValues.getCdnUrl()+user.getThumbnailKey() : null;
+            this.thumbnailUrl = user.getThumbnailUrl();
         }
     }
 
@@ -44,7 +41,7 @@ public class UserDto {
     }
 
     @Getter
-    public class AlertSetting {
+    public static class AlertSetting {
         private final boolean emailNotification;
         private final boolean pushNotification;
 
@@ -55,11 +52,11 @@ public class UserDto {
     }
 
     @Getter
-    public class InfoRequest {
+    public static class MarriedInfo {
         private final LocalDate marriageDate;
         private final String partnerEmail;
 
-        public InfoRequest(LocalDate marriageDate, String partnerEmail) {
+        public MarriedInfo(LocalDate marriageDate, String partnerEmail) {
             this.marriageDate = marriageDate;
             this.partnerEmail = partnerEmail;
         }
@@ -67,20 +64,11 @@ public class UserDto {
 
     @Getter
     @AllArgsConstructor
-    public class NotificationSetting {
+    public static class NotificationSetting {
         private final boolean post;
         private final boolean comment;
         private final boolean like;
         private final boolean view;
     }
 
-    @Getter
-    @AllArgsConstructor
-    public class Request {
-        private final String nickname;
-        private final String address;
-        private final Boolean married;
-        private final LocalDate weddingAnniversaryDate;
-        @Setter  private String imageKey;
-    }
 }

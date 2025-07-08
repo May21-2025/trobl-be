@@ -35,22 +35,16 @@ public class CommentServiceImpl implements CommentService {
     private final ReportService reportService;
 
     @Override
-    public List<CommentDto.Response> getComments(Long postId, Long userId) {
+    public List<CommentDto.Response>  getComments(Long postId, Long userId) {
         List<Comment> comments = commentRepository.findByPostId(postId);
-        List<Long> commentIds = comments.stream().map(Comment::getId).toList();
-        List<Long> blockedCommentIds = reportService.getBlockedTargetIds(userId, commentIds, TargetType.COMMENT);
-        if (!blockedCommentIds.isEmpty()) {
-            comments = comments.stream()
-                    .filter(comment -> !blockedCommentIds.contains(comment.getId()))
-                    .toList();
-        }
-        List<Long> userIds = comments.stream().map(Comment::getUserId).distinct().toList();
+        List<Comment> filteredComments = reportService.filterBlockedComments(userId, comments);
+        List<Long> userIds = filteredComments.stream().map(Comment::getUserId).distinct().toList();
         List<User> users = userRepository.findByIdIn(userIds);
         Map<Long, User> userMap =
                 users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
-        List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, comments);
+        List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, filteredComments);
         List<Comment> likedList = likes.stream().map(CommentLike::getComment).toList();
-        return comments.stream()
+        return filteredComments.stream()
                 .map(
                         comment ->
                                 new CommentDto.Response(

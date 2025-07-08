@@ -8,13 +8,9 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.domain.NotificationSetting;
-import com.may21.trobl.storage.GoogleCloudStorageService;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
@@ -62,6 +58,7 @@ public class User implements UserDetails, OAuth2User  {
 
     private String address;
 
+    @Setter
     private String thumbnailKey;
 
     private OAuthProvider oauthProvider;
@@ -109,27 +106,6 @@ public class User implements UserDetails, OAuth2User  {
         this.password = encryptPassword == null ? "oauth" : encryptPassword;
         this.nickname = nickname;
         this.roles = List.of(role.name());
-    }
-
-    public void update(UserDto.Request request) {
-        String newNickname = request.getNickname();
-        String newAddress = request.getAddress();
-        LocalDate newWeddingAnniversaryDate = request.getWeddingAnniversaryDate();
-        Boolean newMarried = request.getMarried();
-        String imageKey = request.getImageKey();
-        if (newNickname != null && !newNickname.isEmpty()) {
-            this.updateNickname(newNickname);
-        }
-        if (newAddress != null && !newAddress.isEmpty()) {
-            this.address = newAddress;
-        }
-        if (newWeddingAnniversaryDate != null) {
-            this.weddingAnniversaryDate = newWeddingAnniversaryDate;
-            this.married = newMarried != null ? newMarried : false;
-        }
-        if (imageKey != null) {
-            this.thumbnailKey = imageKey.isEmpty() ? null : imageKey;
-        }
     }
 
     public String getThumbnailUrl() {
@@ -192,7 +168,7 @@ public class User implements UserDetails, OAuth2User  {
         this.nicknameUpdatedAt = LocalDate.now();
     }
 
-    public void updateInformation(UserDto.InfoRequest requestBody) {
+    public void updateInformation(UserDto.MarriedInfo requestBody) {
         if (requestBody.getMarriageDate() != null) {
             this.weddingAnniversaryDate = requestBody.getMarriageDate();
             this.married = true;

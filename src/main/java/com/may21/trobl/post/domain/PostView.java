@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Getter
 @EntityListeners(AuditingEntityListener.class)
-@Table(uniqueConstraints = @UniqueConstraint(name = "unique_user_post", columnNames = {"userId", "posting_id"}))
+@Table(uniqueConstraints = @UniqueConstraint(name = "unique_post_view", columnNames = {"userId", "posting_id"}))
 public class PostView {
 
     @Id
