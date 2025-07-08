@@ -4,7 +4,6 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +15,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-
 @Slf4j
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -27,8 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) {
 
         try {
             String token = jwtTokenUtil.getTokenFromRequest(request);
@@ -67,7 +63,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 request.setAttribute("exception", ExceptionCode.TOKEN_PARSE_FAILED);
             }
         }
-
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            log.error("JWT 필터 체인 실행 중 오류 발생: {}", e.getMessage());
+            if( e instanceof ExpiredJwtException) {
+                request.setAttribute("exception", ExceptionCode.ACCESS_TOKEN_EXPIRED);
+            } else {
+                request.setAttribute("exception", ExceptionCode.INVALID_ACCESS_TOKEN);
+            }
+        }
     }
 }

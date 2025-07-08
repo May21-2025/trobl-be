@@ -31,15 +31,11 @@ public class Report {
     @Enumerated(EnumType.STRING)
     private ReportType reason;
 
-    @Column(columnDefinition = "text")
-    private String description;
-
 
     public Report(Long targetId, TargetType targetType, Long userId, ReportDto.Request reportRequest) {
         this.targetId = targetId;
         this.targetType = targetType;
         this.reportedBy = userId;
         this.reason = reportRequest.getReportType();
-        this.description = reportRequest.getReportReason() != null ? reportRequest.getReportReason() : "";
     }
 }
