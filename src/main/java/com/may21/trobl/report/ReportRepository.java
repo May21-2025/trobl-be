@@ -22,4 +22,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             WHERE r.reportedBy = :userId AND r.targetType = :targetType
             """)
     List<Long> findIdsByReportedByAndTargetType(Long userId, TargetType targetType);
+
+    boolean existsByTargetIdAndTargetTypeAndReportedBy(Long targetId, TargetType targetType, Long reportedBy);
 }

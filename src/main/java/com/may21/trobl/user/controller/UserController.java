@@ -6,6 +6,7 @@ import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
+import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.storage.StorageService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
@@ -141,6 +142,15 @@ public class UserController {
     @GetMapping("/unregister")
     public ResponseEntity<Message> unregister(@AuthenticationPrincipal User user) {
         boolean response = authorizationService.unregister(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PutMapping("/{userId}/report")
+    public ResponseEntity<Message> reportPost(
+            @PathVariable Long userId,
+            @RequestBody ReportDto.Request reportRequest,
+            @AuthenticationPrincipal User user) {
+        boolean response = userService.reportUser(user.getId(), userId,reportRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }

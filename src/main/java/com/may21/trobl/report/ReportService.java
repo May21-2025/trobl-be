@@ -15,13 +15,16 @@ public class ReportService {
     private final ReportRepository reportRepository;
 
     public int report(Long userId, Long targetId, TargetType targetType, ReportDto.Request reportRequest) {
-        Report report = new Report(targetId, targetType, userId, reportRequest);
-        reportRepository.save(report);
+        if (!reportRepository.existsByTargetIdAndTargetTypeAndReportedBy(targetId, targetType, userId)) {
+
+            Report report = new Report(targetId, targetType, userId, reportRequest);
+            reportRepository.save(report);
+        }
         return reportRepository.countReportByTargetIdAndTargetType(targetId, targetType) + 1;
     }
 
     public List<Long> getBlockedTargetIds(Long userId, List<Long> targetIds, TargetType targetType) {
-        return  reportRepository.findBlockedIdsByUserIdAndTargetTypeInTargetIds(userId, targetType, targetIds);
+        return reportRepository.findBlockedIdsByUserIdAndTargetTypeInTargetIds(userId, targetType, targetIds);
     }
 
     public List<Long> getBlockedTargetIds(Long userId, TargetType targetType) {

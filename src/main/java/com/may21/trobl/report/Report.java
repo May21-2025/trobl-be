@@ -11,6 +11,12 @@ import lombok.NoArgsConstructor;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
+@Table(uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uk_report_unique_per_user_target",
+                columnNames = {"reportedBy", "targetId", "targetType"}
+        )
+})
 public class Report {
 
     @Id

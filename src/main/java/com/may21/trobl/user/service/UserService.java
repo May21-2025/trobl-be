@@ -2,11 +2,14 @@ package com.may21.trobl.user.service;
 
 import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.enums.RoleType;
+import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
+import com.may21.trobl.report.ReportDto;
+import com.may21.trobl.report.ReportService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.OAuthUserInfo;
 import com.may21.trobl.user.domain.User;
@@ -36,6 +39,7 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final GoogleOAuthService googleOAuthService;
     private final AppleOAuthService appleOAuthService;
+    private final ReportService reportService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -264,5 +268,16 @@ public class UserService implements UserDetailsService {
         }
         return userRepository.findByUsername(email)
                 .orElse(null);
+    }
+
+    public boolean reportUser(Long userId, Long targetId, ReportDto.Request reportRequest) {
+        if (userId.equals(targetId)) {
+            throw new BusinessException(ExceptionCode.FORBIDDEN);
+        }
+        if (reportRequest.getReportType() == null) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        return reportService.report(userId, targetId, TargetType.USER, reportRequest) > 0;
+
     }
 }
