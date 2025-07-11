@@ -2,7 +2,6 @@ package com.may21.trobl._global.security;
 
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
-import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
 import com.may21.trobl.user.domain.RefreshToken;
 import com.may21.trobl.user.domain.RefreshTokenRepository;
@@ -26,7 +25,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.may21.trobl._global.utility.HeaderExtractor.extractDeviceId;
@@ -51,18 +49,23 @@ public class JwtTokenUtil {
         this.refreshTokenRepository = refreshTokenRepository;
     }
 
-    public SecretKey getKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY_JWT.getBytes(StandardCharsets.UTF_8));
+    private SecretKey getSigningKey() {
+        try {
+            // Base64로 인코딩된 키라면 디코딩
+            byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+            return Keys.hmacShaKeyFor(decodedKey);
+        } catch (Exception e) {
+            // Base64가 아니라면 직접 UTF-8 바이트 사용
+            return Keys.hmacShaKeyFor(SECRET_KEY_JWT.getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     /**
      * JWT 토큰에서 사용자 이름 추출
      */
     public String extractUsername(String token) {
-        byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
-        Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
         return Jwts.parser()
-                .setSigningKey(restoredKey) // 복호화에 사용할 키
+                .verifyWith(getSigningKey())// 복호화에 사용할 키
                 .build().parseSignedClaims(token).getPayload()
                 .getSubject();             // 바로 subject 꺼냄
 
@@ -73,29 +76,17 @@ public class JwtTokenUtil {
      */
     public Date extractExpiration(String token) {
 
-        byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
-        Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
         return Jwts.parser()
-                .setSigningKey(restoredKey) // 복호화에 사용할 키
+                .verifyWith(getSigningKey())
                 .build().parseSignedClaims(token).getPayload()
                 .getExpiration();
-    }
-
-    /**
-     * JWT 토큰에서 특정 클레임 추출
-     */
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
     }
 
     /**
      * JWT 토큰에서 모든 클레임 추출
      */
     private Claims extractAllClaims(String token) {
-        SecretKey key = Keys.hmacShaKeyFor(SECRET_KEY_JWT.getBytes(StandardCharsets.UTF_8));
-
-        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload();
     }
 
     private Boolean isTokenExpired(String token) {
@@ -107,7 +98,7 @@ public class JwtTokenUtil {
      * RefreshToken로 Access Token 생성
      */
     public String generateTokenFromRefreshToken(User user, RefreshToken refreshToken, String deviceId) {
-        Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.DAYS);
+        Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.MINUTES);
         if (!Objects.equals(deviceId, refreshToken.getDeviceId()))
             throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED);
         byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
@@ -152,21 +143,13 @@ public class JwtTokenUtil {
 
     public User getAuthentication(String token) {
         Claims claims = getClaims(token);
-
-        String auth =
-                Optional.ofNullable(claims.get("auth", String.class))
-                        .orElseThrow(() -> new RuntimeException("잘못된 토큰입니다."));
         Long userId =
                 Optional.ofNullable(claims.get("userId", Long.class))
                         .orElseThrow(() -> new RuntimeException("잘못된 토큰입니다."));
 
-        Collection<GrantedAuthority> authorities =
-                Arrays.stream(auth.split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .map(SimpleGrantedAuthority::new)
-                        .collect(Collectors.toList());
-
+        List<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
         return new User(userId, claims.getSubject(), "", authorities);
     }
 
@@ -193,7 +176,7 @@ public class JwtTokenUtil {
     }
 
     private Claims getClaims(String jwt) {
-        return Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(jwt).getPayload();
+        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(jwt).getPayload();
     }
 
     /**
@@ -208,18 +191,19 @@ public class JwtTokenUtil {
     }
 
 
-    public User getUserFromValidateAccessToken(HttpServletRequest request) {
-        String token = getTokenFromRequest(request);
+    public User getUserFromValidateAccessToken(String token) {
         if (token == null) {
             throw new BusinessException(ExceptionCode.TOKEN_MISSING);
+        }
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
         }
         Claims claims = getClaims(token);
         Long userId = claims.get("userId", Long.class);
         String username = claims.getSubject();
-        List<GrantedAuthority> authorities =
-                Arrays.stream(claims.get("auth", String.class).split(","))
-                        .map(SimpleGrantedAuthority::new)
-                        .collect(Collectors.toList());
+        List<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
         return new User(userId, username, "", authorities);
     }
 
@@ -236,9 +220,7 @@ public class JwtTokenUtil {
     }
 
     public TokenInfo generateAccessAndRefreshToken(
-            AuthDto.Response authDto, String ipAddress, String deviceInfo, String deviceId) {
-
-        User user = new User(authDto.getUserId(), authDto.getUsername(), "", new ArrayList<>());
+            User user, String ipAddress, String deviceInfo, String deviceId) {
         RefreshToken refreshToken = generateRefreshToken(user, deviceId, null);
         String accessToken = generateTokenFromRefreshToken(user, refreshToken, deviceId);
         return new TokenInfo("Bearer", accessToken, refreshToken.getToken());

@@ -61,7 +61,7 @@ public class AppleOAuthService {
 
             // 4. 기존 JwtTokenUtil 사용해서 토큰 생성
             TokenInfo tokenInfo = jwtTokenUtil.generateAccessAndRefreshToken(
-                    authDto, ipAddress, deviceInfo, deviceId);
+                    user, ipAddress, deviceInfo, deviceId);
 
             saveRefreshToken(user.getId(), tokenInfo.getRefreshToken(), deviceId, ipAddress, deviceInfo);
 

@@ -39,7 +39,7 @@ public class KakaoOAuthService {
     String KAKAO_REDIRECT_URI;
 
     @Transactional
-    public AuthDto.Response signIn(String code) {
+    public User signIn(String code) {
         AuthDto.Token tokenDto = getAccessTokenByCode(code);
         String email = getUserEmail(tokenDto.getAccessToken());
         User user = userService.getUserByEmail(email);
@@ -49,7 +49,7 @@ public class KakaoOAuthService {
         if (user.getOauthProvider() != OAuthProvider.KAKAO) {
             throw new BusinessException(ExceptionCode.OAUTH2_AUTHORIZATION_NOT_FOUND);
         }
-        return new AuthDto.Response(user);
+        return user;
     }
 
     public AuthDto.Token getAccessTokenByCode(String code) {

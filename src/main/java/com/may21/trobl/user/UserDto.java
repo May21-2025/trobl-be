@@ -24,18 +24,22 @@ public class UserDto {
 
     @Getter
     public static class InfoDetail extends Info {
-        private final String email;
-        private final String address;
+        private final String username;
+        private final String OAuthType;
         private final boolean married;
+        private final String address;
+        private final UserDto.Info partnerInfo;
         private final LocalDate marriedDate;
         private final LocalDate signedUpAt;
 
-        public InfoDetail(User user) {
+        public InfoDetail(User user, User partner) {
             super(user);
-            this.email = user.getEmail();
-            this.address = user.getAddress();
+            this.username = user.getUsername();
+            this.OAuthType = user.getProvider() != null ? user.getProvider().name() : null;
             this.married = user.isMarried();
+            this.address = user.getAddress();
             this.marriedDate = user.getWeddingAnniversaryDate();
+            this.partnerInfo = partner != null ? new UserDto.Info(partner) : null;
             this.signedUpAt = user.getSignUpDate();
         }
     }

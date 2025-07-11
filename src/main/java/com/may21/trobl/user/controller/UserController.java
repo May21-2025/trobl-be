@@ -1,6 +1,7 @@
 package com.may21.trobl.user.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.auth.service.AuthorizationService;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
@@ -11,6 +12,7 @@ import com.may21.trobl.storage.StorageService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -28,118 +30,138 @@ public class UserController {
     private final CommentService commentService;
     private final AuthorizationService authorizationService;
     private final StorageService storageService;
+    private final JwtTokenUtil jwtTokenUtil;
 
 
     @GetMapping("/bookmarks")
-    public ResponseEntity<Message> getBookmarkedPosts(@AuthenticationPrincipal User user,
+    public ResponseEntity<Message> getBookmarkedPosts(
+            @RequestHeader("Authorization") String token,
                                                       @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<PostDto.ListItem> response = postingService.getBookmarkedPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
 
     @PatchMapping("/bookmarks")
-    public ResponseEntity<Message> updateNotificationSetting(@AuthenticationPrincipal User user, @RequestParam String type, @RequestParam boolean enabled) {
+    public ResponseEntity<Message> updateNotificationSetting(
+            @RequestHeader("Authorization") String token, @RequestParam String type, @RequestParam boolean enabled) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         UserDto.NotificationSetting response = userService.updateNotificationSetting(user.getId(), type, enabled);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/comments")
-    public ResponseEntity<Message> getMyComments(@AuthenticationPrincipal User user,
+    public ResponseEntity<Message> getMyComments(@RequestHeader("Authorization") String token,
                                                  @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<CommentDto.RecentInfo> response = commentService.getMyComments(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     // EMAIL ALARM SETTING
     @GetMapping("/email-alarm")
-    public ResponseEntity<Message> getEmailSettings(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> getEmailSettings(@RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         UserDto.AlertSetting response = userService.getEmailAlarmStatus(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PutMapping("/email-alarm")
     public ResponseEntity<Message> setEmailAlarmStatus(
-            @RequestBody UserDto.AlertSetting request, @AuthenticationPrincipal User user) {
+            @RequestBody UserDto.AlertSetting request, @RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         userService.setEmailAlarmStatus(request, user.getId());
         return new ResponseEntity<>(Message.success(null), HttpStatus.OK);
     }
 
     @GetMapping("/info")
-    public ResponseEntity<Message> getUserData(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> getUserData(@RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         UserDto.Info response = userService.getUserData(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
 
     @GetMapping("/likes")
-    public ResponseEntity<Message> getLikedPosts(@AuthenticationPrincipal User user,
+    public ResponseEntity<Message> getLikedPosts(@RequestHeader("Authorization") String token,
                                                  @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<PostDto.ListItem> response = postingService.getLikedPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PatchMapping("/marriage-info")
-    public ResponseEntity<Message> updateInformation(@AuthenticationPrincipal User user, @RequestBody UserDto.MarriedInfo requestBody) {
+    public ResponseEntity<Message> updateInformation(@RequestHeader("Authorization") String token, @RequestBody UserDto.MarriedInfo requestBody) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = userService.updateInformation(user.getId(), requestBody);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PatchMapping("/nickname")
-    public ResponseEntity<Message> updateNickname(@AuthenticationPrincipal User user, @RequestParam String nickname) {
+    public ResponseEntity<Message> updateNickname(@RequestHeader("Authorization") String token, @RequestParam String nickname) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = userService.updateNickname(user.getId(), nickname);
         postingService.setNickname(user.getId(), nickname);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/notifications")
-    public ResponseEntity<Message> getUsersNotification(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> getUsersNotification(@RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         UserDto.NotificationSetting response = userService.getUsersNotification(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/profiles")
-    public ResponseEntity<Message> getUserProfile(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> getUserProfile(@RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         UserDto.InfoDetail response = userService.getUserInfoDetail(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PutMapping("/profiles")
-    public ResponseEntity<Message> updateUserProfileImage(@AuthenticationPrincipal User user, @RequestParam(required = false) MultipartFile image) {
+    public ResponseEntity<Message> updateUserProfileImage(@RequestHeader("Authorization") String token, @RequestParam(required = false) MultipartFile image) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         String imageKey = storageService.uploadUserProfileImage(user.getId(), image);
         UserDto.Info response = userService.updateUserProfileImage(user.getId(),imageKey);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/posts")
-    public ResponseEntity<Message> getMyPosts(@AuthenticationPrincipal User user,
+    public ResponseEntity<Message> getMyPosts(@RequestHeader("Authorization") String token,
                                               @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<PostDto.ListItem> response = postingService.getMyPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PatchMapping("/partner")
-    public ResponseEntity<Message> matchPartner(@AuthenticationPrincipal User user, @RequestParam String partnerId) {
+    public ResponseEntity<Message> matchPartner(@RequestHeader("Authorization") String token, @RequestParam String partnerId) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = userService.matchPartner(user.getId(), partnerId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/visits")
-    public ResponseEntity<Message> getVisitedPosts(@AuthenticationPrincipal User user,
+    public ResponseEntity<Message> getVisitedPosts(@RequestHeader("Authorization") String token,
                                                    @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<PostDto.ListItem> response = postingService.getVisitedPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/voted")
-    public ResponseEntity<Message> getVotedPosts(@AuthenticationPrincipal User user,
+    public ResponseEntity<Message> getVotedPosts(@RequestHeader("Authorization") String token,
                                                  @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<PostDto.ListItem> response = postingService.getVotedPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/unregister")
-    public ResponseEntity<Message> unregister(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> unregister(@RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = authorizationService.unregister(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
@@ -148,7 +170,8 @@ public class UserController {
     public ResponseEntity<Message> reportPost(
             @PathVariable Long userId,
             @RequestBody ReportDto.Request reportRequest,
-            @AuthenticationPrincipal User user) {
+            @RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = userService.reportUser(user.getId(), userId,reportRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }

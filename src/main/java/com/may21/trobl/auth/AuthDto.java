@@ -1,9 +1,11 @@
 package com.may21.trobl.auth;
 
+import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 public class AuthDto {
@@ -27,11 +29,20 @@ public class AuthDto {
     }
 
     @Getter
+    @AllArgsConstructor
     public static class SignUpRequest {
-        private String username;
-        private String password;
-        private String nickname;
-        private Map<String, String> oAuthData;
+        private final String username;
+        private final String password;
+        private final String nickname;
+        private final String address;
+        private final Boolean married;
+        private final LocalDate marriedDate;
+        private final Long partnerId;
+        private final Map<String, String> oAuthData;
+
+        public boolean isMarried() {
+            return married != null && married;
+        }
     }
 
     @Getter
@@ -39,11 +50,13 @@ public class AuthDto {
         private final Long userId;
         private final String username;
         private final String nickname;
+        private final String thumbnailUrl;
 
         public Response(User user) {
             this.userId = user.getId();
             this.username = user.getUsername();
             this.nickname = user.getNickname();
+            this.thumbnailUrl = user.getThumbnailUrl();
         }
     }
 
@@ -92,4 +105,5 @@ public class AuthDto {
             this.idToken = idToken;
         }
     }
+
 }

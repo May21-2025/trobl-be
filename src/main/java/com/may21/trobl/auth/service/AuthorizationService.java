@@ -1,6 +1,7 @@
 package com.may21.trobl.auth.service;
 
 import com.may21.trobl.auth.AuthDto;
+import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 
 public interface AuthorizationService {
@@ -12,7 +13,7 @@ public interface AuthorizationService {
 
     boolean resendConfirmationCode(String email);
 
-    AuthDto.Response signIn(AuthDto.LoginRequest signRequestDto);
+    UserDto.InfoDetail signIn(AuthDto.LoginRequest signRequestDto);
 
     boolean changePassword(AuthDto.ChangePasswordRequest userDto, User user);
 

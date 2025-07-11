@@ -6,6 +6,7 @@ import com.may21.trobl._global.utility.HeaderExtractor;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
 import com.may21.trobl.auth.service.AuthorizationService;
+import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import jakarta.annotation.Nullable;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -27,8 +30,16 @@ public class AuthController {
     private final AuthorizationService authorizationService;
 
     @PostMapping("/sign-up")
-    public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto) {
+    public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto,HttpServletRequest request,
+                                              HttpServletResponse httpResponse)  {
         AuthDto.SignUpResponse response = authorizationService.registerUser(signUpDto);
+        User user = new User(response.getUserId(), null, "", List.of());
+        String ipAddress = HeaderExtractor.extractIpAddress(request);
+        String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
+        String deviceId = HeaderExtractor.extractDeviceId(request);
+        TokenInfo token =
+                jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
+        token.tokenToHeaders(httpResponse);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -60,14 +71,16 @@ public class AuthController {
             @RequestBody AuthDto.LoginRequest signRequestDto,
             HttpServletRequest request,
             HttpServletResponse response) {
-        AuthDto.Response authDto = authorizationService.signIn(signRequestDto);
+        UserDto.InfoDetail infoDto = authorizationService.signIn(signRequestDto);
         String ipAddress = HeaderExtractor.extractIpAddress(request);
         String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
         String deviceId = HeaderExtractor.extractDeviceId(request);
+
+        User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", List.of());
         TokenInfo token =
-                jwtTokenUtil.generateAccessAndRefreshToken(authDto, ipAddress, deviceIfo, deviceId);
+                jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
         token.tokenToHeaders(response);
-        return new ResponseEntity<>(Message.success(authDto), HttpStatus.OK);
+        return new ResponseEntity<>(Message.success(infoDto), HttpStatus.OK);
     }
 
     //  @GetMapping("/login/google")
@@ -196,8 +209,9 @@ public class AuthController {
 
     @PutMapping("/password")
     public ResponseEntity<Message> changePassword(
-            @RequestBody AuthDto.ChangePasswordRequest userDto, HttpServletRequest request) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(request);
+            @RequestBody AuthDto.ChangePasswordRequest userDto,
+            @RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = authorizationService.changePassword(userDto, user);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
@@ -229,8 +243,9 @@ public class AuthController {
     }
 
     @GetMapping("/logout")
-    public ResponseEntity<Message> logout(HttpServletRequest request) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(request);
+    public ResponseEntity<Message> logout(
+            @RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = authorizationService.logout(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
@@ -239,8 +254,8 @@ public class AuthController {
     public ResponseEntity<Message> unregisterUser(
             @Param("reason") Integer reason,
             @Param("detail") String detail,
-            HttpServletRequest httpRequest) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(httpRequest);
+            @RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = authorizationService.unregister(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }

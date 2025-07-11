@@ -130,7 +130,15 @@ public class UserService implements UserDetailsService {
     }
 
     public UserDto.InfoDetail getUserInfoDetail(Long userId) {
-        throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        Long partnerId = user.getPartnerId();
+        if (partnerId != null) {
+            User partner = userRepository.findById(partnerId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            return new UserDto.InfoDetail(user, partner);
+        }
+        return new UserDto.InfoDetail(user,null);
     }
 
     public UserDto.AlertSetting getEmailAlarmStatus(Long userId) {
@@ -273,10 +281,29 @@ public class UserService implements UserDetailsService {
 
     }
 
+    @Transactional
     public UserDto.Info updateUserProfileImage(Long userId, String imageKey) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         user.setThumbnailKey(imageKey);
         return new UserDto.Info(user);
+    }
+
+    @Transactional
+    public void updateUserProfile(User user, AuthDto.SignUpRequest signUpDto) {
+        if (signUpDto.getNickname() != null && !signUpDto.getNickname().isEmpty()) {
+            if (userRepository.existsByNickname(signUpDto.getNickname())) {
+                throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
+            }
+            user.updateNickname(signUpDto.getNickname());
+            if(signUpDto.isMarried()) {
+                User partner = userRepository.findById(signUpDto.getPartnerId())
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+                UserDto.MarriedInfo marriedInfo = new UserDto.MarriedInfo(signUpDto.getMarriedDate(), partner.getUsername());
+                user.updateInformation(marriedInfo);
+            }
+            user.updateAddress(signUpDto.getAddress());
+        }
+        userRepository.save(user);
     }
 }

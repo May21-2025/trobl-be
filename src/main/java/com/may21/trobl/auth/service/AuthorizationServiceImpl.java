@@ -7,6 +7,7 @@ import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
+import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import com.may21.trobl.user.service.UserService;
@@ -31,6 +32,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     @Override
     public AuthDto.SignUpResponse registerUser(AuthDto.SignUpRequest signUpDto) {
         User user = userService.registerUser(signUpDto);
+        userService.updateUserProfile(user, signUpDto);
         notificationService.setNotificationSetting(user);
         return new AuthDto.SignUpResponse(user);
     }
@@ -51,7 +53,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     }
 
     @Override
-    public AuthDto.Response signIn(AuthDto.LoginRequest signRequestDto) {
+    public UserDto.InfoDetail signIn(AuthDto.LoginRequest signRequestDto) {
         String username = signRequestDto.getUsername();
         String password = signRequestDto.getPassword();
         Map<String, String> oAuthData = signRequestDto.getOAuthData();
@@ -64,12 +66,11 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             OAuthProvider oAuthProvider = OAuthProvider.fromString(provider);
             switch (oAuthProvider) {
                 case GOOGLE -> {
-                    String accessToken = oAuthData.get("accessToken");
-                    String idToken = oAuthData.get("idToken");
-                    if (accessToken == null || accessToken.isEmpty()) {
+                    String serverAuthCode = oAuthData.get("serverAuthCode");
+                    if (serverAuthCode == null || serverAuthCode.isEmpty()) {
                         throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
                     }
-                    username = googleOAuthService.getEmailFromGoogleToken(accessToken);
+                    username = googleOAuthService.getEmailFromAuthToken(serverAuthCode);
                 }
                 case APPLE -> {
                     String identityToken = oAuthData.get("identityToken");
@@ -89,7 +90,9 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             }
         }
 
-        return new AuthDto.Response(user);
+        Long partnerId = user.getPartnerId();
+        User partner = partnerId != null ? userRepository.findById(partnerId).orElse(null) : null;
+        return new UserDto.InfoDetail(user, partner);
     }
 
     @Override

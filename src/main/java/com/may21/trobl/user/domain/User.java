@@ -61,7 +61,8 @@ public class User implements UserDetails, OAuth2User  {
     @Setter
     private String thumbnailKey;
 
-    private OAuthProvider oauthProvider;
+    @Enumerated(EnumType.STRING)
+    private OAuthProvider provider;
 
     @OneToOne(cascade = CascadeType.ALL)
     private NotificationSetting setting;
@@ -71,7 +72,6 @@ public class User implements UserDetails, OAuth2User  {
     @Column(name = "role")
     private List<String> roles;
 
-    private String provider;
     private int failedLoginAttempts;
 
     private boolean accountNonExpired = true;
@@ -102,7 +102,7 @@ public class User implements UserDetails, OAuth2User  {
     public User(String username, String encryptPassword, String encryptEmail, String nickname, String provider, RoleType role) {
         this.username = username;
         this.email = encryptEmail;
-        this.provider = provider == null ? "NONE" : provider;
+        this.provider = OAuthProvider.fromString(provider);
         this.password = encryptPassword == null ? "oauth" : encryptPassword;
         this.nickname = nickname;
         this.roles = List.of(role.name());
@@ -179,7 +179,14 @@ public class User implements UserDetails, OAuth2User  {
     }
 
     public OAuthProvider getOauthProvider() {
-        if (oauthProvider == null) return OAuthProvider.NONE;
-        return oauthProvider;
+        if (provider == null) return OAuthProvider.NONE;
+        return provider;
+    }
+
+    public void updateAddress(String address) {
+        if (address == null || address.isEmpty()) {
+            return;
+        }
+        this.address = address;
     }
 }
