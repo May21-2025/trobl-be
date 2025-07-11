@@ -1,15 +1,19 @@
 package com.may21.trobl._global.aop;
 
+import com.may21.trobl._global.component.PerformanceMetrics;
 import jakarta.annotation.PostConstruct;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.UUID;
 
 import static com.may21.trobl._global.component.AnsiColorCode.BROWN;
 import static com.may21.trobl._global.component.AnsiColorCode.TROBL_PINK;
@@ -21,93 +25,163 @@ public class TimeTraceAop {
 
     private static final Logger log = LoggerFactory.getLogger(TimeTraceAop.class);
     private final ApiQueryCounter apiQueryCounter;
+    private final PerformanceMetrics performanceMetrics;
 
     @Value("${STAGE}")
     private String stage;
 
+    @Value("${performance.monitor.detailed:true}")
+    private boolean detailedLogging;
+
+    @Value("${performance.monitor.simple-threshold:50}")
+    private int simpleThreshold;
+
     private String asciiLogo;
 
-    public TimeTraceAop(ApiQueryCounter apiQueryCounter) {
+    public TimeTraceAop(ApiQueryCounter apiQueryCounter, PerformanceMetrics performanceMetrics) {
         this.apiQueryCounter = apiQueryCounter;
+        this.performanceMetrics = performanceMetrics;
     }
 
     @PostConstruct
     public void init() {
-        asciiLogo =
-                "\n"
-                        + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀        ⠀⠀⢄⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀        ⠀⠀⠀⢜⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⢦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀       ⠀⠀⢠⢣⠃⠀⠀\n"
-                        + "⠀⠀⠀⠀⢇⢆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀       ⠀⠀⠀⡎⡎⠆⠀⠀\n"
-                        + "⠀⠀⠀⠀⢱⢱⢱⠀⠀⠀⠀⠀⠀⡀⡄⡄⡆⡆⡆⡆⡆⡤⡠⣀⣀⣀⡀⡄⢤⢰⢰⢰⢰⢠⢄⢄⠀⠀⠀⠀⠀⠀  ⠀⢀⢎⢎⢎⠅⠀⠀\n"
-                        + "⠀⠀⠀⠀⠐⢕⢕⢍⢆⢄⢀⢔⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢔⡒⡆⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡝⣔⢢⢀⠀⡀⡔⡕⡕⡕⡕⠁⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⠑⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⠕⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⢘⢜⢜⢜⢜⢜⢜⢜⢜⢜⣜⢜⣜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⣜⣜⣜⣜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⠜⠀⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⡰⡸⡸⡸⡸⡸⡸⡸⡸⠘⠈⠀⠁⠀⠁⠁⠑⠑⠑⠉⠊⠁⠁⠁⠀⠀⠀⠈⠈⠁⠃⠇⢇⢇⢕⢕⢕⢕⢕⢕⢕⡢⡀⠀⠀\n"
-                        + "⠀⠀⠀⡀⡆⡇⡇⡇⡇⡇⡇⣇⣷⣧⠀⠀⠀⢀⡆⠀⠀⠀⠀⠀⠀⠠⠀⠀⠀⠀⠀⠀⠀⣀⢀⠀⠀⢀⡕⠕⡕⡕⡕⢕⢕⢕⢜⢜⢔⠄\n"
-                        + "⡀⡄⡆⡇⡇⡇⡇⡇⡇⢇⢇⡛⡟⡿⡿⡿⣷⡿⣇⡀⡀⠀⠀⠀⠀⠜⠀⠀⠀⠀⠀⠀⣀⣿⣿⣿⣿⣿⣿⣷⣾⣮⢪⢪⢪⢪⢪⢪⢪⠊\n"
-                        + "⠈⠊⠊⠎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢆⢇⢇⢎⢎⢕⢕⡪⡢⡳⡰⡰⡰⡰⡲⣾⣿⣿⣿⣿⣿⣿⢿⡿⢟⢜⢜⢜⢜⢜⢜⢜⠜⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⠈⠈⠘⠸⠸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⢭⢡⠥⡱⡡⡢⡪⡪⡪⡪⡪⡪⡪⡪⡪⡪⠊⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⠇⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠪⢎⡎⡎⡎⡎⡎⡎⡎⡎⡎⡪⡪⡪⡪⡪⡪⡪⡪⠪⠪⡪⢪⠪⠪⠪⡪⡪⡪⡪⣪⠏⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠳⡳⡵⣕⣕⢕⢕⢕⢕⢕⢕⢕⢕⢕⢕⢜⠤⡄⡄⣀⢀⢄⡪⡪⡪⣪⢞⡕⠁⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠘⠱⡳⡽⣝⢞⣞⢼⡪⡮⣪⢎⣎⢮⣪⣪⡪⣲⡱⣕⢼⡪⡯⣺⠍⠀⠀⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠙⠕⢗⢯⢞⡽⡵⣫⣞⢵⡳⡵⣝⣞⢮⣳⡫⣞⠽⠁⠀⠀⠀⠀⠀⠀\n"
-                        + "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠉⠋⠚⠮⢳⠽⡝⡮⠺⠕⠗⠝⠁⠁⠀⠀⠀⠀⠀⠀⠀\n";
-        log.info("\n\n{}\n\n{}\n\n", color("STAGE : " + stage, BROWN), color(asciiLogo, TROBL_PINK));
+        asciiLogo = generateAsciiLogo();
+        log.info("\n\n{}\n\n{}\n\n",
+                color("STAGE : " + stage, BROWN),
+                color(asciiLogo, TROBL_PINK)
+        );
     }
 
     @Around("execution(* com.may21.trobl..controller..*(..))")
     public Object traceExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
-        if ("prod".equalsIgnoreCase(stage)) return joinPoint.proceed();
+        if ("prod".equalsIgnoreCase(stage)) {
+            return joinPoint.proceed();
+        }
 
-        long startTime = System.currentTimeMillis();
+        // 고유한 요청 ID 생성 (MDC에 저장)
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        MDC.put("requestId", requestId);
+
+        long startTime = System.nanoTime();
         String methodName = joinPoint.getSignature().getName();
+        String className = joinPoint.getSignature().getDeclaringType().getSimpleName();
+        String fullMethodName = className + "." + methodName;
         String requestURI = getCurrentUri();
 
-        Object result = joinPoint.proceed();
+        try {
+            // 메서드 실행 전 로그 (개발 환경에서만)
+            if ("local".equalsIgnoreCase(stage)) {
+                log.debug("🚀 Starting execution: {} | Request ID: {}", fullMethodName, requestId);
+            }
 
-        long execTime = System.currentTimeMillis() - startTime;
-        int queryCount = apiQueryCounter.getCount();
-        apiQueryCounter.reset();
+            Object result = joinPoint.proceed();
 
-        if (queryCount <= 15 && execTime <= 300) return result;
+            // 실행 시간 계산
+            long execTimeNanos = System.nanoTime() - startTime;
+            long execTimeMillis = execTimeNanos / 1_000_000;
+            int queryCount = apiQueryCounter.getCount();
+            apiQueryCounter.reset();
 
-        StringBuilder warn = new StringBuilder();
-        boolean isUrgent = false;
+            // 성능 메트릭 기록
+            performanceMetrics.recordPerformance(fullMethodName, execTimeMillis, queryCount);
 
-        Threshold queryThreshold = Thresholds.evaluateQuery(queryCount);
-        Threshold timeThreshold = Thresholds.evaluateTime(execTime);
+            // 성능 임계값 평가
+            Threshold queryThreshold = Thresholds.evaluateQuery(queryCount);
+            Threshold timeThreshold = Thresholds.evaluateTime(execTimeMillis);
+
+            // 로깅 전략 결정
+            boolean shouldLog = shouldLogPerformance(execTimeMillis, queryCount, queryThreshold, timeThreshold);
+
+            if (shouldLog) {
+                logPerformanceMetrics(requestURI, fullMethodName, execTimeMillis, queryCount,
+                        queryThreshold, timeThreshold, requestId);
+            }
+
+            // 심각한 성능 이슈 별도 경고
+            if (isCritical(queryThreshold, timeThreshold)) {
+                log.error("🚨 CRITICAL PERFORMANCE ISSUE: [{}] Request ID: {} | " +
+                                "Time: {}ms | Queries: {} | URI: {}",
+                        fullMethodName, requestId, execTimeMillis, queryCount, requestURI);
+            }
+
+            return result;
+
+        } finally {
+            MDC.remove("requestId");
+        }
+    }
+
+    private boolean shouldLogPerformance(long execTime, int queryCount,
+                                         Threshold queryThreshold, Threshold timeThreshold) {
+        // 임계값을 초과하거나 설정된 값보다 높은 경우 로깅
+        return queryThreshold != null || timeThreshold != null ||
+                queryCount > simpleThreshold || execTime > 100;
+    }
+
+    private void logPerformanceMetrics(String requestURI, String methodName, long execTime,
+                                       int queryCount, Threshold queryThreshold,
+                                       Threshold timeThreshold, String requestId) {
+
+        StringBuilder warnings = new StringBuilder();
 
         if (queryThreshold != null) {
-            isUrgent |= queryThreshold.isUrgent();
-            warn.append(formatWarning(methodName, "QUERY", queryThreshold));
+            warnings.append(formatWarning(methodName, "QUERY", queryThreshold));
         }
         if (timeThreshold != null) {
-            isUrgent |= timeThreshold.isUrgent();
-            warn.append(formatWarning(methodName, "EXECUTION TIME", timeThreshold));
+            warnings.append(formatWarning(methodName, "EXECUTION TIME", timeThreshold));
         }
 
-        log.info(
-                formatTable(
-                        requestURI,
-                        methodName,
-                        execTime,
-                        queryCount,
-                        queryThreshold,
-                        timeThreshold,
-                        warn.toString()));
-
-        if (isUrgent) {
-            log.error("URGENT WARNING: [{}] in CRITICAL state!", methodName);
+        // 상세 로깅 vs 간단 로깅
+        if (detailedLogging && (queryThreshold != null || timeThreshold != null)) {
+            // 상세한 성능 로그
+            log.info(formatPerformanceLog(requestURI, methodName, execTime, queryCount,
+                    queryThreshold, timeThreshold, warnings.toString()));
+        } else {
+            // 간단한 한 줄 로그
+            log.info("{} | Request ID: {}",
+                    formatSimplePerformanceLog(methodName, execTime, queryCount,
+                            queryThreshold, timeThreshold),
+                    requestId);
         }
+    }
 
-        return result;
+    private boolean isCritical(Threshold queryThreshold, Threshold timeThreshold) {
+        return (queryThreshold != null && queryThreshold.isUrgent()) ||
+                (timeThreshold != null && timeThreshold.isUrgent());
     }
 
     private String getCurrentUri() {
-        ServletRequestAttributes attrs =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        return attrs == null ? "NONE" : attrs.getRequest().getRequestURI();
+        try {
+            ServletRequestAttributes attrs =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            return attrs == null ? "NONE" : attrs.getRequest().getRequestURI();
+        } catch (Exception e) {
+            return "ERROR";
+        }
+    }
+
+    private String generateAsciiLogo() {
+        return """
+                
+                ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀        ⠀⠀⢄⠀⠀⠀
+                ⠀⠀⠀⠀⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀        ⠀⠀⠀⢜⠀⠀⠀
+                ⠀⠀⠀⠀⢦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀       ⠀⠀⢠⢣⠃⠀⠀
+                ⠀⠀⠀⠀⢇⢆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀       ⠀⠀⠀⡎⡎⠆⠀⠀
+                ⠀⠀⠀⠀⢱⢱⢱⠀⠀⠀⠀⠀⠀⡀⡄⡄⡆⡆⡆⡆⡆⡤⡠⣀⣀⣀⡀⡄⢤⢰⢰⢰⢰⢠⢄⢄⠀⠀⠀⠀⠀⠀  ⠀⢀⢎⢎⢎⠅⠀⠀
+                ⠀⠀⠀⠀⠐⢕⢕⢍⢆⢄⢀⢔⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢔⡒⡆⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡝⣔⢢⢀⠀⡀⡔⡕⡕⡕⡕⠁⠀⠀
+                ⠀⠀⠀⠀⠀⠑⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⡕⠕⠀⠀⠀
+                ⠀⠀⠀⠀⠀⠀⢘⢜⢜⢜⢜⢜⢜⢜⢜⢜⣜⢜⣜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⣜⣜⣜⣜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⢜⠜⠀⠀⠀⠀
+                ⠀⠀⠀⠀⠀⡰⡸⡸⡸⡸⡸⡸⡸⡸⠘⠈⠀⠁⠀⠁⠁⠑⠑⠑⠉⠊⠁⠁⠁⠀⠀⠀⠈⠈⠁⠃⠇⢇⢇⢕⢕⢕⢕⢕⢕⢕⡢⡀⠀⠀
+                ⠀⠀⠀⡀⡆⡇⡇⡇⡇⡇⡇⣇⣷⣧⠀⠀⠀⢀⡆⠀⠀⠀⠀⠀⠀⠠⠀⠀⠀⠀⠀⠀⠀⣀⢀⠀⠀⢀⡕⠕⡕⡕⡕⢕⢕⢕⢜⢜⢔⠄
+                ⡀⡄⡆⡇⡇⡇⡇⡇⡇⢇⢇⡛⡟⡿⡿⡿⣷⡿⣇⡀⡀⠀⠀⠀⠀⠜⠀⠀⠀⠀⠀⠀⣀⣿⣿⣿⣿⣿⣿⣷⣾⣮⢪⢪⢪⢪⢪⢪⢪⠊
+                ⠈⠊⠊⠎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢎⢆⢇⢇⢎⢎⢕⢕⡪⡢⡳⡰⡰⡰⡰⡲⣾⣿⣿⣿⣿⣿⣿⢿⡿⢟⢜⢜⢜⢜⢜⢜⢜⠜⠀
+                ⠀⠀⠀⠀⠀⠀⠈⠈⠘⠸⠸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⡸⢭⢡⠥⡱⡡⡢⡪⡪⡪⡪⡪⡪⡪⡪⡪⡪⠊⠀
+                ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⡇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⢇⠇⠀⠀
+                ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠪⢎⡎⡎⡎⡎⡎⡎⡎⡎⡎⡪⡪⡪⡪⡪⡪⡪⡪⠪⠪⡪⢪⠪⠪⠪⡪⡪⡪⡪⣪⠏⠀⠀⠀
+                ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠳⡳⡵⣕⣕⢕⢕⢕⢕⢕⢕⢕⢕⢕⢕⢜⠤⡄⡄⣀⢀⢄⡪⡪⡪⣪⢞⡕⠁⠀⠀⠀
+                ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠘⠱⡳⡽⣝⢞⣞⢼⡪⡮⣪⢎⣎⢮⣪⣪⡪⣲⡱⣕⢼⡪⡯⣺⠍⠀⠀⠀⠀⠀
+                ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠙⠕⢗⢯⢞⡽⡵⣫⣞⢵⡳⡵⣝⣞⢮⣳⡫⣞⠽⠁⠀⠀⠀⠀⠀⠀
+                ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠉⠋⠚⠮⢳⠽⡝⡮⠺⠕⠗⠝⠁⠁⠀⠀⠀⠀⠀⠀⠀
+                """;
     }
 }
