@@ -1,5 +1,6 @@
 package com.may21.trobl._global.utility;
 
+import com.may21.trobl._global.aop.ApiQueryCounter;
 import com.may21.trobl._global.aop.Threshold;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -7,6 +8,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import static com.may21.trobl._global.component.AnsiColorCode.*;
 
@@ -43,7 +45,8 @@ public class LogUtil {
             int queryCount,
             Threshold queryThreshold,
             Threshold timeThreshold,
-            String warning) {
+            String warning,
+            List<ApiQueryCounter.QueryTrace> queryTraces) {
         
         StringBuilder sb = new StringBuilder();
         
@@ -64,6 +67,16 @@ public class LogUtil {
         sb.append(formatMetric("⏱️  Execution Time", time + "ms", timeThreshold, time));
         sb.append(formatMetric("🗃️  Query Count", String.valueOf(queryCount), queryThreshold, queryCount));
         sb.append(formatMetric("📊 Performance Grade", getPerformanceGrade(queryThreshold, timeThreshold), null, 0));
+        
+        // 쿼리 추적 정보 (디버깅: 모든 경우에 표시)
+        if (!queryTraces.isEmpty()) {
+            sb.append("\n").append(color("🔍 QUERY CALL TRACES (",GRAY)).append(queryTraces.size()).append(color(" traces):", ORANGE)).append("\n");
+            for (ApiQueryCounter.QueryTrace trace : queryTraces) {
+                sb.append(color("  " + trace.toString(), GRAY)).append("\n");
+            }
+        } else {
+            sb.append("\n").append(color("🔍 QUERY CALL TRACES: No traces collected", ORANGE)).append("\n");
+        }
         
         // 경고 메시지
         if (!warning.isEmpty()) {
@@ -127,6 +140,18 @@ public class LogUtil {
                 "Query Count", color(String.valueOf(queryCount), qt != null ? qt.color() : GREEN))
                 + "+----------------------+-----------------------------------+\n"
                 + warning;
+    }
+
+    // 오버로드: 기존 메서드 (쿼리 추적 없음)
+    public static String formatPerformanceLog(
+            String uri,
+            String method,
+            long time,
+            int queryCount,
+            Threshold queryThreshold,
+            Threshold timeThreshold,
+            String warning) {
+        return formatPerformanceLog(uri, method, time, queryCount, queryThreshold, timeThreshold, warning, List.of());
     }
 
     // === 헬퍼 메서드들 ===

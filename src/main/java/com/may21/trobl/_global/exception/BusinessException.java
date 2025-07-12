@@ -1,8 +1,11 @@
 package com.may21.trobl._global.exception;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+
 
 @Getter
+@Slf4j
 public class BusinessException extends RuntimeException {
 
     private final ExceptionCode errorCode;
@@ -18,11 +21,13 @@ public class BusinessException extends RuntimeException {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
         this.detailMessage = e.getMessage();
+        log.info("BusinessException occurred: {}", e.getMessage());
     }
 
-    public BusinessException(ExceptionCode exceptionCode, String postingAlreadyHasAPoll) {
-        super(exceptionCode.getMessage());
-        this.errorCode = exceptionCode;
-        this.detailMessage = postingAlreadyHasAPoll;
+    public BusinessException(ExceptionCode errorCode, String message) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+        this.detailMessage = message;
+        log.info("BusinessException occurred: {}", message);
     }
 }

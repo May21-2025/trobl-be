@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.List;
 import java.util.UUID;
 
 import static com.may21.trobl._global.component.AnsiColorCode.BROWN;
@@ -80,6 +81,16 @@ public class TimeTraceAop {
             long execTimeNanos = System.nanoTime() - startTime;
             long execTimeMillis = execTimeNanos / 1_000_000;
             int queryCount = apiQueryCounter.getCount();
+            List<ApiQueryCounter.QueryTrace> queryTraces = apiQueryCounter.getQueryTraces();
+            
+            // 디버깅: 쿼리 추적 정보 확인
+            System.out.println("[DEBUG] " + fullMethodName + " - Queries: " + queryCount + ", Traces: " + queryTraces.size());
+            if (!queryTraces.isEmpty()) {
+                System.out.println("[DEBUG] Sample traces:");
+                queryTraces.stream().limit(3).forEach(trace -> 
+                    System.out.println("[DEBUG]   " + trace.toString()));
+            }
+            
             apiQueryCounter.reset();
 
             // 성능 메트릭 기록

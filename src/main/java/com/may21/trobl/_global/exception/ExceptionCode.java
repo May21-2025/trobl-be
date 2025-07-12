@@ -29,6 +29,7 @@ public enum ExceptionCode {
     NICKNAME_REQUIREMENTS_NOT_MET(HttpStatus.BAD_REQUEST, "U004", "닉네임은 2자 이상 10자 이하로 입력해주세요."),
     NICKNAME_UPDATE_RESTRICTED(HttpStatus.BAD_REQUEST, "U005", "닉네임 변경은 30일에 한 번만 가능합니다."),
     NICKNAME_EQUAL_TO_EXISTING(HttpStatus.BAD_REQUEST, "U006", "닉네임이 기존 닉네임과 동일합니다."),
+    NICKNAME_CANNOT_BE_BLANK(HttpStatus.BAD_REQUEST, "U007", "닉네임은 비워둘 수 없습니다."),
 
     // OAUTH O000
     OAUTH2_AUTHORIZATION_NOT_FOUND(HttpStatus.NOT_FOUND, "O000", "OAuth2 인증 정보를 찾을 수 없습니다."),
@@ -40,6 +41,7 @@ public enum ExceptionCode {
     GOOGLE_CODE_INVALID(HttpStatus.BAD_REQUEST, "O006", "구글 코드가 유효하지 않습니다."),
     GOOGLE_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "O007", "구글 사용자 정보를 찾을 수 없습니다."),
     AUTHENTICATION_FAILED (HttpStatus.UNAUTHORIZED, "O008", "인증에 실패했습니다."),
+    INVALID_USER_OAUTH_INFO(HttpStatus.BAD_REQUEST, "O009", "유효하지 않은 사용자 OAuth 정보입니다."),
 
     // POST P000
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "P000", "게시글을 찾을 수 없습니다."),
