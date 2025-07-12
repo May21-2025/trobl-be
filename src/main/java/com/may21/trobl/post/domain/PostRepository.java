@@ -1,6 +1,7 @@
 package com.may21.trobl.post.domain;
 
 import com.may21.trobl._global.enums.PostingType;
+import com.may21.trobl.poll.domain.PollOption;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -87,6 +88,22 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             LIMIT :count
             """, nativeQuery = true)
     List<Posting> findRandomPostsByType(@Param("count") int count, @Param("postingType") PostingType postingType, List<Long> blockedPostIds);
+
+    @Query(value = """
+            SELECT p FROM Posting p
+            LEFT JOIN FETCH p.poll poll
+            WHERE p.reported !=true AND p.postType = :postingType AND p.confirmed = true 
+                        AND (:#{#blockedPostIds.size()} = 0 OR p.id NOT IN :blockedPostIds)
+            ORDER BY FUNCTION('RANDOM')
+            LIMIT :count
+            """)
+    List<Posting> findRandomPostsByTypeWithPoll(@Param("count") int count, @Param("postingType") PostingType postingType, List<Long> blockedPostIds);
+    
+    @Query("SELECT DISTINCT po FROM PollOption po JOIN FETCH po.poll p WHERE p.posting IN :posts")
+    List<PollOption> findPollOptionsByPostings(@Param("posts") List<Posting> posts);
+
+    @Query("SELECT p FROM Posting p LEFT JOIN FETCH p.poll WHERE p.id IN :postIds")
+    List<Posting> findPostsWithPollByIds(@Param("postIds") List<Long> postIds);
 
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.postLikes l WHERE l.userId = :userId AND p.confirmed = true AND l.posting IN :list")
     List<Long> getAllIdsInListLikedByUserId(Long userId, List<Posting> list);

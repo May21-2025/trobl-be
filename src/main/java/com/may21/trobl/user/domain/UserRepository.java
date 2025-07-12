@@ -41,4 +41,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findPartnerAndUserById(Long userId);
 
+    @Query("SELECT u FROM User u WHERE u.provider IS NOT NULL")
+    List<User> findAllOAuth();
 }

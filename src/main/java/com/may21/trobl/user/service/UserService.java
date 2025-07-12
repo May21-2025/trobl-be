@@ -8,6 +8,7 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
+import com.may21.trobl.oAuth.KakaoOAuthService;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.user.UserDto;
@@ -25,8 +26,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -40,6 +43,7 @@ public class UserService implements UserDetailsService {
     private final GoogleOAuthService googleOAuthService;
     private final AppleOAuthService appleOAuthService;
     private final ReportService reportService;
+    private final KakaoOAuthService kakaoOAuthService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -51,35 +55,46 @@ public class UserService implements UserDetailsService {
     @Transactional
     public User registerUser(AuthDto.SignUpRequest signUpDto) {
         String username = signUpDto.getUsername();
-        String password = signUpDto.getPassword();
+        String password = signUpDto.getPassword() == null ? UUID.randomUUID().toString() : signUpDto.getPassword();
         String nickname = signUpDto.getNickname();
-
+        String provider = null;
+        RoleType role = RoleType.ADMIN;
         Map<String, String> oAuthData = signUpDto.getOAuthData();
         if (oAuthData != null && !oAuthData.isEmpty()) {
-            String provider = oAuthData.get("provider");
+            provider = oAuthData.get("provider");
+            role = RoleType.USER; // Default role for OAuth users
             if (username == null && (provider == null || provider.isEmpty())) {
-                throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "OAuth provider is required");
             }
             OAuthProvider oAuthProvider = OAuthProvider.fromString(provider);
             switch (oAuthProvider) {
                 case GOOGLE -> {
-                    String accessToken = oAuthData.get("accessToken");
                     String idToken = oAuthData.get("idToken");
-                    if (accessToken == null || accessToken.isEmpty()) {
-                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                    if (idToken == null || idToken.isEmpty()) {
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "idToken is required");
                     }
-                    username = googleOAuthService.getEmailFromGoogleToken(accessToken);
+                    username = googleOAuthService.getEmailFromGoogleIdToken(idToken);
                 }
                 case APPLE -> {
                     String identityToken = oAuthData.get("identityToken");
                     if (identityToken == null || identityToken.isEmpty()) {
-                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "identityToken is required");
                     }
                     username = appleOAuthService.getEmailFromAppleToken(identityToken);
+                }
+                case KAKAO -> {
+                    String accessToken = oAuthData.get("accessToken");
+                    if (accessToken == null || accessToken.isEmpty()) {
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "accessToken is required");
+                    }
+                    username = kakaoOAuthService.getUserEmail(accessToken);
                 }
             }
         }
 
+        if (username == null) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Username cannot be null");
+        }
         if (userRepository.existsByUsername(username)) {
             throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
         }
@@ -88,8 +103,15 @@ public class UserService implements UserDetailsService {
                         .username(username)
                         .encryptPassword(passwordEncoder.encode(password))
                         .nickname(nickname)
-                        .role(RoleType.ADMIN)
+                        .role(role)
+                        .provider(provider)
                         .build();
+        user.updateAddress(signUpDto.getAddress());
+        if (signUpDto.isMarried()) {
+            User partner = userRepository.findById(signUpDto.getPartnerId())
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            user.updateInformation(new UserDto.MarriedInfo(signUpDto.getMarriedDate(), partner.getUsername()));
+        }
         return userRepository.save(user);
     }
 
@@ -138,7 +160,7 @@ public class UserService implements UserDetailsService {
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
             return new UserDto.InfoDetail(user, partner);
         }
-        return new UserDto.InfoDetail(user,null);
+        return new UserDto.InfoDetail(user, null);
     }
 
     public UserDto.AlertSetting getEmailAlarmStatus(Long userId) {
@@ -181,7 +203,7 @@ public class UserService implements UserDetailsService {
 
     public boolean isNicknameAvailable(String nickname) {
         if (nickname == null || nickname.isEmpty()) {
-            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ExceptionCode.NICKNAME_CANNOT_BE_BLANK);
         }
         if (nickname.length() > 10) {
             throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
@@ -192,7 +214,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public boolean updateNickname(Long userId, String nickname) {
         if (nickname == null || nickname.isEmpty()) {
-            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ExceptionCode.NICKNAME_CANNOT_BE_BLANK);
         }
         User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         if (user.getNicknameUpdatedAt().plusDays(30).isAfter(LocalDate.now())) {
@@ -238,7 +260,7 @@ public class UserService implements UserDetailsService {
 
     public User createUser(String email, OAuthProvider oAuthProvider) {
         if (email == null || email.isEmpty()) {
-            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Email cannot be null or empty");
         }
         if (userRepository.existsByUsername(email)) {
             throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
@@ -275,7 +297,7 @@ public class UserService implements UserDetailsService {
             throw new BusinessException(ExceptionCode.FORBIDDEN);
         }
         if (reportRequest.getReportType() == null) {
-            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Report type cannot be null");
         }
         return reportService.report(userId, targetId, TargetType.USER, reportRequest) > 0;
 
@@ -292,11 +314,12 @@ public class UserService implements UserDetailsService {
     @Transactional
     public void updateUserProfile(User user, AuthDto.SignUpRequest signUpDto) {
         if (signUpDto.getNickname() != null && !signUpDto.getNickname().isEmpty()) {
+            if (Objects.equals(user.getNickname(), signUpDto.getNickname())) return;
             if (userRepository.existsByNickname(signUpDto.getNickname())) {
                 throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
             }
             user.updateNickname(signUpDto.getNickname());
-            if(signUpDto.isMarried()) {
+            if (signUpDto.isMarried()) {
                 User partner = userRepository.findById(signUpDto.getPartnerId())
                         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
                 UserDto.MarriedInfo marriedInfo = new UserDto.MarriedInfo(signUpDto.getMarriedDate(), partner.getUsername());
@@ -305,5 +328,11 @@ public class UserService implements UserDetailsService {
             user.updateAddress(signUpDto.getAddress());
         }
         userRepository.save(user);
+    }
+
+    public boolean deleteAllOauth() {
+        List<User> users = userRepository.findAllOAuth();
+        userRepository.deleteAll(users);
+        return true;
     }
 }

@@ -175,4 +175,9 @@ public class UserController {
         boolean response = userService.reportUser(user.getId(), userId,reportRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+    @DeleteMapping("/delete-all")
+    public ResponseEntity<Message> deleteAllOAuth() {
+        boolean response = userService.deleteAllOauth();
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 }

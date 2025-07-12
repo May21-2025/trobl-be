@@ -1,6 +1,8 @@
 package com.may21.trobl.auth.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl._global.utility.HeaderExtractor;
 import com.may21.trobl.auth.AuthDto;
@@ -30,8 +32,8 @@ public class AuthController {
     private final AuthorizationService authorizationService;
 
     @PostMapping("/sign-up")
-    public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto,HttpServletRequest request,
-                                              HttpServletResponse httpResponse)  {
+    public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto, HttpServletRequest request,
+                                              HttpServletResponse httpResponse) {
         AuthDto.SignUpResponse response = authorizationService.registerUser(signUpDto);
         User user = new User(response.getUserId(), null, "", List.of());
         String ipAddress = HeaderExtractor.extractIpAddress(request);
@@ -71,16 +73,24 @@ public class AuthController {
             @RequestBody AuthDto.LoginRequest signRequestDto,
             HttpServletRequest request,
             HttpServletResponse response) {
-        UserDto.InfoDetail infoDto = authorizationService.signIn(signRequestDto);
-        String ipAddress = HeaderExtractor.extractIpAddress(request);
-        String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
-        String deviceId = HeaderExtractor.extractDeviceId(request);
+        try {
+            UserDto.InfoDetail infoDto = authorizationService.signIn(signRequestDto);
 
-        User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", List.of());
-        TokenInfo token =
-                jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
-        token.tokenToHeaders(response);
-        return new ResponseEntity<>(Message.success(infoDto), HttpStatus.OK);
+            String ipAddress = HeaderExtractor.extractIpAddress(request);
+            String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
+            String deviceId = HeaderExtractor.extractDeviceId(request);
+
+            User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", List.of());
+            TokenInfo token =
+                    jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
+            token.tokenToHeaders(response);
+            return new ResponseEntity<>(Message.success(infoDto), HttpStatus.OK);
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ExceptionCode.USER_NOT_FOUND) {
+                return new ResponseEntity<>(Message.fail(null, ExceptionCode.USER_NOT_FOUND), HttpStatus.OK);
+            }
+            throw e;
+        }
     }
 
     //  @GetMapping("/login/google")

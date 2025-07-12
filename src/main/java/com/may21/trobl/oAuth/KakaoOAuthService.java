@@ -3,12 +3,9 @@ package com.may21.trobl.oAuth;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.auth.AuthDto;
-import com.may21.trobl.user.domain.User;
-import com.may21.trobl.user.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +26,6 @@ import java.util.Optional;
 @Slf4j
 public class KakaoOAuthService {
 
-    private final UserService userService;
     private final ObjectMapper objectMapper;
 
     @Value("${KAKAO_CLIENT_ID}")
@@ -39,17 +35,10 @@ public class KakaoOAuthService {
     String KAKAO_REDIRECT_URI;
 
     @Transactional
-    public User signIn(String code) {
+    public String signIn(String code) {
         AuthDto.Token tokenDto = getAccessTokenByCode(code);
         String email = getUserEmail(tokenDto.getAccessToken());
-        User user = userService.getUserByEmail(email);
-        if (user == null) {
-            user = createNewUser(email);
-        }
-        if (user.getOauthProvider() != OAuthProvider.KAKAO) {
-            throw new BusinessException(ExceptionCode.OAUTH2_AUTHORIZATION_NOT_FOUND);
-        }
-        return user;
+        return email;
     }
 
     public AuthDto.Token getAccessTokenByCode(String code) {
@@ -115,13 +104,6 @@ public class KakaoOAuthService {
             throw new BusinessException(ExceptionCode.OAUTH2_AUTHORIZATION_INVALID);
         }
     }
-
-
-    @Transactional
-    public User createNewUser(String email) {
-        return userService.createUser(email, OAuthProvider.KAKAO);
-    }
-
 
     public void unregister(String kakaoRefreshToken) {
         AuthDto.Token tokenDto = reissueKakaoToken(kakaoRefreshToken);

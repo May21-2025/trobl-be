@@ -162,7 +162,7 @@ public class User implements UserDetails, OAuth2User  {
 
     public void updateNickname(String nickname) {
         if (nickname == null || nickname.isEmpty()) {
-            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ExceptionCode.NICKNAME_CANNOT_BE_BLANK);
         }
         this.nickname = nickname;
         this.nicknameUpdatedAt = LocalDate.now();

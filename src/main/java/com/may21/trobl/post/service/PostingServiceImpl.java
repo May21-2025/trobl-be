@@ -424,17 +424,30 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public List<PostDto.QuickPoll> getRandomQuickPoll(Long userId) {
-
         List<Long> blockedPostIds = userId != null ? reportService.getBlockedTargetIds(userId, TargetType.POSTING) : List.of();
+        
+        // ✅ 1번째 쿼리: Native Query로 랜덤 Posting 조회 (안전하게 RANDOM() 사용)
         List<Posting> posts = postRepository.findRandomPostsByType(5, PostingType.POLL, blockedPostIds);
-        List<PostDto.QuickPoll> response = new ArrayList<>();
-        List<Long> votedOptionIds = voteRepository.findVotedOptionIdsByUserId(posts, userId);
-        for (Posting post : posts) {
-
-            boolean isOwner = post.getUserId().equals(userId);
-            response.add(new PostDto.QuickPoll(post, votedOptionIds, isOwner));
+        
+        if (posts.isEmpty()) {
+            return List.of();
         }
-        return response;
+        
+        // ✅ 2번째 쿼리: Poll 정보를 별도로 조회 (여러 개 Posting에 대해 한 번에)
+        List<Long> postIds = posts.stream().map(Posting::getId).toList();
+        postRepository.findPostsWithPollByIds(postIds); // 이는 별도로 만들어야 함
+        
+        // ✅ 3번째 쿼리: 투표 정보를 한 번의 쿼리로 조회
+        List<Long> votedOptionIds = userId != null ? 
+            voteRepository.findVotedOptionIdsByUserId(posts, userId) : List.of();
+        
+        // ✅ 스트림으로 처리하여 추가 쿼리 방지
+        return posts.stream()
+                .map(post -> {
+                    boolean isOwner = userId != null && post.getUserId().equals(userId);
+                    return new PostDto.QuickPoll(post, votedOptionIds, isOwner);
+                })
+                .toList();
     }
 
     @Override
