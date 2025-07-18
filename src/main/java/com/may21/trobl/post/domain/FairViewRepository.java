@@ -1,5 +1,7 @@
 package com.may21.trobl.post.domain;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -15,4 +17,7 @@ public interface FairViewRepository extends JpaRepository<FairView, Long> {
 
     @Query("SELECT f FROM FairView f WHERE f.posting IN :postList")
     List<FairView> findAllByPostIn(List<Posting> postList);
+
+    @Query("SELECT f FROM FairView f WHERE f.userId = :userId")
+    Page<Posting> findPostsByUserId(Long userId, Pageable pageable);
 }

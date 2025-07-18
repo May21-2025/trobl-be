@@ -3,6 +3,7 @@ package com.may21.trobl.post.controller;
 import com.may21.trobl._global.Message;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
@@ -28,6 +29,7 @@ public class PostingController {
 
     private final PostingService postingService;
     private final NotificationService notificationService;
+    private final JwtTokenUtil jwtTokenUtil;
 
     @GetMapping("/all")
     public ResponseEntity<Message> getAllPostsList(@AuthenticationPrincipal User user,
@@ -174,5 +176,17 @@ public class PostingController {
     public ResponseEntity<Message> resetCache() {
         postingService.evictAllTopPosts();
         return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
+    }
+
+    @GetMapping("/fair-view/requested")
+    public ResponseEntity<Message> getFairViewRequestedList(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
+        if (user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<PostDto.ListItem> response = postingService.getFairViewRequestedList(user.getId(), pageable);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }

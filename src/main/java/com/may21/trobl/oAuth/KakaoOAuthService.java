@@ -37,7 +37,7 @@ public class KakaoOAuthService {
     @Transactional
     public String signIn(String code) {
         AuthDto.Token tokenDto = getAccessTokenByCode(code);
-        String email = getUserEmail(tokenDto.getAccessToken());
+        String email = getUserEmailFromAccessToken(tokenDto.getAccessToken());
         return email;
     }
 
@@ -77,7 +77,7 @@ public class KakaoOAuthService {
     }
 
 
-    public String getUserEmail(String accessToken) {
+    public String getUserEmailFromAccessToken(String accessToken) {
         // HTTP Header 생성
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + accessToken);

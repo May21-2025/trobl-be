@@ -18,4 +18,8 @@ public interface TagService {
     List<TagMapping> updateTags(Set<Tag> tags, Posting post);
 
     List<Tag> getPostTags(Posting post);
+
+    List<TagDto.Response> searchTags(String keyword);
+
+    boolean organize();
 }

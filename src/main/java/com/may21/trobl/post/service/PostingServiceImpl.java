@@ -613,6 +613,12 @@ public class PostingServiceImpl implements PostingService {
         return true;
     }
 
+    @Override
+    public Page<PostDto.ListItem> getFairViewRequestedList(Long userId, Pageable pageable) {
+        Page<Posting> postPages = fairViewRepository.findPostsByUserId(userId, pageable);
+        return null;
+    }
+
 
     private void evictTopPostsCache(Long userId) {
         Cache cache = cacheManager.getCache("topPosts");

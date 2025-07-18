@@ -143,4 +143,39 @@ public class GoogleOAuthService {
         return response.getBody();
     }
 
+    public String getEmailFromIdentityToken(String idToken) {
+        try {
+            // Google의 tokeninfo endpoint로 ID Token 검증 및 사용자 정보 조회
+            String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+
+            log.info("Google ID Token 검증 URL: {}", idToken);
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+            if (response.getStatusCode() != HttpStatus.OK) {
+                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, response.getBody());
+            }
+
+            // JSON 파싱하여 사용자 정보 추출
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode root = objectMapper.readTree(response.getBody());
+
+            // 에러 체크
+            if (root.has("error")) {
+                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, root.get("error").asText());
+            }
+
+            String email = root.get("email").asText();
+            if (email == null || email.isEmpty()) {
+                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, "Google ID Token에서 이메일을 찾을 수 없습니다.");
+            }
+
+            return email;
+
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, e);
+        }
+    }
 }

@@ -99,7 +99,7 @@ public class UserController {
     }
 
     @PatchMapping("/nickname")
-    public ResponseEntity<Message> updateNickname(@RequestHeader("Authorization") String token, @RequestParam String nickname) {
+    public ResponseEntity<Message> check(@RequestHeader("Authorization") String token, @RequestParam String nickname) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = userService.updateNickname(user.getId(), nickname);
         postingService.setNickname(user.getId(), nickname);
@@ -124,13 +124,15 @@ public class UserController {
     public ResponseEntity<Message> updateUserProfileImage(@RequestHeader("Authorization") String token, @RequestParam(required = false) MultipartFile image) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         String imageKey = storageService.uploadUserProfileImage(user.getId(), image);
-        UserDto.Info response = userService.updateUserProfileImage(user.getId(),imageKey);
+        UserDto.Info response = userService.updateUserProfileImage(user.getId(), imageKey);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/posts")
-    public ResponseEntity<Message> getMyPosts(@RequestHeader("Authorization") String token,
-                                              @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Message> getMyPosts(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<PostDto.ListItem> response = postingService.getMyPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
@@ -172,9 +174,10 @@ public class UserController {
             @RequestBody ReportDto.Request reportRequest,
             @RequestHeader("Authorization") String token) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        boolean response = userService.reportUser(user.getId(), userId,reportRequest);
+        boolean response = userService.reportUser(user.getId(), userId, reportRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @DeleteMapping("/delete-all")
     public ResponseEntity<Message> deleteAllOAuth() {
         boolean response = userService.deleteAllOauth();

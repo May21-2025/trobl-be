@@ -87,7 +87,8 @@ public class UserService implements UserDetailsService {
                     if (accessToken == null || accessToken.isEmpty()) {
                         throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "accessToken is required");
                     }
-                    username = kakaoOAuthService.getUserEmail(accessToken);
+                    log.info("Kakao OAuth access token: {}", accessToken);
+                    username = kakaoOAuthService.getUserEmailFromAccessToken(accessToken);
                 }
             }
         }
@@ -108,9 +109,14 @@ public class UserService implements UserDetailsService {
                         .build();
         user.updateAddress(signUpDto.getAddress());
         if (signUpDto.isMarried()) {
-            User partner = userRepository.findById(signUpDto.getPartnerId())
-                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-            user.updateInformation(new UserDto.MarriedInfo(signUpDto.getMarriedDate(), partner.getUsername()));
+            Long partnerId = signUpDto.getPartnerId();
+            String partnerUsername = null;
+            if (partnerId != null) {
+                User partner = userRepository.findById(signUpDto.getPartnerId())
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+                partnerUsername = partner.getUsername();
+            }
+            user.updateInformation(new UserDto.MarriedInfo(signUpDto.getMarriedDate(), partnerUsername));
         }
         return userRepository.save(user);
     }
@@ -170,26 +176,6 @@ public class UserService implements UserDetailsService {
     @Transactional
     public void setEmailAlarmStatus(UserDto.AlertSetting request, Long userId) {
         throw new BusinessException(ExceptionCode.NOT_IMPLEMENTED);
-    }
-
-    @Transactional
-    public User createOAuthUser(OAuthUserInfo userInfo) {
-        String username = userInfo.getProviderId();
-        String email = userInfo.getEmail();
-        String provider = userInfo.getProvider();
-
-        if (userRepository.existsByUsername(username)) {
-            throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
-        }
-        User user =
-                User.builder()
-                        .username(username)
-                        .encryptEmail(passwordEncoder.encode(email))
-                        .provider(provider)
-                        .nickname("user1")
-                        .role(RoleType.USER)
-                        .build();
-        return userRepository.save(user);
     }
 
     public UserDto.NotificationSetting getUsersNotification(Long id) {
@@ -292,6 +278,14 @@ public class UserService implements UserDetailsService {
                 .orElse(null);
     }
 
+    public User getUserByUsername(String username) {
+        if (username == null || username.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    }
+
     public boolean reportUser(Long userId, Long targetId, ReportDto.Request reportRequest) {
         if (userId.equals(targetId)) {
             throw new BusinessException(ExceptionCode.FORBIDDEN);
@@ -334,5 +328,15 @@ public class UserService implements UserDetailsService {
         List<User> users = userRepository.findAllOAuth();
         userRepository.deleteAll(users);
         return true;
+    }
+
+    public boolean checkNicknameValid(String nickname) {
+        if (nickname == null || nickname.isEmpty()) {
+            throw new BusinessException(ExceptionCode.NICKNAME_CANNOT_BE_BLANK);
+        }
+        if (nickname.length() > 10) {
+            throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
+        }
+        return !userRepository.existsByNickname(nickname);
     }
 }

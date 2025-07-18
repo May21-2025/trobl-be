@@ -29,4 +29,8 @@ public class TagMapping {
         this.tag = tag;
         this.posting = post;
     }
+
+    public void setTag(Tag remainingTag) {
+        this.tag = remainingTag;
+    }
 }

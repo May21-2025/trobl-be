@@ -19,12 +19,10 @@ public class Tag {
 
     @Unique
     private String name;
-    private String color;
     private int count;
 
-    public Tag(String name, String color) {
+    public Tag(String name) {
         this.name = name;
-        this.color = color;
         this.count = 0;
     }
 

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -22,6 +23,18 @@ public class TagController {
     @GetMapping("")
     public ResponseEntity<Message> getTags() {
         List<TagDto.Response> response = tagService.getStaticTags();
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Message> searchTags(@RequestParam String keyword) {
+        List<TagDto.Response> response = tagService.searchTags(keyword);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/organizations")
+    public ResponseEntity<Message> getOrganizationTags() {
+        boolean response = tagService.organize();
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

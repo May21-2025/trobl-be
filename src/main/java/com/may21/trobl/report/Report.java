@@ -24,6 +24,8 @@ public class Report {
     private Long id;
 
     private Long targetId;
+
+    @Enumerated(EnumType.STRING)
     private TargetType targetType;
 
     private Long reportedBy;

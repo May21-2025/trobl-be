@@ -9,10 +9,7 @@ import com.may21.trobl.tag.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +41,7 @@ public class TagServiceImpl implements TagService {
         List<Tag> newTags = new ArrayList<>();
         for (TagDto.Request tagRequest : newTagRequests) {
             if (existingTagNames.contains(tagRequest.getName())) continue;
-            Tag tag = new Tag(tagRequest.getName(), tagRequest.getColor());
+            Tag tag = new Tag(tagRequest.getName());
             newTags.add(tag);
         }
         tagRepository.saveAll(newTags);
@@ -88,6 +85,48 @@ public class TagServiceImpl implements TagService {
     public List<Tag> getPostTags(Posting post) {
 
         return tagMappingRepository.getTagsByPost(post);
+    }
+
+    @Override
+    public List<TagDto.Response> searchTags(String keyword) {
+        if (keyword != null && !keyword.isEmpty()) {
+            List<Tag> tags = tagRepository.findDistinctTagsByNameContaining(keyword);
+            return TagDto.Response.fromTagList(tags);
+        }
+        return List.of();
+    }
+
+    @Override
+    public boolean organize() {
+        // 같은 이름을 가진 Tag가 있을 경우 그중 하나만 남기고 다 삭제한다.
+        // 삭제되는 Tag가 TagMapping에 연결되어 있다면, 해당 TagMapping에 남은 하나의 Tag로 연결한다.
+        List<Tag> tags = tagRepository.findAll();
+        Map<String, Tag> uniqueTagNames = new HashMap<>();
+        List<Tag> tagsToDelete = new ArrayList<>();
+        for (Tag tag : tags) {
+            if (uniqueTagNames.containsKey(tag.getName())) {
+                tagsToDelete.add(tag);
+            } else {
+                uniqueTagNames.put(tag.getName(), tag);
+            }
+        }
+        if (tagsToDelete.isEmpty()) {
+            return true;
+        }
+        List<TagMapping> onesToSave = new ArrayList<>();
+        for (Tag tagToDelete : tagsToDelete) {
+            List<TagMapping> tagMappings = tagMappingRepository.findByTag(tagToDelete);
+            if (!tagMappings.isEmpty()) {
+                Tag remainingTag = uniqueTagNames.get(tagToDelete.getName());
+                for (TagMapping tagMapping : tagMappings) {
+                    tagMapping.setTag(remainingTag);
+                }
+                onesToSave.addAll(tagMappings);
+            }
+        }
+        tagMappingRepository.saveAll(onesToSave);
+        tagRepository.deleteAll(tagsToDelete);
+        return false;
     }
 
 }

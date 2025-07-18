@@ -7,6 +7,7 @@ import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
+import com.may21.trobl.oAuth.KakaoOAuthService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -28,6 +29,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private final AppleOAuthService appleOAuthService;
     @Lazy
     private final PasswordEncoder passwordEncoder;
+    private final KakaoOAuthService kakaoOAuthService;
 
     @Override
     public AuthDto.SignUpResponse registerUser(AuthDto.SignUpRequest signUpDto) {
@@ -66,18 +68,24 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             OAuthProvider oAuthProvider = OAuthProvider.fromString(provider);
             switch (oAuthProvider) {
                 case GOOGLE -> {
-                    String serverAuthCode = oAuthData.get("serverAuthCode");
-                    if (serverAuthCode == null || serverAuthCode.isEmpty()) {
-                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                    String identityToken = oAuthData.get("idToken");
+                    if (identityToken == null || identityToken.isEmpty()) {
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Google ID Token is required");
                     }
-                    username = googleOAuthService.getEmailFromAuthToken(serverAuthCode);
+                    username = googleOAuthService.getEmailFromIdentityToken(identityToken);
                 }
                 case APPLE -> {
                     String identityToken = oAuthData.get("identityToken");
                     if (identityToken == null || identityToken.isEmpty()) {
-                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, " Apple ID Token is required");
                     }
                     username = appleOAuthService.getEmailFromAppleToken(identityToken);
+                }
+                case KAKAO -> {
+                    String accessToken = oAuthData.get("accessToken");
+                    if (accessToken == null || accessToken.isEmpty())
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Kakao Access Token is required");
+                    username = kakaoOAuthService.getUserEmailFromAccessToken(accessToken);
                 }
             }
             user = userRepository.findByUsername(username)
@@ -123,6 +131,14 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         unlinkOAuth(type, user);
         userRepository.delete(user);
         return true;
+    }
+
+    @Override
+    public boolean isUsernameTaken(String username) {
+        if (username == null || username.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+        return userRepository.existsByUsername(username);
     }
 
     public void unlinkOAuth(OAuthProvider type, User user) {

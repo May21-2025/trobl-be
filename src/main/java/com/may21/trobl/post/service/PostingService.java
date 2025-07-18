@@ -84,4 +84,7 @@ public interface PostingService {
 
     @Transactional
     boolean reportPost(Long userId, Long postId, ReportDto.Request reportRequest);
+
+    @Transactional(readOnly = true)
+    Page<PostDto.ListItem> getFairViewRequestedList(Long id, Pageable pageable);
 }

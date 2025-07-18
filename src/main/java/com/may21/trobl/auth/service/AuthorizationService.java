@@ -25,4 +25,5 @@ public interface AuthorizationService {
 
     boolean unregister(Long id);
 
+    boolean isUsernameTaken(String username);
 }
