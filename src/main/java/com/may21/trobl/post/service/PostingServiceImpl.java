@@ -4,7 +4,10 @@ import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.bookmark.PostBookmark;
+import com.may21.trobl.bookmark.PostBookmarkRepository;
 import com.may21.trobl.comment.service.CommentService;
+import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
 import com.may21.trobl.poll.domain.PollVote;
@@ -54,6 +57,7 @@ public class PostingServiceImpl implements PostingService {
     private final CommentService commentService;
     private final ReportService reportService;
     private final CacheManager cacheManager;
+    private final NotificationService notificationService;
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
@@ -616,7 +620,63 @@ public class PostingServiceImpl implements PostingService {
     @Override
     public Page<PostDto.ListItem> getFairViewRequestedList(Long userId, Pageable pageable) {
         Page<Posting> postPages = fairViewRepository.findPostsByUserId(userId, pageable);
-        return null;
+        Set<Long> userIds = postPages.stream().map(Posting::getUserId).collect(Collectors.toSet());
+        List<User> users = userRepository.findAllById(userIds);
+        Map<Long, User> userMap =
+                users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        List<Posting> posts = postPages.stream().toList();
+        List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, posts);
+        List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, posts);
+        List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(userId, posts);
+        return postPages.isEmpty() ? Page.empty(pageable) : postPages.map(
+                post -> {
+                    User user = userMap.get(post.getUserId());
+                    return new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
+                });
+    }
+
+    @Override
+    public List<PostDto.ListItem> getAllReportedPosts() {
+        List<Posting> posts = postRepository.findAllByReportedTrue();
+        if (posts.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> userIds = posts.stream().map(Posting::getUserId).collect(Collectors.toSet());
+        List<User> users = userRepository.findAllById(userIds);
+        Map<Long, User> userMap =
+                users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(null, posts);
+        List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(null, posts);
+        List<Long> commentedPostIds = postRepository.getAllIdsInListCommentedByUserId(null, posts);
+        List<PostDto.ListItem> response = new ArrayList<>();
+        for (Posting post : posts) {
+            User user = userMap.get(post.getUserId());
+            response.add(new PostDto.ListItem(post, user, likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId())));
+        }
+        return response;
+
+    }
+
+    @Override
+    public boolean unblockPost(Long postId) {
+        Posting post =
+                postRepository
+                        .findById(postId)
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+        post.setReported(false);
+        return true;
+    }
+
+    @Override
+    public boolean deletePostByAdmin(Long postId) {
+        Posting post =
+                postRepository
+                        .findByIdAndReportedIsTrue(postId)
+                        .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+        postRepository.delete(post);
+        PostDto.Notification info = new PostDto.Notification(post);
+        notificationService.notifyPostDeleted(post.getUserId(), info);
+        return true;
     }
 
 

@@ -1,9 +1,9 @@
 package com.may21.trobl.post.dto;
 
 import com.may21.trobl._global.enums.PostingType;
-import com.may21.trobl.post.domain.FairView;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
+import com.may21.trobl.post.domain.FairView;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.dto.TagDto;
@@ -149,7 +149,7 @@ public class PostDto {
     public static class PollDto {
         private Long pollId;
         private String title;
-        private boolean allowMultipleVotes ;
+        private boolean allowMultipleVotes;
         private boolean showPollResult;
         private List<PollItem> pollOptions;
 
@@ -272,4 +272,17 @@ public class PostDto {
     }
 
 
+    @Getter
+    public static class Notification {
+        private final Long postId;
+        private final String title;
+        private final LocalDateTime createdAt;
+
+        public Notification(Posting post) {
+            this.postId = post.getId();
+            this.title = decodeHtml(post.getTitle());
+            this.createdAt = post.getCreatedAt();
+
+        }
+    }
 }

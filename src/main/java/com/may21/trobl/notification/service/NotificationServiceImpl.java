@@ -6,6 +6,7 @@ import com.may21.trobl._global.enums.NotificationStrategy;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.domain.CommentRepository;
 import com.may21.trobl.comment.dto.CommentDto;
@@ -14,6 +15,8 @@ import com.may21.trobl.notification.domain.NotificationRepository;
 import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.post.domain.PostRepository;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.pushAlarm.PushNotificationService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -404,6 +407,35 @@ public class NotificationServiceImpl implements NotificationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         user.setNotification(type, enabled);
+        return false;
+    }
+
+    @Override
+    public void notifyPostDeleted(Long targetUserId, PostDto.Notification info) {
+        // 게시글 삭제 알림
+        String title = "게시글이 삭제되었습니다";
+        String body = String.format("게시글 '%s'이(가) 삭제되었습니다.", info.getTitle());
+        Map<String, String> data = new HashMap<>();
+        data.put("postId", info.getPostId().toString());
+        data.put("type", "post_deleted");
+        createAndSendNotification(targetUserId, NotificationType.POST_DELETED, title, body, data);
+
+    }
+
+    @Override
+    public boolean notifyMarketingAlert(AdminDto.PushNotification message) {
+        // 마케팅 알림은 모든 사용자에게 전송
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            createAndSendNotification(
+                    user.getId(),
+                    NotificationType.MARKETING,
+                    message.getTitle(),
+                    message.getMessage(),
+                    Map.of("type", "marketing"),
+                    NotificationStrategy.IMMEDIATE
+            );
+        }
         return false;
     }
 

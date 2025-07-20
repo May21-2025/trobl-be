@@ -3,7 +3,7 @@ package com.may21.trobl.notification.controller;
 import com.may21.trobl._global.Message;
 import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.notification.service.NotificationService;
-import com.may21.trobl.notification.service.PushNotificationService;
+import com.may21.trobl.pushAlarm.PushNotificationService;
 import com.may21.trobl.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

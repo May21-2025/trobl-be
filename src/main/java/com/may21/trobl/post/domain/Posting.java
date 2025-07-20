@@ -3,6 +3,7 @@ package com.may21.trobl.post.domain;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.bookmark.PostBookmark;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.post.dto.PostDto;

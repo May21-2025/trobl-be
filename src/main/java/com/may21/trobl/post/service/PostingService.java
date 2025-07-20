@@ -87,4 +87,13 @@ public interface PostingService {
 
     @Transactional(readOnly = true)
     Page<PostDto.ListItem> getFairViewRequestedList(Long id, Pageable pageable);
+
+    @Transactional(readOnly = true)
+    List<PostDto.ListItem> getAllReportedPosts();
+
+    @Transactional
+    boolean unblockPost(Long postId);
+
+    @Transactional
+    boolean deletePostByAdmin(Long postId);
 }

@@ -23,7 +23,7 @@ public class NotificationMessageService {
             case CONTENT_RECOMMENDATION -> getContentRecommendationMessage(locale, params);
             case POPULAR_POST -> getPopularPostMessage(locale, params);
             case FAIRVIEW_REQUEST -> getFairviewRequestMessage(locale, params);
-            case QUICKPOLL_PARTICIPATION -> getQuickpollParticipationMessage(locale, params);
+            case QUICK_POLL_PARTICIPATION -> getQuickpollParticipationMessage(locale, params);
             case COMMUNITY_ANALYSIS -> getCommunityAnalysisMessage(locale, params);
             case ANNOUNCEMENT -> getAnnouncementMessage(locale, params);
             default -> new NotificationDto.Message(

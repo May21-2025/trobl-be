@@ -1,10 +1,8 @@
-package com.may21.trobl.notification.service;
+package com.may21.trobl.pushAlarm;
 
 import com.google.firebase.messaging.*;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
-import com.may21.trobl.notification.domain.DeviceToken;
-import com.may21.trobl.notification.domain.DeviceTokenRepository;
 import com.may21.trobl.notification.dto.NotificationDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

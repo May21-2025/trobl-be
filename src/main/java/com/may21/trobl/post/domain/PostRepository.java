@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.lang.ScopedValue;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -137,4 +138,8 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
 
     @Query("SELECT p FROM Posting p WHERE p.reported !=true AND p.id NOT IN :blockedPostIds AND p.userId NOT IN :blockedUserIds AND p.confirmed = true")
     Page<Posting> findAllExceptBlocked(Pageable pageable, List<Long> blockedPostIds, List<Long> blockedUserIds);
+
+    List<Posting> findAllByReportedTrue();
+
+    Optional<Posting> findByIdAndReportedIsTrue(Long postId);
 }

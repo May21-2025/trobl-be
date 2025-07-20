@@ -1,5 +1,8 @@
 package com.may21.trobl._global.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum NotificationType {
     COMMENT(NotificationStrategy.BATCHED, "notification.comment"),
     LIKE(NotificationStrategy.BATCHED, "notification.like"),
@@ -7,12 +10,12 @@ public enum NotificationType {
     CONTENT_RECOMMENDATION(NotificationStrategy.SCHEDULED, "notification.content_recommendation"),
     POPULAR_POST(NotificationStrategy.SCHEDULED, "notification.popular_post"),
     FAIRVIEW_REQUEST(NotificationStrategy.IMMEDIATE, "notification.fairview_request"),
-    QUICKPOLL_PARTICIPATION(NotificationStrategy.BATCHED, "notification.quickpoll_participation"),
+    QUICK_POLL_PARTICIPATION(NotificationStrategy.BATCHED, "notification.quick_poll_participation"),
     COMMUNITY_ANALYSIS(NotificationStrategy.SCHEDULED, "notification.community_analysis"),
     ANNOUNCEMENT(NotificationStrategy.SCHEDULED, "notification.announcement"),
-    EIGHT(NotificationStrategy.SCHEDULED, "notification.eight"),
-    NINE(NotificationStrategy.SCHEDULED, "notification.nine"),
-    TEN(NotificationStrategy.SCHEDULED, "notification.ten"),
+    POST_DELETED(NotificationStrategy.SCHEDULED, "notification.post_deleted"),
+    COMMENT_DELETED(NotificationStrategy.SCHEDULED, "notification.comment_deleted"),
+    MARKETING(NotificationStrategy.SCHEDULED, "notification.marketing"),
     ETC(NotificationStrategy.SCHEDULED, "notification.etc");
 
 
@@ -22,14 +25,6 @@ public enum NotificationType {
     NotificationType(NotificationStrategy defaultStrategy, String messageKey) {
         this.defaultStrategy = defaultStrategy;
         this.messageKey = messageKey;
-    }
-
-    public NotificationStrategy getDefaultStrategy() {
-        return defaultStrategy;
-    }
-
-    public String getMessageKey() {
-        return messageKey;
     }
 
 }

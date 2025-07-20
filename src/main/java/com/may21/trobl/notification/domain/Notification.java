@@ -20,35 +20,19 @@ public class Notification {
     private Long id;
 
     private Long userId;
-
     private NotificationType type;
 
-    private String title;
-    private String body;
-
+    @Column(columnDefinition = "text")
     private String data;
-
-    private Boolean isRead;
+    private Boolean read;
 
     private LocalDateTime scheduledTime;
 
     @CreatedDate
     private LocalDateTime createdAt;
 
-    @Builder
-    public Notification(Long userId, NotificationType type, String title, String body, String data, LocalDateTime scheduledTime) {
-        this.userId = userId;
-        this.type = type;
-        this.title = title;
-        this.body = body;
-        this.data = data;
-        this.isRead = false;
-        this.scheduledTime = scheduledTime;
-        this.createdAt = LocalDateTime.now();
-    }
-
     public void markAsRead() {
-        this.isRead = true;
+        this.read = true;
     }
 }
 

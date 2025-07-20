@@ -1,4 +1,4 @@
-package com.may21.trobl.notification.domain;
+package com.may21.trobl.pushAlarm;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

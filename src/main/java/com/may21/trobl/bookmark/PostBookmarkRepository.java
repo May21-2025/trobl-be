@@ -1,5 +1,6 @@
-package com.may21.trobl.post.domain;
+package com.may21.trobl.bookmark;
 
+import com.may21.trobl.post.domain.Posting;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

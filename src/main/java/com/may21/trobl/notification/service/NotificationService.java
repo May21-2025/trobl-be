@@ -1,7 +1,9 @@
 package com.may21.trobl.notification.service;
 
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.notification.domain.Notification;
+import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.user.domain.User;
 
 import java.time.LocalDateTime;
@@ -29,4 +31,8 @@ public interface NotificationService {
     void setNotificationSetting(User user);
 
     boolean setNotificationSettings(Long id, String notificationType, Boolean enabled);
+
+    void notifyPostDeleted(Long userId, PostDto.Notification info);
+
+    boolean notifyMarketingAlert(AdminDto.PushNotification message);
 }

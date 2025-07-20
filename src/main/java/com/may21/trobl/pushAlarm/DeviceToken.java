@@ -1,4 +1,4 @@
-package com.may21.trobl.notification.domain;
+package com.may21.trobl.pushAlarm;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
