@@ -1,5 +1,6 @@
 package com.may21.trobl.comment.service;
 
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
@@ -8,6 +9,8 @@ import com.may21.trobl.comment.domain.CommentLike;
 import com.may21.trobl.comment.domain.CommentLikeRepository;
 import com.may21.trobl.comment.domain.CommentRepository;
 import com.may21.trobl.comment.dto.CommentDto;
+import com.may21.trobl.notification.domain.ContentUpdateService;
+import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.post.domain.PostRepository;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.report.ReportDto;
@@ -33,9 +36,10 @@ public class CommentServiceImpl implements CommentService {
     private final PostRepository postRepository;
     private final CommentLikeRepository likeRepository;
     private final ReportService reportService;
+    private final ContentUpdateService contentUpdateService;
 
     @Override
-    public List<CommentDto.Response>  getComments(Long postId, Long userId) {
+    public List<CommentDto.Response> getComments(Long postId, Long userId) {
         List<Comment> comments = commentRepository.findByPostId(postId);
         List<Comment> filteredComments = reportService.filterBlockedComments(userId, comments);
         List<Long> userIds = filteredComments.stream().map(Comment::getUserId).distinct().toList();
@@ -135,15 +139,18 @@ public class CommentServiceImpl implements CommentService {
                 userRepository
                         .findById(userId)
                         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, comments.stream().toList());
+        List<Comment> commentList = comments.stream().toList();
+        List<CommentLike> likes = likeRepository.findByUserIdAndInComments(userId, commentList);
         List<Comment> likedList = likes.stream().map(CommentLike::getComment).toList();
+        Map<Long, NotificationDto.ContentUpdateStatus> contentUpdates = contentUpdateService.getContentUpdatesByUserId(userId, commentList, Comment::getId, ItemType.COMMENT);
+
         return comments.map(
                 comment ->
                         new CommentDto.RecentInfo(
                                 comment.getPosting(),
                                 comment,
                                 user,
-                                likedList.contains(comment)));
+                                likedList.contains(comment), contentUpdates.get(comment.getId())));
     }
 
     @Override

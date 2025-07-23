@@ -1,5 +1,7 @@
 package com.may21.trobl.post.domain;
 
+import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,6 +31,7 @@ public class FairView {
     @Setter
     private boolean confirmed;
 
+
     @Builder
     public FairView(String title, String content, String nickname, Posting post, Long userId) {
         this.title = title;
@@ -37,5 +40,23 @@ public class FairView {
         this.userId = userId;
         this.nickname = nickname;
         this.confirmed = false;
+    }
+
+    public FairView(User partner, Posting post) {
+        this.title = null;
+        this.content = null;
+        this.posting = post;
+        this.userId = partner.getId();
+        this.nickname = partner.getNickname();
+        this.confirmed = false;
+    }
+
+    public void update(PostDto.FairViewRequest request) {
+        if (request.getTitle() != null) {
+            this.title = request.getTitle();
+        }
+        if (request.getContent() != null) {
+            this.content = request.getContent();
+        }
     }
 }

@@ -1,7 +1,9 @@
 package com.may21.trobl.comment.dto;
 
 import com.may21.trobl.comment.domain.Comment;
+import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import lombok.Getter;
 
@@ -19,19 +21,21 @@ public class CommentDto {
     public static class Response {
         private final Long commentId;
         private final String content;
-        private final Long userId;
+        private final UserDto.Info user;
         private final Long parentCommentId;
         private final Long postId;
-        private final String nickname;
         private final LocalDateTime createdAt;
         private final int likeCount;
         private final boolean liked;
+        private final Long userId;
+        private final String nickname;
 
         public Response(Comment comment, User user, boolean liked) {
             this.commentId = comment.getId();
             this.content = comment.getContent();
-            this.userId = user.getId();
-            this.nickname = user.getNickname();
+            this.user = user != null ? new UserDto.Info(user) : null;
+            this.nickname = "null";
+            this.userId = comment.getUserId();
             this.postId = comment.getPosting().getId();
             this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
             this.createdAt = comment.getCreatedAt();
@@ -40,10 +44,14 @@ public class CommentDto {
         }
     }
 
+    @Getter
     public static class RecentInfo extends Response {
         private final String postTitle;
+        private boolean unread;
+        private boolean newComment;
+        private boolean newLike;
 
-        public RecentInfo(Posting post, Comment comment, User user, boolean liked) {
+        public RecentInfo(Posting post, Comment comment, User user, boolean liked, NotificationDto.ContentUpdateStatus contentUpdateStatus) {
             super(comment, user, liked);
             this.postTitle = post.getTitle();
         }

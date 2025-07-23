@@ -30,6 +30,10 @@ public enum ExceptionCode {
     NICKNAME_UPDATE_RESTRICTED(HttpStatus.BAD_REQUEST, "U005", "닉네임 변경은 30일에 한 번만 가능합니다."),
     NICKNAME_EQUAL_TO_EXISTING(HttpStatus.BAD_REQUEST, "U006", "닉네임이 기존 닉네임과 동일합니다."),
     NICKNAME_CANNOT_BE_BLANK(HttpStatus.BAD_REQUEST, "U007", "닉네임은 비워둘 수 없습니다."),
+    USER_ALREADY_HAS_PARTNER(HttpStatus.BAD_REQUEST, "U008", "이미 파트너가 있습니다."),
+    REQUESTED_PARTNER_ALREADY_HAS_PARTNER(HttpStatus.BAD_REQUEST, "U009", "요청한 파트너는 이미 파트너가 있습니다."),
+    CANNOT_REQUEST_SELF(HttpStatus.BAD_REQUEST, "U010", "자기 자신에게 파트너 요청을 할 수 없습니다."),
+    MARRIAGE_DATE_IS_NOT_SAME(HttpStatus.BAD_REQUEST, "U011", "결혼 날짜가 서로 다릅니다."),
 
     // OAUTH O000
     OAUTH2_AUTHORIZATION_NOT_FOUND(HttpStatus.NOT_FOUND, "O000", "OAuth2 인증 정보를 찾을 수 없습니다."),
@@ -42,6 +46,7 @@ public enum ExceptionCode {
     GOOGLE_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "O007", "구글 사용자 정보를 찾을 수 없습니다."),
     AUTHENTICATION_FAILED (HttpStatus.UNAUTHORIZED, "O008", "인증에 실패했습니다."),
     INVALID_USER_OAUTH_INFO(HttpStatus.BAD_REQUEST, "O009", "유효하지 않은 사용자 OAuth 정보입니다."),
+    OAUTH_MISMATCH(HttpStatus.BAD_REQUEST, "O010", "OAuth 제공자와 일치하지 않습니다."),
 
     // POST P000
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "P000", "게시글을 찾을 수 없습니다."),
@@ -51,7 +56,9 @@ public enum ExceptionCode {
     FAIR_VIEW_CAN_NOT_BE_ADDED(HttpStatus.BAD_REQUEST, "P004", "페어뷰 항목을 추가할 수 없습니다."),
     POST_NOT_FIT_FOR_CONFIRMATION(HttpStatus.BAD_REQUEST, "P005", "게시글이 확인용 게시글이 아닙니다."),
     FAIR_VIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "P006", "페어뷰 항목을 찾을 수 없습니다."),
-
+    PARTNER_NOT_FOUND(HttpStatus.NOT_FOUND, "P007", "페어뷰 파트너를 찾을 수 없습니다."),
+    PARTNER_REQUEST_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "P008", "이미 파트너 요청을 하였습니다."),
+    FAIR_VIEW_NOT_CONFIRMED(HttpStatus.BAD_REQUEST, "P009", "페어뷰 작성이 완료되지 않았습니다."),
 
     //POLL P100
     POLL_NOT_FOUND(HttpStatus.NOT_FOUND, "P100", "설문조사를 찾을 수 없습니다."),

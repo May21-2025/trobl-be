@@ -19,9 +19,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_PATH;
 
@@ -59,6 +61,9 @@ public class User implements UserDetails, OAuth2User  {
     private String address;
 
     @Setter
+    private String fcmToken;
+
+    @Setter
     private String thumbnailKey;
 
     @Enumerated(EnumType.STRING)
@@ -83,15 +88,11 @@ public class User implements UserDetails, OAuth2User  {
     private LocalDate signUpDate;
 
 
-    public User(Long userId, String subject, String s, Collection<GrantedAuthority> authorities) {
+    public User(Long userId, String subject, String s, List<String> roles) {
         this.id = userId;
         this.username = subject;
         this.password = s;
-        this.roles =
-                authorities.stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .map(role -> role.replace("ROLE_", ""))
-                        .toList();
+        this.roles =roles;
         this.accountNonExpired = true;
         this.accountNonLocked = true;
         this.credentialsNonExpired = true;
@@ -106,6 +107,19 @@ public class User implements UserDetails, OAuth2User  {
         this.password = encryptPassword == null ? "oauth" : encryptPassword;
         this.nickname = nickname;
         this.roles = List.of(role.name());
+    }
+
+    public User(Long userId, String subject, String s, String role) {
+        List<String> roles = new ArrayList<>();
+        roles.add(role);
+        this.id = userId;
+        this.username = subject;
+        this.password = s;
+        this.roles = roles;
+        this.accountNonExpired = true;
+        this.accountNonLocked = true;
+        this.credentialsNonExpired = true;
+        this.enabled = true;
     }
 
     public String getThumbnailUrl() {
@@ -189,4 +203,37 @@ public class User implements UserDetails, OAuth2User  {
         }
         this.address = address;
     }
+    public void addRole(RoleType role) {
+        if (this.roles == null) {
+            this.roles = new java.util.ArrayList<>();
+        }
+        String roleName = role.name();
+        if (!this.roles.contains(roleName)) { // 중복 추가 방지
+            this.roles.add(roleName);
+        }
+    }
+
+    public void removeRole(RoleType role) {
+        if (this.roles != null) {
+            this.roles.remove(role.name());
+        }
+    }
+
+    public void setRoles(List<RoleType> newRoleTypes) {
+        List<String> newRoles = new ArrayList<>();
+        for(RoleType roleType : newRoleTypes) {
+            if (roleType != null) {
+                newRoles.add(roleType.name());
+            }
+        }
+        this.roles = newRoles;
+    }
+
+    public String getRole(){
+        if (roles == null || roles.isEmpty()) {
+            return RoleType.USER.name(); // 기본 역할을 USER로 설정
+        }
+        return roles.getFirst(); // 첫 번째 역할 반환
+    }
+
 }

@@ -90,6 +90,9 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             }
             user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            if (!user.getProvider().equals(oAuthProvider)) {
+                throw new BusinessException(ExceptionCode.OAUTH_MISMATCH, "{ \"provider\": " + oAuthProvider + ", \"username\": " + username + "}");
+            }
         } else {
             user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));

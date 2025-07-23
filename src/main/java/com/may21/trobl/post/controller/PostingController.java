@@ -1,9 +1,11 @@
 package com.may21.trobl.post.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
+import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
@@ -30,36 +32,14 @@ public class PostingController {
     private final PostingService postingService;
     private final NotificationService notificationService;
     private final JwtTokenUtil jwtTokenUtil;
-
-    @GetMapping("/all")
-    public ResponseEntity<Message> getAllPostsList(@AuthenticationPrincipal User user,
-                                                   @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        // PageRequest 객체 생성 (페이지, 사이즈, 정렬 정보)
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Long userId = user != null ? user.getId() : null;
-        Page<PostDto.ListItem> response = postingService.getPostsList(pageable, userId);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
-    @GetMapping("/quick-poll")
-    public ResponseEntity<Message> getRandomQuickPoll(@AuthenticationPrincipal User user) {
-        Long userId = user != null ? user.getId() : null;
-        List<PostDto.QuickPoll> response = postingService.getRandomQuickPoll(userId);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
-    @GetMapping("/top-list")
-    public ResponseEntity<Message> getTopListPostsView(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "all") String type, @RequestParam(required = false, defaultValue = "10") int count) {
-        Long userId = user != null ? user.getId() : null;
-        List<PostDto.Card> response = postingService.getTop10Views(type, userId);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
+    private final ContentUpdateService contentUpdateService;
 
 
     @PostMapping("")
     public ResponseEntity<Message> createPost(
-            @RequestBody PostDto.Request request, @AuthenticationPrincipal User user) {
-        PostDto.Detail response = postingService.createPost(request, user.getId());
+            @RequestBody PostDto.Request request, @RequestHeader("Authorization") String token) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        PostDto.Detail response = postingService.createPost(request, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -80,6 +60,7 @@ public class PostingController {
         }
         Long userId = user != null ? user.getId() : null;
         PostDto.Detail response = postingService.getPostDetail(postId, userId);
+        contentUpdateService.readIfExist(userId, postId, ItemType.POST);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -100,27 +81,14 @@ public class PostingController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @PostMapping("/{postId}/fair-view")
-    public ResponseEntity<Message> addPairView(
-            @PathVariable Long postId,
-            @RequestBody PostDto.OpinionItem opinionItem, @AuthenticationPrincipal User user) {
-        PostDto.Detail response = postingService.addPairView(postId, user.getId(), opinionItem);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
-    @PatchMapping("/{postId}/fair-view/{opinionId}")
-    public ResponseEntity<Message> confirmFairView(
-            @PathVariable Long postId,
-            @PathVariable Long opinionId, @AuthenticationPrincipal User user) {
-        boolean response = postingService.confirmFairView(user.getId(), opinionId);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
     @PutMapping("/{postId}/like")
     public ResponseEntity<Message> likePost(
             @PathVariable Long postId, @AuthenticationPrincipal User user) {
         PostDto.ListItem response = postingService.likePost(postId, user.getId());
-        if (response.isLiked()) notificationService.sendPostLikeNotification(postId, user.getId());
+        if (response.isLiked()) {
+            notificationService.sendPostLikeNotification(postId, user.getId());
+            contentUpdateService.likeUpdate(postId, ItemType.POST);
+        }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -144,25 +112,38 @@ public class PostingController {
         boolean response = postingService.viewPost(postId, user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-
-    @GetMapping("/fair-view/confirm")
-    public ResponseEntity<Message> getFairViewConfirmList(
-            @AuthenticationPrincipal User user,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        if (user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<PostDto.ListItem> response = postingService.getFairViewConfirmList(user.getId(), pageable);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
-    @PatchMapping("/fair-view/confirm/{postId}")
+    @PatchMapping("/{postId}/confirm")
     public ResponseEntity<Message> confirmFairViewPost(
-            @AuthenticationPrincipal User user, @PathVariable Long postId) {
-        if (user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
-        boolean response = postingService.confirmFairViewPost(user.getId(), postId);
+            @RequestHeader("Authorization") String token, @PathVariable Long postId) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        boolean response = postingService.confirmFairViewPost(userId, postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+    @GetMapping("/all")
+    public ResponseEntity<Message> getAllPostsList(@AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        // PageRequest 객체 생성 (페이지, 사이즈, 정렬 정보)
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Long userId = user != null ? user.getId() : null;
+        Page<PostDto.ListItem> response = postingService.getPostsList(pageable, userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/quick-poll")
+    public ResponseEntity<Message> getRandomQuickPoll(@AuthenticationPrincipal User user) {
+        Long userId = user != null ? user.getId() : null;
+        List<PostDto.QuickPoll> response = postingService.getRandomQuickPoll(userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/top-list")
+    public ResponseEntity<Message> getTopListPostsView(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "all") String type, @RequestParam(required = false, defaultValue = "10") int count) {
+        Long userId = user != null ? user.getId() : null;
+        List<PostDto.Card> response = postingService.getTop10Views(type, userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+
 
     @GetMapping("/search")
     public ResponseEntity<Message> search(
@@ -178,15 +159,4 @@ public class PostingController {
         return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
     }
 
-    @GetMapping("/fair-view/requested")
-    public ResponseEntity<Message> getFairViewRequestedList(
-            @RequestHeader("Authorization") String token,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        if (user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<PostDto.ListItem> response = postingService.getFairViewRequestedList(user.getId(), pageable);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
 }

@@ -37,6 +37,7 @@ public class AuthDto {
         private final String address;
         private final Boolean married;
         private final LocalDate marriedDate;
+        private final LocalDate marriageDate;
         private final Long partnerId;
         private final Map<String, String> oAuthData;
 

@@ -84,7 +84,7 @@ public class AuthController {
             String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
             String deviceId = HeaderExtractor.extractDeviceId(request);
 
-            User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", List.of());
+            User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", infoDto.getRoles());
             TokenInfo token =
                     jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
             token.tokenToHeaders(response);

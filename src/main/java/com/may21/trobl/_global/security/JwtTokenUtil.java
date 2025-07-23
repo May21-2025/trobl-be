@@ -51,7 +51,8 @@ public class JwtTokenUtil {
     private SecretKey getSigningKey() {
         try {
             // Base64로 인코딩된 키라면 디코딩
-            byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+            byte[] decodedKey = Base64.getDecoder()
+                    .decode(SECRET_KEY_JWT);
             return Keys.hmacShaKeyFor(decodedKey);
         } catch (Exception e) {
             // Base64가 아니라면 직접 UTF-8 바이트 사용
@@ -63,8 +64,12 @@ public class JwtTokenUtil {
      * JWT 토큰에서 사용자 이름 추출
      */
     public String extractUsername(String token) {
-        return Jwts.parser().verifyWith(getSigningKey())// 복호화에 사용할 키
-                .build().parseSignedClaims(token).getPayload().getSubject();             // 바로 subject 꺼냄
+        return Jwts.parser()
+                .verifyWith(getSigningKey())// 복호화에 사용할 키
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();             // 바로 subject 꺼냄
 
     }
 
@@ -73,7 +78,12 @@ public class JwtTokenUtil {
      */
     public Date extractExpiration(String token) {
 
-        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload().getExpiration();
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getExpiration();
     }
 
 
@@ -85,44 +95,73 @@ public class JwtTokenUtil {
     /**
      * RefreshToken로 Access Token 생성
      */
-    public String generateTokenFromRefreshToken(User user, RefreshToken refreshToken, String deviceId) {
-        Instant expiryDate = Instant.now().plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.MINUTES);
+    public String generateTokenFromRefreshToken(User user, RefreshToken refreshToken,
+            String deviceId) {
+        Instant expiryDate = Instant.now()
+                .plus(ACCESS_TOKEN_EXPIRATION, ChronoUnit.MINUTES);
         if (!Objects.equals(deviceId, refreshToken.getDeviceId()))
             throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED);
-        byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+        byte[] decodedKey = Base64.getDecoder()
+                .decode(SECRET_KEY_JWT);
         Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
         Long userId = refreshToken.getUserId();
-        List<String> roles = user.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
-        String role = roles.stream().map(r -> r.replace("ROLE_", "")).findFirst().orElse("USER");
+        String role = user.getRole();
         // add Role info to the token
         if (userId == null) {
             userId = user.getId();
         }
-        return Jwts.builder().subject(user.getUsername()).claim("userId", userId).claim("role", role).id(refreshToken.getTokenId()).issuedAt(new Date()).expiration(Date.from(expiryDate)).signWith(restoredKey).compact();
+        return Jwts.builder()
+                .subject(user.getUsername())
+                .claim("userId", userId)
+                .claim("role", role)
+                .id(refreshToken.getTokenId())
+                .issuedAt(new Date())
+                .expiration(Date.from(expiryDate))
+                .signWith(restoredKey)
+                .compact();
     }
 
     public RefreshToken generateRefreshToken(User user, String deviceId, String parentTokenId) {
-        String tokenId = UUID.randomUUID().toString();
-        Instant expiryDate = Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS);
+        String tokenId = UUID.randomUUID()
+                .toString();
+        Instant expiryDate = Instant.now()
+                .plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS);
 
-        byte[] decodedKey = Base64.getDecoder().decode(SECRET_KEY_JWT);
+        byte[] decodedKey = Base64.getDecoder()
+                .decode(SECRET_KEY_JWT);
         Key restoredKey = Keys.hmacShaKeyFor(decodedKey);
+        String role = user.getRole();
 
-        String token = Jwts.builder().subject(user.getUsername()).claim("userId", user.getId()).id(tokenId).issuedAt(new Date()).expiration(Date.from(expiryDate)).signWith(restoredKey).compact();
-        RefreshToken refreshToken = RefreshToken.builder().tokenId(tokenId).token(token).userId(user.getId()).deviceId(deviceId).expiryDate(expiryDate).parentId(parentTokenId).build();
+        String token = Jwts.builder()
+                .subject(user.getUsername())
+                .claim("userId", user.getId())
+                .claim("role", role)
+                .id(tokenId)
+                .issuedAt(new Date())
+                .expiration(Date.from(expiryDate))
+                .signWith(restoredKey)
+                .compact();
+        RefreshToken refreshToken = RefreshToken.builder()
+                .tokenId(tokenId)
+                .token(token)
+                .userId(user.getId())
+                .deviceId(deviceId)
+                .expiryDate(expiryDate)
+                .parentId(parentTokenId)
+                .build();
         refreshTokenRepository.save(refreshToken);
         return refreshToken;
     }
 
     public User getAuthentication(String token) {
         Claims claims = getClaims(token);
-        Long userId = Optional.ofNullable(claims.get("userId", Long.class)).orElseThrow(() -> new RuntimeException("잘못된 토큰입니다."));
+        Long userId = Optional.ofNullable(claims.get("userId", Long.class))
+                .orElseThrow(() -> new RuntimeException("잘못된 토큰입니다."));
         if (userId == null) {
             throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED);
         }
-        String role = Optional.ofNullable(claims.get("role", String.class)).orElse("USER");
-        List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
-        return new User(userId, claims.getSubject(), "", authorities);
+        String role = claims.get("role", String.class);
+        return new User(userId, claims.getSubject(), "", role);
     }
 
     /**
@@ -148,7 +187,11 @@ public class JwtTokenUtil {
     }
 
     private Claims getClaims(String jwt) {
-        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(jwt).getPayload();
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(jwt)
+                .getPayload();
     }
 
     /**
@@ -174,22 +217,24 @@ public class JwtTokenUtil {
         Long userId = claims.get("userId", Long.class);
         String username = claims.getSubject();
         String role = claims.get("role", String.class);
-        List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
-        return new User(userId, username, "", authorities);
+        return new User(userId, username, "", role);
     }
 
     public TokenInfo reissueAccessToken(HttpServletRequest request) {
         String parentRefreshToken = extractRefreshToken(request);
         User user = getAuthentication(parentRefreshToken);
-        RefreshToken preRefreshToken = refreshTokenRepository.findByToken(parentRefreshToken).orElseThrow(() -> new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED));
+        RefreshToken preRefreshToken = refreshTokenRepository.findByToken(parentRefreshToken)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED));
         preRefreshToken.setRevoked(true);
         String deviceId = extractDeviceId(request);
-        RefreshToken refreshToken = generateRefreshToken(user, deviceId, preRefreshToken.getTokenId());
+        RefreshToken refreshToken =
+                generateRefreshToken(user, deviceId, preRefreshToken.getTokenId());
         String accessToken = generateTokenFromRefreshToken(user, refreshToken, deviceId);
         return new TokenInfo("Bearer", accessToken, refreshToken.getToken());
     }
 
-    public TokenInfo generateAccessAndRefreshToken(User user, String ipAddress, String deviceInfo, String deviceId) {
+    public TokenInfo generateAccessAndRefreshToken(User user, String ipAddress, String deviceInfo,
+            String deviceId) {
         RefreshToken refreshToken = generateRefreshToken(user, deviceId, null);
         String accessToken = generateTokenFromRefreshToken(user, refreshToken, deviceId);
         return new TokenInfo("Bearer", accessToken, refreshToken.getToken());
@@ -199,28 +244,28 @@ public class JwtTokenUtil {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
+            return Base64.getEncoder()
+                    .encodeToString(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED, e);
         }
     }
 
-    public static User getAdminUserByToken(String token) {
-        if (token == null || !token.startsWith("Bearer ")) {
+    public User getAdminUserByToken(String tokenStr) {
+        if (tokenStr == null) {
             throw new BusinessException(ExceptionCode.TOKEN_MISSING);
         }
-        String jwt = token.substring(7);
-        Claims claims = Jwts.parser().verifyWith(Keys.hmacShaKeyFor(Base64.getDecoder().decode("your-secret-key"))).build().parseSignedClaims(jwt).getPayload();
+        String token = tokenStr.startsWith("Bearer ") ? tokenStr.substring(7) : tokenStr;
+        Claims claims = getClaims(token);
         Long userId = claims.get("userId", Long.class);
         String username = claims.getSubject();
         String role = claims.get("role", String.class);
-        if( userId == null || username == null || role == null) {
+        if (userId == null || username == null || role == null) {
             throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED);
         }
-        if(!role.equals("ADMIN")) {
+        if (!role.contains("ADMIN")) {
             throw new BusinessException(ExceptionCode.UNAUTHORIZED, "Admin access required");
         }
-        List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
-        return new User(userId, username, "", authorities);
+        return new User(userId, username, "", role);
     }
 }

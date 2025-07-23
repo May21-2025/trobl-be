@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.lang.ScopedValue;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -142,4 +141,19 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     List<Posting> findAllByReportedTrue();
 
     Optional<Posting> findByIdAndReportedIsTrue(Long postId);
+
+    @Query("SELECT EXISTS (SELECT 1 FROM Posting p WHERE p.id = :postId AND p.userId = :userId)")
+    boolean isPostIdOwnerIsUser(Long postId, Long userId);
+
+    @Query("SELECT p.userId FROM Posting p WHERE p.id = :postId")
+    Long findOwnerIdById(Long postId);
+
+    @Query("SELECT p.userId FROM Posting p WHERE p.id = :postId")
+    Long getPostOwnerIdByPostId(Long postId);
+
+    @Query("SELECT p FROM Posting p WHERE p.id = :postId AND p.postType = :postingType ")
+    Optional<Posting> findByIdAndPostType(Long postId, PostingType postingType);
+
+    @Query("SELECT p.id FROM Posting p JOIN p.fairViews f WHERE f.id = :fairViewId")
+    Long findPostIdByFairViewId(Long fairViewId);
 }

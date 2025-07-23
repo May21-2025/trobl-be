@@ -1,6 +1,7 @@
 package com.may21.trobl.user.service;
 
 import com.may21.trobl._global.enums.OAuthProvider;
+import com.may21.trobl._global.enums.RequestStatus;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
@@ -9,10 +10,11 @@ import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
+import com.may21.trobl.partner.PartnerRequest;
+import com.may21.trobl.partner.PartnerRequestRepository;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.user.UserDto;
-import com.may21.trobl.user.domain.OAuthUserInfo;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +46,7 @@ public class UserService implements UserDetailsService {
     private final AppleOAuthService appleOAuthService;
     private final ReportService reportService;
     private final KakaoOAuthService kakaoOAuthService;
+    private final PartnerRequestRepository partnerRequestRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -97,7 +100,8 @@ public class UserService implements UserDetailsService {
             throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Username cannot be null");
         }
         if (userRepository.existsByUsername(username)) {
-            throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS);
+            OAuthProvider oAuthProvider = userRepository.getOAuthByUsername(username);
+            throw new BusinessException(ExceptionCode.USERNAME_ALREADY_EXISTS, "{ \"provider\" : " + oAuthProvider + "}");
         }
         User user =
                 User.builder()
@@ -228,21 +232,7 @@ public class UserService implements UserDetailsService {
         return true;
     }
 
-    @Transactional
-    public boolean matchPartner(Long id, String partnerId) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        User partner = userRepository.findByUsername(partnerId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
 
-        if (user.getPartnerId() != null || partner.getPartnerId() != null) {
-            throw new BusinessException(ExceptionCode.RESTRICTED);
-        }
-
-        user.setPartner(partner);
-        partner.setPartner(user);
-        return true;
-    }
 
     public User createUser(String email, OAuthProvider oAuthProvider) {
         if (email == null || email.isEmpty()) {
@@ -316,7 +306,8 @@ public class UserService implements UserDetailsService {
             if (signUpDto.isMarried()) {
                 User partner = userRepository.findById(signUpDto.getPartnerId())
                         .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-                UserDto.MarriedInfo marriedInfo = new UserDto.MarriedInfo(signUpDto.getMarriedDate(), partner.getUsername());
+                UserDto.MarriedInfo marriedInfo = new UserDto.MarriedInfo(signUpDto.getMarriedDate(),
+                        partner.getUsername());
                 user.updateInformation(marriedInfo);
             }
             user.updateAddress(signUpDto.getAddress());
@@ -338,5 +329,10 @@ public class UserService implements UserDetailsService {
             throw new BusinessException(ExceptionCode.NICKNAME_REQUIREMENTS_NOT_MET);
         }
         return !userRepository.existsByNickname(nickname);
+    }
+
+    public User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
     }
 }

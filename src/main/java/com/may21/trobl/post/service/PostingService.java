@@ -42,7 +42,7 @@ public interface PostingService {
     boolean deletePost(Long userId, Long postId);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getMyPosts(Long userId, int page, int size);
+    Page<PostDto.MyListItem> getMyPosts(Long userId, int page, int size);
 
     @Transactional(readOnly = true)
     Page<PostDto.ListItem> getLikedPosts(Long userId, int page, int size);
@@ -51,7 +51,7 @@ public interface PostingService {
     Page<PostDto.ListItem> getVisitedPosts(Long userId, int page, int size);
 
     @Transactional
-    PostDto.Detail addPairView(Long postId, Long userId, PostDto.OpinionItem opinionItem);
+    PostDto.FairViewItem setFairView(Long fairViewId, Long userId, PostDto.FairViewRequest fairView);
 
     @Transactional(readOnly = true)
     List<PostDto.QuickPoll> getRandomQuickPoll(Long userId);
@@ -66,11 +66,12 @@ public interface PostingService {
     Page<PostDto.ListItem> getVotedPosts(Long userId, int page, int size);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getFairViewConfirmList(Long userId, Pageable pageable);
+    Page<PostDto.RequestedItem> getFairViewConfirmList(Long userId, Pageable pageable);
 
     @Transactional
     boolean confirmFairViewPost(Long userId, Long postId);
 
+    @Transactional
     boolean confirmFairView(Long userId, Long fairViewId);
 
     @Transactional(readOnly = true)
@@ -86,7 +87,7 @@ public interface PostingService {
     boolean reportPost(Long userId, Long postId, ReportDto.Request reportRequest);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getFairViewRequestedList(Long id, Pageable pageable);
+    Page<PostDto.RequestedListItem> getFairViewRequestedList(Long id, int page, int size);
 
     @Transactional(readOnly = true)
     List<PostDto.ListItem> getAllReportedPosts();

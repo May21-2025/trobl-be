@@ -21,13 +21,20 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
-public class Posting extends ContentEntity {
+public class Posting {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
     @Setter
     private String nickname;
+
+    private Long userId;
+
+    private String title;
+
+    @Column(columnDefinition = "text")
+    private String content;
 
     private PostingType postType;
 
@@ -80,7 +87,10 @@ public class Posting extends ContentEntity {
     @Builder
     public Posting(
             String title, PostingType postType, String content, Long userId, String nickname) {
-        super(title, content, userId);
+        this.userId = userId;
+        this.title = title;
+        this.content = content;
+
         this.nickname = nickname;
         this.postType = postType;
         this.viewCount = 0;
@@ -163,10 +173,10 @@ public class Posting extends ContentEntity {
 
     public void update(PostDto.Request request) {
         if (request.getTitle() != null) {
-            this.setTitle(request.getTitle());
+            this.title = request.getTitle();
         }
         if (request.getContent() != null) {
-            this.setContent(request.getContent());
+            this.content = request.getContent();
         }
     }
 

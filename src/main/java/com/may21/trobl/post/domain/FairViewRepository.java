@@ -12,12 +12,11 @@ import java.util.Optional;
 @Repository
 public interface FairViewRepository extends JpaRepository<FairView, Long> {
 
-    @Query("SELECT f FROM FairView f WHERE f.posting.id = :postId AND f.userId = :userId")
-    Optional<FairView> findByPostIdAndUserId(Long postId, Long userId);
-
-    @Query("SELECT f FROM FairView f WHERE f.posting IN :postList")
-    List<FairView> findAllByPostIn(List<Posting> postList);
-
-    @Query("SELECT f FROM FairView f WHERE f.userId = :userId")
+    @Query("SELECT f.posting FROM FairView f JOIN f.posting p WHERE f.userId = :userId AND  p.userId != :userId")
     Page<Posting> findPostsByUserId(Long userId, Pageable pageable);
+
+   @Query("SELECT f FROM FairView f WHERE f.userId = :userId AND f.posting.id IN :postIds")
+    List<FairView> findAllByUserIdAndPostIdIn(Long userId, List<Long> postIds);
+
+    boolean existsByPostingAndConfirmedIsFalse(Posting post);
 }

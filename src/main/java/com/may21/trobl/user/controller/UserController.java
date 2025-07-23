@@ -5,6 +5,7 @@ import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.auth.service.AuthorizationService;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
+import com.may21.trobl.partner.PartnerService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
 import com.may21.trobl.report.ReportDto;
@@ -12,14 +13,14 @@ import com.may21.trobl.storage.StorageService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/users")
@@ -31,12 +32,13 @@ public class UserController {
     private final AuthorizationService authorizationService;
     private final StorageService storageService;
     private final JwtTokenUtil jwtTokenUtil;
+    private final PartnerService partnerService;
 
 
     @GetMapping("/bookmarks")
     public ResponseEntity<Message> getBookmarkedPosts(
             @RequestHeader("Authorization") String token,
-                                                      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Page<PostDto.ListItem> response = postingService.getBookmarkedPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
@@ -134,16 +136,42 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        Page<PostDto.ListItem> response = postingService.getMyPosts(user.getId(), page, size);
+        Page<PostDto.MyListItem> response = postingService.getMyPosts(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @PatchMapping("/partner")
-    public ResponseEntity<Message> matchPartner(@RequestHeader("Authorization") String token, @RequestParam String partnerId) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        boolean response = userService.matchPartner(user.getId(), partnerId);
+    @PostMapping("/partner-requests")
+    public ResponseEntity<Message> requestPartner(@RequestHeader("Authorization") String token,
+                                                  @RequestBody UserDto.RequestPartner request) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        boolean response = partnerService.requestPartner(userId, request);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+    @GetMapping("/partner-requests/{partnerRequestId}")
+    public ResponseEntity<Message> checkMarriageDate(@RequestHeader("Authorization") String token,
+            @PathVariable Long partnerRequestId,
+            @RequestParam LocalDate marriageDate) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        boolean response = partnerService.checkMarriageDate(partnerRequestId, marriageDate);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PatchMapping("/partner-requests/{partnerRequestId}")
+    public ResponseEntity<Message> responseToRequest(@RequestHeader("Authorization") String token,
+                                                     @PathVariable Long partnerRequestId,
+                                                     @RequestBody UserDto.AcceptPartnerRequest request) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        boolean response = partnerService.matchPartner(userId, partnerRequestId, request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/partner-requests")
+    public ResponseEntity<Message> getPartnerRequest(@RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
+        UserDto.PartnerInfo response = partnerService.getRequestStatus(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
 
     @GetMapping("/visits")
     public ResponseEntity<Message> getVisitedPosts(@RequestHeader("Authorization") String token,

@@ -20,4 +20,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByPostIdIn(List<Long> postIds);
 
     boolean existsByPostingIdAndUserId(Long postingId, Long userId);
+
+    @Query("SELECT c.userId FROM Comment c WHERE c.id = :commentId")
+    Long getOwnerIdByCommentId(Long commentId);
 }

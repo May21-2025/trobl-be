@@ -6,6 +6,7 @@ import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.dto.TagDto;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public interface TagService {
@@ -22,4 +23,6 @@ public interface TagService {
     List<TagDto.Response> searchTags(String keyword);
 
     boolean organize();
+
+    Map<Long, List<Tag>> getPostTagsMap(List<Posting> postList);
 }

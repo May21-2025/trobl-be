@@ -10,6 +10,7 @@ public enum NotificationType {
     CONTENT_RECOMMENDATION(NotificationStrategy.SCHEDULED, "notification.content_recommendation"),
     POPULAR_POST(NotificationStrategy.SCHEDULED, "notification.popular_post"),
     FAIRVIEW_REQUEST(NotificationStrategy.IMMEDIATE, "notification.fairview_request"),
+    FAIRVIEW_CONFIRMATION(NotificationStrategy.IMMEDIATE, "notification.fairview_confirmation"),
     QUICK_POLL_PARTICIPATION(NotificationStrategy.BATCHED, "notification.quick_poll_participation"),
     COMMUNITY_ANALYSIS(NotificationStrategy.SCHEDULED, "notification.community_analysis"),
     ANNOUNCEMENT(NotificationStrategy.SCHEDULED, "notification.announcement"),

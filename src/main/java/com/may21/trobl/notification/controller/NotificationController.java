@@ -1,6 +1,7 @@
 package com.may21.trobl.notification.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.pushAlarm.PushNotificationService;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
     private final NotificationService notificationService;
     private final PushNotificationService webPushService;
+    private final JwtTokenUtil jwtTokenUtil;
 
     @PostMapping("/register-web-push-token")
     public ResponseEntity<Message> registerToken(
@@ -41,5 +43,24 @@ public class NotificationController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
+    @GetMapping("/main")
+    public ResponseEntity<Message> getMainNotification(@RequestHeader("Authorization") String token) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        boolean response = notificationService.getMainNotification(userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 
+    @GetMapping("/menu")
+    public ResponseEntity<Message> getMenuNotification(@RequestHeader("Authorization") String token) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        NotificationDto.SubMenu response = notificationService.getSubManuNotification(userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/all")
+    public ResponseEntity<Message> readAllNotifications(@RequestHeader("Authorization") String token) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        boolean response = notificationService.readAllNotifications(userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 }

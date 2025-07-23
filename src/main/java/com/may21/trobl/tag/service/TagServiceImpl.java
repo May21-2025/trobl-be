@@ -129,4 +129,9 @@ public class TagServiceImpl implements TagService {
         return false;
     }
 
+    @Override
+    public Map<Long, List<Tag>> getPostTagsMap(List<Posting> postList) {
+        return Map.of();
+    }
+
 }

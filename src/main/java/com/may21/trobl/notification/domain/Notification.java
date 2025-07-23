@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Getter
@@ -30,6 +31,14 @@ public class Notification {
 
     @CreatedDate
     private LocalDateTime createdAt;
+
+    public Notification(Long userId, NotificationType type, Map<String, String> dataMap, LocalDateTime scheduledTime) {
+        this.userId = userId;
+        this.type = type;
+        this.data = dataMap.toString();
+        this.read = false;
+        this.scheduledTime = scheduledTime != null ? scheduledTime : LocalDateTime.now();
+    }
 
     public void markAsRead() {
         this.read = true;

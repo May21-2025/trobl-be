@@ -1,8 +1,13 @@
 package com.may21.trobl.comment.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.enums.ItemType;
+import com.may21.trobl._global.enums.UpdateType;
+import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
+import com.may21.trobl.notification.domain.ContentUpdateService;
+import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.user.domain.User;
@@ -21,11 +26,17 @@ public class CommentController {
 
     private final CommentService commentService;
     private final NotificationService notificationService;
+    private final ContentUpdateService contentUpdateService;
+    private final JwtTokenUtil jwtTokenUtil;
 
     @GetMapping("")
     public ResponseEntity<Message> getComments(@PathVariable Long postId, @AuthenticationPrincipal User user) {
         Long userId = user != null ? user.getId() : null;
         List<CommentDto.Response> response = commentService.getComments(postId, userId);
+        List<Long> commentIds = response.stream()
+                .map(CommentDto.Response::getCommentId)
+                .toList();
+        contentUpdateService.readIfExist(userId,commentIds, ItemType.COMMENT);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -34,6 +45,7 @@ public class CommentController {
                                                  @RequestBody CommentDto.Request request, @AuthenticationPrincipal User user) {
         CommentDto.Response response = commentService.createComment(postId, request, user.getId());
         notificationService.sendNewCommentNotification(postId, response);
+        contentUpdateService.commentUpdate(postId, request);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -57,9 +69,13 @@ public class CommentController {
     @PutMapping("/{commentId}/like")
     public ResponseEntity<Message> likeComment(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal User user) {
-        CommentDto.Response response = commentService.likeComment(commentId, user.getId());
-        if (response.isLiked()) notificationService.sendCommentLikeNotification(commentId, user.getId());
+            @RequestHeader("Authorization") String token){
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        CommentDto.Response response = commentService.likeComment(commentId, userId);
+        if (response.isLiked()) {
+            notificationService.sendCommentLikeNotification(commentId, userId);
+            contentUpdateService.likeUpdate(commentId, ItemType.COMMENT);
+        }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
