@@ -1,37 +1,49 @@
 package com.may21.trobl.admin;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.enums.NotificationStrategy;
+import com.may21.trobl._global.enums.NotificationType;
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.auth.jwt.TokenInfo;
 import com.may21.trobl.notification.service.NotificationService;
+import com.may21.trobl.notification.service.NotificationServiceImpl;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
-import com.may21.trobl.pushAlarm.PushNotificationService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@Slf4j
 public class AdminController {
     private final PostingService postingService;
     private final NotificationService notificationService;
-    private final PushNotificationService  pushNotificationService;
+    private final NotificationServiceImpl notificationServiceImpl;
     private final JwtTokenUtil jwtTokenUtil;
     private final UserService userService;
     private final AdminService adminService;
 
+    private static final Long TEST_USER_ID = 42L;
+
     @GetMapping("/authenticate")
     public ResponseEntity<Message> authenticateAdmin(@RequestHeader("Authorization") String token) {
-        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
-        boolean response  = adminService.grantAdminRole(userId);
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token)
+                .getId();
+        boolean response = adminService.grantAdminRole(userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -44,8 +56,7 @@ public class AdminController {
 
     @GetMapping("/user-token/{userId}")
     public ResponseEntity<Message> getUserToken(@RequestHeader("Authorization") String token,
-                                                @PathVariable Long userId,
-                                                HttpServletResponse response) {
+            @PathVariable Long userId, HttpServletResponse response) {
         jwtTokenUtil.getAdminUserByToken(token);
         User user = userService.getUser(userId);
         TokenInfo userToken =
@@ -56,7 +67,7 @@ public class AdminController {
 
     @PatchMapping("/reported-posts/{postId}/block")
     public ResponseEntity<Message> unblockPost(@RequestHeader("Authorization") String token,
-                                               @PathVariable Long postId) {
+            @PathVariable Long postId) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = postingService.unblockPost(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
@@ -64,7 +75,7 @@ public class AdminController {
 
     @DeleteMapping("/reported-posts/{postId}")
     public ResponseEntity<Message> deletePost(@RequestHeader("Authorization") String token,
-                                              @PathVariable Long postId) {
+            @PathVariable Long postId) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = postingService.deletePostByAdmin(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
@@ -73,11 +84,246 @@ public class AdminController {
 
     @PostMapping("/notifications/send")
     public ResponseEntity<Message> sendNotification(@RequestHeader("Authorization") String token,
-                                                    @RequestBody AdminDto.PushNotification message) {
-        jwtTokenUtil.getAdminUserByToken(token);
+            @RequestBody AdminDto.PushNotification message) {
+        jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = notificationService.notifyMarketingAlert(message);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
+    // ========== 42번 유저 알림 테스트 기능 ==========
+
+    /**
+     * 42번 유저에게 모든 알림 유형을 테스트로 전송 (3초 간격)
+     */
+    @PostMapping("/notifications/test-all")
+    public ResponseEntity<Message> testAllNotificationTypes(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        log.debug("Starting notification test for user ID: {} with 3 second intervals",
+                TEST_USER_ID);
+
+        int sentCount = 0;
+        NotificationType[] types = NotificationType.values();
+
+        for (int i = 0; i < types.length; i++) {
+            NotificationType type = types[i];
+            try {
+                sendTestNotificationByType(type);
+                sentCount++;
+                log.debug("Sent test notification: {} ({}/{})", type.name(), i + 1, types.length);
+
+                // 마지막 알림이 아니면 3초 대기
+                if (i < types.length - 1) {
+                    Thread.sleep(3000); // 3초 대기
+                    log.debug("Waiting 3 seconds before next notification...");
+                }
+            } catch (InterruptedException e) {
+                log.warn("Notification test interrupted at type: {}", type.name());
+                Thread.currentThread()
+                        .interrupt(); // 인터럽트 상태 복원
+                break;
+            } catch (Exception e) {
+                log.error("Failed to send notification type: {}", type.name(), e);
+            }
+        }
+
+        String resultMessage =
+                String.format("테스트 완료! %d/%d개의 알림을 42번 유저에게 전송했습니다. (총 소요시간: 약 %d초)", sentCount,
+                        types.length, (sentCount - 1) * 3);
+
+        return new ResponseEntity<>(Message.success(resultMessage), HttpStatus.OK);
+    }
+
+    /**
+     * 특정 알림 유형만 42번 유저에게 테스트
+     */
+    @PostMapping("/notifications/test-type/{notificationType}")
+    public ResponseEntity<Message> testSpecificNotificationType(
+            @RequestHeader("Authorization") String token, @PathVariable String notificationType) {
+
+        jwtTokenUtil.getAdminUserByToken(token);
+
+        NotificationType type = NotificationType.valueOf(notificationType.toUpperCase());
+        sendTestNotificationByType(type);
+
+        String resultMessage = String.format("%s 알림을 42번 유저에게 전송했습니다.", type.name());
+        return new ResponseEntity<>(Message.success(resultMessage), HttpStatus.OK);
+    }
+
+    /**
+     * 즉시 전송 테스트
+     */
+    @PostMapping("/notifications/test-immediate")
+    public ResponseEntity<Message> testImmediateNotification(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+
+
+        notificationServiceImpl.testNotification(TEST_USER_ID, NotificationType.ANNOUNCEMENT,
+                "🚀 즉시 전송 테스트", "즉시 전송 알림이 잘 작동하는지 테스트합니다!",
+                Map.of("itemType", "post", "itemId", "1"), NotificationStrategy.IMMEDIATE);
+
+        return new ResponseEntity<>(Message.success("즉시 전송 테스트 완료"), HttpStatus.OK);
+    }
+
+    /**
+     * 일괄 전송 테스트
+     */
+    @PostMapping("/notifications/test-batched")
+    public ResponseEntity<Message> testBatchedNotification(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+
+        // 여러 개의 일괄 처리 알림을 연속으로 보내서 테스트
+        for (int i = 1; i <= 3; i++) {
+            notificationServiceImpl.testNotification(TEST_USER_ID, NotificationType.LIKE,
+                    "👍 좋아요 알림 " + i, "일괄 처리 테스트용 좋아요 알림입니다.",
+                    Map.of("itemType", "post", "itemId", "1"), NotificationStrategy.BATCHED);
+        }
+
+        return new ResponseEntity<>(Message.success("일괄 전송 테스트 완료 (3개 알림 큐잉됨)"), HttpStatus.OK);
+    }
+
+    /**
+     * 예약 전송 테스트 (1분 후)
+     */
+    @PostMapping("/notifications/test-scheduled")
+    public ResponseEntity<Message> testScheduledNotification(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+
+        LocalDateTime scheduledTime = LocalDateTime.now()
+                .plusMinutes(1);
+        String formattedTime = scheduledTime.toString();
+        notificationServiceImpl.testNotification(TEST_USER_ID, NotificationType.MARKETING,
+                "⏰ 예약 전송 테스트 ", formattedTime + "에 받게 될 예약 알림입니다!",
+                Map.of("itemType", "post", "itemId", "1", "scheduledTime",
+                        scheduledTime.toString()), NotificationStrategy.SCHEDULED);
+        return new ResponseEntity<>(Message.success("예약 전송 테스트 완료 (1분 후 전송 예정)"), HttpStatus.OK);
+    }
+
+    /**
+     * 현재 설정된 모든 알림 유형 목록 반환
+     */
+    @GetMapping("/notifications/types")
+    public ResponseEntity<Message> getAllNotificationTypes(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+
+        Map<String, Object> result = new HashMap<>();
+
+        for (NotificationType type : NotificationType.values()) {
+            Map<String, String> typeInfo = new HashMap<>();
+            typeInfo.put("name", type.name());
+            typeInfo.put("strategy", type.getDefaultStrategy()
+                    .name());
+            typeInfo.put("messageKey", type.getMessageKey());
+            result.put(type.name(), typeInfo);
+        }
+
+        return new ResponseEntity<>(Message.success(result), HttpStatus.OK);
+    }
+
+    /**
+     * 알림 유형별 테스트 메시지 생성
+     */
+    private void sendTestNotificationByType(NotificationType type) {
+        try {
+
+            String title = getTestTitle(type);
+            String body = getTestBody(type);
+            Map<String, String> data = getTestData(type);
+            NotificationStrategy strategy = type.getDefaultStrategy();
+
+            // 예약 전송의 경우 30초 후로 설정
+            if (strategy == NotificationStrategy.SCHEDULED) {
+                LocalDateTime scheduledTime = LocalDateTime.now()
+                        .plusSeconds(30);
+                data.put("scheduledTime", scheduledTime.toString());
+                notificationServiceImpl.testNotification(TEST_USER_ID, type, title, body, data,
+                        strategy);
+            }
+            else {
+                notificationServiceImpl.testNotification(TEST_USER_ID, type, title, body, data,
+                        strategy);
+            }
+        } catch (Exception e) {
+            log.error("Failed to send test notification for type: {}", type.name(), e);
+            throw new BusinessException(ExceptionCode.TEST_FAILED);
+        }
+    }
+
+    private String getTestTitle(NotificationType type) {
+        return switch (type) {
+            case COMMENT -> "💬 새 댓글 테스트";
+            case LIKE -> "👍 좋아요 테스트";
+            case VOTE -> "🗳️ 투표 테스트";
+            case CONTENT_RECOMMENDATION -> "📚 콘텐츠 추천 테스트";
+            case POPULAR_POST -> "🔥 인기 게시글 테스트";
+            case FAIRVIEW_REQUEST -> "⚖️ 페어뷰 요청 테스트";
+            case FAIRVIEW_CONFIRMATION -> "✅ 페어뷰 확인 테스트";
+            case QUICK_POLL_PARTICIPATION -> "⚡ 빠른 투표 참여 테스트";
+            case COMMUNITY_ANALYSIS -> "📊 커뮤니티 분석 테스트";
+            case ANNOUNCEMENT -> "📢 공지사항 테스트";
+            case POST_DELETED -> "🗑️ 게시글 삭제 테스트";
+            case COMMENT_DELETED -> "🗑️ 댓글 삭제 테스트";
+            case MARKETING -> "🎁 마케팅 알림 테스트";
+            case PARTNER_ACCEPTED -> "🤝 파트너 요청 승인 테스트";
+            case PARTNER_DECLINED -> "❌ 파트너 요청 거절 테스트";
+            case PARTNER_REQUEST -> "🤝 파트너 요청 테스트";
+            case ETC -> "📝 기타 알림 테스트";
+        };
+    }
+
+    private String getTestBody(NotificationType type) {
+        return switch (type) {
+            case COMMENT -> "테스트용 댓글이 달렸습니다!";
+            case LIKE -> "테스트용 좋아요를 받았습니다!";
+            case VOTE -> "테스트 투표에 참여해주세요!";
+            case CONTENT_RECOMMENDATION -> "회원님께 추천하는 테스트 콘텐츠가 있어요!";
+            case POPULAR_POST -> "지금 인기있는 테스트 게시글을 확인해보세요!";
+            case FAIRVIEW_REQUEST -> "페어뷰 요청이 도착했습니다. (테스트)";
+            case FAIRVIEW_CONFIRMATION -> "페어뷰가 확인되었습니다. (테스트)";
+            case QUICK_POLL_PARTICIPATION -> "빠른 테스트 투표에 참여해주세요!";
+            case COMMUNITY_ANALYSIS -> "이번 주 커뮤니티 분석 결과입니다. (테스트)";
+            case ANNOUNCEMENT -> "중요한 테스트 공지사항이 있습니다!";
+            case POST_DELETED -> "테스트 게시글이 삭제되었습니다.";
+            case COMMENT_DELETED -> "테스트 댓글이 삭제되었습니다.";
+            case MARKETING -> "특별한 테스트 이벤트가 진행중입니다!";
+            case PARTNER_ACCEPTED -> "테스트 파트너 요청이 승인되었습니다.";
+            case PARTNER_DECLINED -> "테스트 파트너 요청이 거절되었습니다.";
+            case PARTNER_REQUEST -> "테스트 파트너 요청이 도착했습니다.";
+            case ETC -> "기타 테스트 알림입니다.";
+        };
+    }
+
+    private Map<String, String> getTestData(NotificationType type) {
+        Map<String, String> data = new HashMap<>();
+        data.put("type", type.name()
+                .toLowerCase());
+        data.put("isTest", "true");
+        data.put("testTimestamp", String.valueOf(System.currentTimeMillis()));
+
+        // 타입별 추가 데이터
+        switch (type) {
+            case COMMENT, LIKE, VOTE -> {
+                data.put("postId", "999999");
+                data.put("commentId", "888888");
+            }
+            case FAIRVIEW_REQUEST, FAIRVIEW_CONFIRMATION -> {
+                data.put("fairViewId", "777777");
+                data.put("postId", "999999");
+            }
+            case CONTENT_RECOMMENDATION, POPULAR_POST -> {
+                data.put("recommendedPostId", "666666");
+            }
+            case MARKETING -> {
+                data.put("eventId", "test_event_2025");
+                data.put("couponCode", "TEST20");
+            }
+        }
+
+        return data;
+    }
 
 }

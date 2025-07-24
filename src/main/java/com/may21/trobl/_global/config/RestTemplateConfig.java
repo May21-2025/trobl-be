@@ -62,11 +62,11 @@ public class RestTemplateConfig {
                 byte[] body,
                 ClientHttpRequestExecution execution) throws IOException {
 
-            log.info("HTTP Request: {} {}", request.getMethod(), request.getURI());
+            log.debug("HTTP Request: {} {}", request.getMethod(), request.getURI());
 
             ClientHttpResponse response = execution.execute(request, body);
 
-            log.info("HTTP Response: {}", response.getStatusCode());
+            log.debug("HTTP Response: {}", response.getStatusCode());
 
             return response;
         }

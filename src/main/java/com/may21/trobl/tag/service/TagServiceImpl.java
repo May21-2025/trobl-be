@@ -131,7 +131,16 @@ public class TagServiceImpl implements TagService {
 
     @Override
     public Map<Long, List<Tag>> getPostTagsMap(List<Posting> postList) {
+    if (postList == null || postList.isEmpty()) {
         return Map.of();
+    }
+        Map<Long, List<Tag>> postTagsMap = new HashMap<>();
+        List<TagMapping> tagMappings = tagMappingRepository.findByPostingIn(postList);
+        for (TagMapping tagMapping : tagMappings) {
+            Long postId = tagMapping.getPosting().getId();
+            postTagsMap.computeIfAbsent(postId, k -> new ArrayList<>()).add(tagMapping.getTag());
+        }
+        return postTagsMap;
     }
 
 }

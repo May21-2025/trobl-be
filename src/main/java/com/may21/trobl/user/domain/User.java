@@ -8,6 +8,7 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.domain.NotificationSetting;
+import com.may21.trobl.pushAlarm.DeviceFcmToken;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_PATH;
 
@@ -33,35 +33,29 @@ import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_
 @Getter
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "app_users")
-public class User implements UserDetails, OAuth2User  {
+public class User implements UserDetails, OAuth2User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     @Column(nullable = false, unique = true)
     private String username;
-
     @Column(nullable = false)
     private String password;
-
     private String nickname;
-    private String email;
-
-    private boolean married;
+    private LocalDate nicknameUpdatedAt;
+    private String address;
 
     private Language language;
 
+    private boolean married;
+    private Long partnerId;
     private LocalDate weddingAnniversaryDate;
 
-    private LocalDate nicknameUpdatedAt;
 
-    private Long partnerId;
 
-    private String address;
-
-    @Setter
-    private String fcmToken;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DeviceFcmToken> fcmTokens;
 
     @Setter
     private String thumbnailKey;
@@ -92,17 +86,13 @@ public class User implements UserDetails, OAuth2User  {
         this.id = userId;
         this.username = subject;
         this.password = s;
-        this.roles =roles;
-        this.accountNonExpired = true;
-        this.accountNonLocked = true;
-        this.credentialsNonExpired = true;
-        this.enabled = true;
+        this.roles = roles;
     }
 
     @Builder
-    public User(String username, String encryptPassword, String encryptEmail, String nickname, String provider, RoleType role) {
+    public User(String username, String encryptPassword, String nickname,
+            String provider, RoleType role) {
         this.username = username;
-        this.email = encryptEmail;
         this.provider = OAuthProvider.fromString(provider);
         this.password = encryptPassword == null ? "oauth" : encryptPassword;
         this.nickname = nickname;
@@ -116,14 +106,11 @@ public class User implements UserDetails, OAuth2User  {
         this.username = subject;
         this.password = s;
         this.roles = roles;
-        this.accountNonExpired = true;
-        this.accountNonLocked = true;
-        this.credentialsNonExpired = true;
-        this.enabled = true;
     }
 
     public String getThumbnailUrl() {
-        return thumbnailKey == null ? null : GlobalValues.getCdnUrl() + USER_PROFILE_IMAGE_PATH + thumbnailKey;
+        return thumbnailKey == null ? null :
+                GlobalValues.getCdnUrl() + USER_PROFILE_IMAGE_PATH + thumbnailKey;
     }
 
     public void setPartner(User partner) {
@@ -147,7 +134,9 @@ public class User implements UserDetails, OAuth2User  {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList();
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .toList();
     }
 
     @Override
@@ -203,6 +192,7 @@ public class User implements UserDetails, OAuth2User  {
         }
         this.address = address;
     }
+
     public void addRole(RoleType role) {
         if (this.roles == null) {
             this.roles = new java.util.ArrayList<>();
@@ -221,7 +211,7 @@ public class User implements UserDetails, OAuth2User  {
 
     public void setRoles(List<RoleType> newRoleTypes) {
         List<String> newRoles = new ArrayList<>();
-        for(RoleType roleType : newRoleTypes) {
+        for (RoleType roleType : newRoleTypes) {
             if (roleType != null) {
                 newRoles.add(roleType.name());
             }
@@ -229,11 +219,27 @@ public class User implements UserDetails, OAuth2User  {
         this.roles = newRoles;
     }
 
-    public String getRole(){
+    public String getRole() {
         if (roles == null || roles.isEmpty()) {
             return RoleType.USER.name(); // 기본 역할을 USER로 설정
         }
         return roles.getFirst(); // 첫 번째 역할 반환
     }
 
+    public List<String> getFcmTokenList() {
+        if (fcmTokens == null || fcmTokens.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<String> tokens = new ArrayList<>();
+        for (DeviceFcmToken token : fcmTokens) {
+            tokens.add(token.getFcmToken());
+        }
+        return tokens;
+    }
+
+    public LocalDate getNicknameUpdatedAt() {
+        // 값이 null인 경우 현재에서 한달 전 날짜를 반환
+        return nicknameUpdatedAt != null ? nicknameUpdatedAt : LocalDate.now()
+                .minusMonths(1);
+    }
 }

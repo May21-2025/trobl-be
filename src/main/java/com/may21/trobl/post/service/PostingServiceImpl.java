@@ -193,7 +193,7 @@ public class PostingServiceImpl implements PostingService {
             }
             User partner = userRepository.findPartnerById(partnerId)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.PARTNER_NOT_FOUND));
-            PostDto.FairViewItem fairView = request.getOptionItem();
+            PostDto.FairViewItem fairView = request.getFairViewItem();
             List<FairView> fairViews = new ArrayList<>();
             FairView myFairView = FairView.builder()
                     .title(fairView.getTitle())
@@ -382,7 +382,8 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public Page<PostDto.MyListItem> getMyPosts(Long userId, int page, int size) {
-        Page<Posting> posts = postRepository.findByUserId(userId, PageRequest.of(page, size));
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Posting> posts = postRepository.findByUserId(userId, pageable);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         List<Posting> postList = posts.stream()
@@ -687,7 +688,7 @@ public class PostingServiceImpl implements PostingService {
     @CacheEvict(value = "topPosts", allEntries = true)
     @Override
     public void evictAllTopPosts() {
-        log.info("Evicting all cached top posts");
+        log.debug("Evicting all cached top posts");
         // This method will clear the cache for all top posts
     }
 

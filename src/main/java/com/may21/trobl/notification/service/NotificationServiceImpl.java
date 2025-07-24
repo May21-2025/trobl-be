@@ -2,6 +2,7 @@ package com.may21.trobl.notification.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.NotificationStrategy;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.exception.BusinessException;
@@ -20,6 +21,9 @@ import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.pushAlarm.PushNotificationService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -28,6 +32,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,35 +49,79 @@ public class NotificationServiceImpl implements NotificationService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final ContentUpdateService contentUpdateService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private static final String LIKE_TITLE = "많은 사람들이 당신의 이야기에 공감하고 있어요!";
+    private static final String COMMENT_TITLE = "내 글에 누군가 댓글을 남겼어요! 어떤 이야기일까요?";
+    private static final String FAIRVIEW_REQUEST_TITLE = "배우자가 페어뷰 작성을 요청하셨습니다.";
+    private static final String FAIRVIEW_CONFIRMATION_TITLE = "배우자의 글 작성이 완료되었습니다.";
+    private static final String PARTNER_REQUEST_TITLE = "${partnerName}님이 배우자 등록 신청이 왔습니다!";
+    private static final String PARTNER_ACCEPTED_TITLE = "${partnerName}님이 배우자로 등록되었습니다.";
+    private static final String PARTNER_DECLINED_TITLE = "${partnerName}님이 배우자 등록을 거절하셨습니다.";
+
+    public void testNotification(Long testUserId, NotificationType notificationType, String s,
+            String s1, Map<String, String> data, NotificationStrategy notificationStrategy) {
+        NotificationBasicData itemData =
+                new NotificationBasicData(data.get("itemType"), data.get("itemId"));
+        LocalDateTime scheduledTime = data.containsKey("scheduledTime") ?
+                LocalDateTime.parse(data.get("scheduledTime"), DateTimeFormatter.ISO_DATE_TIME) :
+                null;
+        createAndSendNotification(testUserId, notificationType, s, s1, itemData,
+                notificationStrategy, scheduledTime);
+    }
 
 
-    /**
-     * 알림 생성 및 전송 전략에 따른 처리
-     */
-    public void createAndSendNotification(Long userId, NotificationType type, String title,
-            String body, Map<String, String> data, NotificationStrategy strategy) {
-        createAndSendNotification(userId, type, title, body, data, strategy, null);
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class NotificationBasicData {
+        private ItemType itemType;
+        private Long itemId;
+
+        public String getItemType() {
+            return itemType.name()
+                    .toLowerCase();
+        }
+
+        public String getItemId() {
+            return itemId.toString();
+        }
+
+        public NotificationBasicData(String itemType, String itemId) {
+            this.itemType = ItemType.valueOf(itemType.toUpperCase());
+            this.itemId = itemId.isEmpty() ? 0L : Long.parseLong(itemId);
+        }
     }
 
     /**
-     * 예약 전송용 - 특정 시간 지정 가능
+     * 표준화된 데이터 맵 생성
+     */
+    private Map<String, String> createStandardDataMap(NotificationType type, String title,
+            String body, NotificationBasicData itemData) {
+        Map<String, String> data = new HashMap<>();
+        data.put("type", type.name()
+                .toLowerCase());
+        data.put("title", title);
+        data.put("body", body);
+        data.put("itemType", itemData.getItemType());
+        data.put("itemId", itemData.getItemId());
+        return data;
+    }
+
+    /**
+     * 알림 생성 및 전송 (itemType, itemId 포함)
      */
     public void createAndSendNotification(Long userId, NotificationType type, String title,
-            String body, Map<String, String> data, NotificationStrategy strategy,
+            String body, NotificationBasicData data, NotificationStrategy strategy,
             LocalDateTime scheduledTime) {
-        Map<String, String> dataMap = data != null ? data : new HashMap<>();
-        if (dataMap.isEmpty()) {
-            dataMap.put("type", type.name());
-            dataMap.put("title", title);
-            dataMap.put("body", body);
-        }
+        Map<String, String> dataMap = createStandardDataMap(type, title, body, data);
         Notification notification = new Notification(userId, type, dataMap, null);
 
         notificationRepository.save(notification);
 
         switch (strategy) {
             case IMMEDIATE:
-                sendImmediateNotification(userId, title, body, data);
+                sendImmediateNotification(userId, title, body, dataMap);
                 break;
             case BATCHED:
                 queueForBatchNotification(userId, notification);
@@ -84,26 +133,49 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     /**
+     * 사용자 조회 및 FCM 토큰 검증
+     */
+    private User getUserWithValidFcmTokens(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+        if (user.getFcmTokenList()
+                .isEmpty()) {
+            log.warn("FCM token is empty for userId: {}", userId);
+            throw new BusinessException(ExceptionCode.USER_NOT_FOUND);
+        }
+
+        return user;
+    }
+
+    /**
+     * 알림 전송 공통 로직
+     */
+    private void sendNotificationToUser(User user, String title, String body,
+            Map<String, String> data, String logContext) {
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(user.getId())
+                .title(title)
+                .body(body)
+                .data(data)
+                .build();
+
+        try {
+            pushNotificationService.sendNotificationTo(user.getFcmTokenList(), request);
+            log.debug("{} notification sent to user: {}", logContext, user.getId());
+        } catch (Exception e) {
+            log.error("Failed to send {} notification to user: {}", logContext, user.getId(), e);
+        }
+    }
+
+    /**
      * 1. 즉시 전송
      */
     @Override
     public void sendImmediateNotification(Long userId, String title, String body,
             Map<String, String> data) {
-        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
-                .userId(userId)
-                .title(title)
-                .body(body)
-                .data(data)
-                .build();
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        String fcmToken = user.getFcmToken();
-        try {
-            pushNotificationService.sendNotificationTo(fcmToken, request);
-            log.info("Immediate notification sent to user: {}", userId);
-        } catch (Exception e) {
-            log.error("Failed to send immediate notification to user: {}", userId, e);
-        }
+        User user = getUserWithValidFcmTokens(userId);
+        sendNotificationToUser(user, title, body, data, "Immediate");
     }
 
     /**
@@ -114,7 +186,7 @@ public class NotificationServiceImpl implements NotificationService {
         String key = "batch_notifications:" + userId;
         redisTemplate.opsForList()
                 .rightPush(key, notification.getId());
-        redisTemplate.expire(key, Duration.ofMinutes(15)); // 여유시간 포함
+        redisTemplate.expire(key, Duration.ofMinutes(15));
         log.debug("Notification queued for batch processing: userId={}, notificationId={}", userId,
                 notification.getId());
     }
@@ -127,16 +199,20 @@ public class NotificationServiceImpl implements NotificationService {
             LocalDateTime scheduledTime) {
         if (scheduledTime == null) {
             scheduledTime = LocalDateTime.now()
-                    .plusHours(1); // 기본 1시간 후
+                    .plusHours(1);
         }
 
         String key = "scheduled_notifications:" +
                 scheduledTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
         redisTemplate.opsForList()
                 .rightPush(key, notification.getId());
-        redisTemplate.expireAt(key, Instant.from(scheduledTime.plusHours(1))); // 스케줄 시간 + 1시간 후 만료
 
-        log.info("Notification scheduled: userId={}, notificationId={}, scheduledTime={}", userId,
+        Instant expireInstant = scheduledTime.plusHours(1)
+                .atZone(ZoneId.systemDefault())
+                .toInstant();
+        redisTemplate.expireAt(key, expireInstant);
+
+        log.debug("Notification scheduled: userId={}, notificationId={}, scheduledTime={}", userId,
                 notification.getId(), scheduledTime);
     }
 
@@ -155,7 +231,7 @@ public class NotificationServiceImpl implements NotificationService {
             if (!Objects.requireNonNull(notificationIds)
                     .isEmpty()) {
                 processBatchNotificationsForUser(Long.parseLong(userId), notificationIds);
-                redisTemplate.delete(key); // 처리 완료 후 키 삭제
+                redisTemplate.delete(key);
             }
         }
     }
@@ -165,57 +241,47 @@ public class NotificationServiceImpl implements NotificationService {
                 notificationIds.stream()
                         .map(id -> Long.parseLong(id.toString()))
                         .toList());
+
         User user = userRepository.findById(userId)
                 .orElse(null);
-        if (Objects.isNull(user)) return;
-
-        if (notifications.isEmpty()) return;
+        if (Objects.isNull(user) || notifications.isEmpty()) return;
 
         // 같은 타입별로 그룹핑하여 요약
         Map<NotificationType, List<Notification>> groupedNotifications = notifications.stream()
                 .collect(Collectors.groupingBy(Notification::getType));
 
         for (Map.Entry<NotificationType, List<Notification>> entry : groupedNotifications.entrySet()) {
-            sendBatchNotification(userId, user.getFcmToken(), entry.getKey(), entry.getValue());
+            sendBatchNotification(user, entry.getKey(), entry.getValue());
         }
     }
 
-    private void sendBatchNotification(Long userId, String fcmToken, NotificationType type,
+    private void sendBatchNotification(User user, NotificationType type,
             List<Notification> notifications) {
-        String title, body;
-        Map<String, String> data = new HashMap<>();
-        body = switch (type) {
-            case LIKE -> {
-                title = "새로운 좋아요 알림";
-                yield String.format("%d개의 새로운 좋아요가 있습니다!", notifications.size());
-            }
-            case COMMENT -> {
-                title = "새로운 댓글 알림";
-                yield String.format("%d개의 새로운 댓글이 있습니다!", notifications.size());
-            }
-            default -> {
-                title = "새로운 알림";
-                yield String.format("%d개의 새로운 알림이 있습니다!", notifications.size());
-            }
+        String title = getBatchTitle(type);
+        String body = getBatchBody(type, notifications.size());
+        String itemType = switch (type) {
+            case LIKE, COMMENT, FAIRVIEW_CONFIRMATION, FAIRVIEW_REQUEST, CONTENT_RECOMMENDATION,
+                 POPULAR_POST, QUICK_POLL_PARTICIPATION -> ItemType.POST.name();
+            case PARTNER_ACCEPTED, PARTNER_DECLINED, PARTNER_REQUEST -> ItemType.USER.name();
+
+            default -> null;
         };
+    }
 
-        data.put("count", String.valueOf(notifications.size()));
-        data.put("type", type.name());
+    private String getBatchTitle(NotificationType type) {
+        return switch (type) {
+            case LIKE -> LIKE_TITLE;
+            case COMMENT -> COMMENT_TITLE;
+            default -> "새로운 알림";
+        };
+    }
 
-        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
-                .userId(userId)
-                .title(title)
-                .body(body)
-                .data(data)
-                .build();
-
-        try {
-            pushNotificationService.sendNotificationTo(fcmToken, request);
-            log.info("Batch notification sent to user: {}, type: {}, count: {}", userId, type,
-                    notifications.size());
-        } catch (Exception e) {
-            log.error("Failed to send batch notification to user: {}", userId, e);
-        }
+    private String getBatchBody(NotificationType type, int count) {
+        return switch (type) {
+            case LIKE -> String.format("%d개의 새로운 좋아요가 있습니다!", count);
+            case COMMENT -> String.format("%d개의 새로운 댓글이 있습니다!", count);
+            default -> String.format("%d개의 새로운 알림이 있습니다!", count);
+        };
     }
 
     /**
@@ -229,7 +295,8 @@ public class NotificationServiceImpl implements NotificationService {
         List<Object> notificationIds = redisTemplate.opsForList()
                 .range(currentTimeKey, 0, -1);
 
-        if (!notificationIds.isEmpty()) {
+        if (!Objects.requireNonNull(notificationIds)
+                .isEmpty()) {
             List<Notification> notifications = notificationRepository.findAllById(
                     notificationIds.stream()
                             .map(id -> Long.parseLong(id.toString()))
@@ -246,21 +313,11 @@ public class NotificationServiceImpl implements NotificationService {
     private void sendScheduledNotification(Notification notification) {
         Map<String, String> data = fromJson(notification.getData());
 
-        NotificationDto.SendRequest request =
-                new NotificationDto.SendRequest(notification.getUserId(),
-                        data.getOrDefault("title", "예약 알림"),
-                        data.getOrDefault("body", "예약된 알림입니다."), data);
+        User user = getUserWithValidFcmTokens(notification.getUserId());
+        String title = data.getOrDefault("title", "예약 알림");
+        String body = data.getOrDefault("body", "예약된 알림입니다.");
 
-        try {
-            User user = userRepository.findById(notification.getUserId())
-                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-            String fcmToken = user.getFcmToken();
-            pushNotificationService.sendNotificationTo(fcmToken, request);
-            log.info("Scheduled notification sent: notificationId={}, userId={}",
-                    notification.getId(), notification.getUserId());
-        } catch (Exception e) {
-            log.error("Failed to send scheduled notification: {}", notification.getId(), e);
-        }
+        sendNotificationToUser(user, title, body, data, "Scheduled");
     }
 
     // 기존 메서드들을 새로운 전략 방식으로 수정
@@ -272,11 +329,9 @@ public class NotificationServiceImpl implements NotificationService {
                 .equals(userId)) {
             return;
         }
-
-        // 좋아요는 일괄 처리로 (너무 많이 올 수 있으므로)
-        createAndSendNotification(post.getUserId(), NotificationType.LIKE, "새로운 좋아요 ✨",
-                "당신의 게시글이 좋아요를 받았습니다!", Map.of("postId", postId.toString()),
-                NotificationStrategy.BATCHED);
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.POST, postId);
+        createAndSendNotification(post.getUserId(), NotificationType.LIKE, LIKE_TITLE,
+                "당신의 게시글이 좋아요를 받았습니다!", itemData, NotificationStrategy.BATCHED, null);
     }
 
     @Override
@@ -287,11 +342,9 @@ public class NotificationServiceImpl implements NotificationService {
                 .equals(userId)) {
             return;
         }
-
-        // 댓글 좋아요도 일괄 처리
-        createAndSendNotification(comment.getUserId(), NotificationType.LIKE, "새로운 좋아요 ✨",
-                "당신의 댓글이 좋아요를 받았습니다!", Map.of("commentId", commentId.toString()),
-                NotificationStrategy.BATCHED);
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.COMMENT, commentId);
+        createAndSendNotification(comment.getUserId(), NotificationType.LIKE, LIKE_TITLE,
+                "당신의 댓글이 좋아요를 받았습니다!", itemData, NotificationStrategy.BATCHED, null);
     }
 
     @Override
@@ -304,71 +357,32 @@ public class NotificationServiceImpl implements NotificationService {
             return;
         }
 
-        String commentSnippet = commentDto.getContent();
-        if (commentSnippet.length() > 20) {
-            commentSnippet = commentSnippet.substring(0, 20) + "...";
-            createAndSendNotification(receiverUserId, NotificationType.COMMENT, "새 댓글이 달렸어요! ✨",
-                    commentSnippet, Map.of("postId", postId.toString(), "commentId",
-                            commentDto.getCommentId()
-                                    .toString()), NotificationStrategy.IMMEDIATE);
-        }
-        else {
-            createAndSendNotification(receiverUserId, NotificationType.COMMENT, "새 댓글이 달렸어요! ✨",
-                    commentSnippet, Map.of("postId", postId.toString(), "commentId",
-                            commentDto.getCommentId()
-                                    .toString()), NotificationStrategy.IMMEDIATE);
-        }
+        String commentSnippet = getCommentSnippet(commentDto.getContent());
+        NotificationBasicData itemData =
+                new NotificationBasicData(ItemType.COMMENT, commentDto.getCommentId());
+        createAndSendNotification(receiverUserId, NotificationType.COMMENT, COMMENT_TITLE,
+                commentSnippet, itemData, NotificationStrategy.IMMEDIATE, null);
+    }
 
-        // 새 댓글은 즉시 알림 (중요한 상호작용)
+    private String getCommentSnippet(String content) {
+        return content.length() > 20 ? content.substring(0, 20) + "..." : content;
     }
 
     // 관리자용 공지사항 등 예약 전송 예시
     public void sendScheduledAnnouncement(List<Long> userIds, String title, String body,
             LocalDateTime scheduledTime) {
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.ANNOUNCEMENT, 0L);
         for (Long userId : userIds) {
-            createAndSendNotification(userId, NotificationType.ANNOUNCEMENT, title, body,
-                    Map.of("type", "announcement"), NotificationStrategy.SCHEDULED, scheduledTime);
+            createAndSendNotification(userId, NotificationType.ANNOUNCEMENT, title, body, itemData,
+                    NotificationStrategy.SCHEDULED, scheduledTime);
         }
     }
 
     private Map fromJson(String json) {
         try {
-            return new ObjectMapper().readValue(json, Map.class);
+            return objectMapper.readValue(json, Map.class);
         } catch (JsonProcessingException e) {
             return new HashMap<>();
-        }
-    }
-
-
-    public void createAndSendNotification(Long userId, NotificationType type, String title,
-            String body, Map<String, String> data) {
-        Map<String, String> dataMap = data != null ? data : new HashMap<>();
-        if (dataMap.isEmpty()) {
-            dataMap.put("type", type.name());
-            dataMap.put("title", title);
-            dataMap.put("body", body);
-        }
-        Notification notification = new Notification(userId, type, dataMap, null);
-        notificationRepository.save(notification);
-        User user = userRepository.findById(userId)
-                .orElse(null);
-        if (user == null || user.getFcmToken() == null) {
-            log.warn("User not found or FCM token is null for userId: {}", userId);
-            return;
-        }
-        String fcmToken = user.getFcmToken();
-        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
-                .userId(userId)
-                .title(title)
-                .body(body)
-                .data(data)
-                .build();
-
-        try {
-            pushNotificationService.sendNotificationTo(fcmToken, request);
-        } catch (Exception e) {
-            log.error("Failed to send push notification", e);
-            // 실패해도 알림 DB 저장은 했으니 무시할 수도 있음
         }
     }
 
@@ -378,8 +392,9 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.NOTIFICATION_NOT_FOUND));
         if (!notification.getUserId()
-                .equals(userId)) throw new BusinessException(ExceptionCode.FORBIDDEN)
-                ;
+                .equals(userId)) {
+            throw new BusinessException(ExceptionCode.FORBIDDEN);
+        }
         notification.markAsRead();
         return true;
     }
@@ -404,61 +419,82 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void notifyPostDeleted(Long targetUserId, PostDto.Notification info) {
-        // 게시글 삭제 알림
         String title = "게시글이 삭제되었습니다";
         String body = String.format("게시글 '%s'이(가) 삭제되었습니다.", info.getTitle());
-        Map<String, String> data = new HashMap<>();
-        data.put("postId", info.getPostId()
-                .toString());
-        data.put("type", "post_deleted");
-        createAndSendNotification(targetUserId, NotificationType.POST_DELETED, title, body, data);
 
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.REPORT, 0L);
+        createAndSendNotification(targetUserId, NotificationType.POST_DELETED, title, body,
+                itemData, NotificationStrategy.IMMEDIATE, null);
     }
 
     @Override
     public boolean notifyMarketingAlert(AdminDto.PushNotification message) {
-        // 마케팅 알림은 모든 사용자에게 전송
-        List<User> users = userRepository.findAll();
-        for (User user : users) {
-            if (user.getId()
-                    .equals(42L))
-                createAndSendNotification(user.getId(), NotificationType.MARKETING,
-                        message.getTitle(), message.getMessage(), Map.of("type", "marketing"),
-                        NotificationStrategy.IMMEDIATE);
-        }
-        return false;
+        User user = userRepository.findById(message.getUserId())
+                .orElse(null);
+        if (user == null || user.getFcmTokenList()
+                .isEmpty()) return false;
+
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.REPORT, 0L);
+        createAndSendNotification(user.getId(), NotificationType.MARKETING, message.getTitle(),
+                message.getMessage(), itemData, NotificationStrategy.IMMEDIATE, null);
+        return true;
     }
 
     @Override
     public void sendFairViewRequest(Long postId, User partner) {
-
-        String title = "페어뷰 요청";
         String body = "페어뷰 요청이 도착했습니다. 확인해주세요!";
-        Map<String, String> data = new HashMap<>();
-        data.put("postId", postId.toString());
-        data.put("type", "fairview_request");
-        createAndSendNotification(partner.getId(), NotificationType.FAIRVIEW_REQUEST, title, body,
-                data, NotificationStrategy.IMMEDIATE);
 
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.POST, postId);
+        createAndSendNotification(partner.getId(), NotificationType.FAIRVIEW_REQUEST,
+                FAIRVIEW_REQUEST_TITLE, body, itemData, NotificationStrategy.IMMEDIATE, null);
     }
 
     @Override
     public void sendFairViewConfirmedRequest(Long fairViewId, Long userId) {
         Long postId = postRepository.findPostIdByFairViewId(fairViewId);
-        if (postId == null) {
-            return;
-        }
+        if (postId == null) return;
+
         boolean confirmedByPartner = postRepository.isPostIdOwnerIsUser(postId, userId);
         if (confirmedByPartner) return;
+
         Long targetUserId = postRepository.findOwnerIdById(postId);
         contentUpdateService.fairViewConfirmUpdate(postId, targetUserId);
-        String title = "페어뷰 요청이 승인되었습니다";
-        String body = "페어뷰 요청이 승인되었습니다. 확인해주세요!";
-        Map<String, String> data = new HashMap<>();
-        data.put("postId", postId.toString());
-        data.put("type", "fairview_confirmed");
-        createAndSendNotification(targetUserId, NotificationType.FAIRVIEW_REQUEST, title, body,
-                data, NotificationStrategy.IMMEDIATE);
+
+        String body = "페어뷰 게시가 가능합니다. 게시하겠습니까?";
+
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.POST, postId);
+        createAndSendNotification(targetUserId, NotificationType.FAIRVIEW_REQUEST,
+                FAIRVIEW_CONFIRMATION_TITLE, body, itemData, NotificationStrategy.IMMEDIATE, null);
+    }
+
+    @Override
+    public void sendPartnerRequest(User targetUser, User sentUser) {
+        String title = PARTNER_REQUEST_TITLE.replace("${partnerName}", sentUser.getNickname());
+        String body = "배우자 등록 신청이 도착했습니다. 확인해주세요!";
+
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.USER, sentUser.getId());
+        createAndSendNotification(targetUser.getId(), NotificationType.PARTNER_REQUEST, title, body,
+                itemData, NotificationStrategy.IMMEDIATE, null);
+    }
+
+    @Override
+    public void sendPartnerAccepted(User targetUser, User sentUser) {
+        String title = PARTNER_ACCEPTED_TITLE.replace("${partnerName}", sentUser.getNickname());
+        String body = "배우자 등록이 완료되었습니다!";
+
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.USER, sentUser.getId());
+        createAndSendNotification(targetUser.getId(), NotificationType.PARTNER_ACCEPTED, title,
+                body, itemData, NotificationStrategy.IMMEDIATE, null);
+    }
+
+    @Override
+    public void sendPartnerDeclined(User targetUser, User sentUser) {
+        String title = PARTNER_DECLINED_TITLE.replace("${partnerName}", sentUser.getNickname());
+        String body = "배우자 등록 신청이 거절되었습니다. 다시 시도해주세요!";
+
+        NotificationBasicData itemData = new NotificationBasicData(ItemType.USER, sentUser.getId());
+        createAndSendNotification(targetUser.getId(), NotificationType.PARTNER_DECLINED, title,
+                body, itemData, NotificationStrategy.IMMEDIATE, null);
     }
 
     @Override

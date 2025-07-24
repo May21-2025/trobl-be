@@ -32,7 +32,7 @@ public class GoogleOAuthService {
             // Google의 tokeninfo endpoint로 ID Token 검증 및 사용자 정보 조회
             String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
 
-            log.info("Google ID Token 검증 URL: {}", idToken);
+            log.debug("Google ID Token 검증 URL: {}", idToken);
             RestTemplate restTemplate = new RestTemplate();
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
@@ -148,7 +148,7 @@ public class GoogleOAuthService {
             // Google의 tokeninfo endpoint로 ID Token 검증 및 사용자 정보 조회
             String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
 
-            log.info("Google ID Token 검증 URL: {}", idToken);
+            log.debug("Google ID Token 검증 URL: {}", idToken);
             RestTemplate restTemplate = new RestTemplate();
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 

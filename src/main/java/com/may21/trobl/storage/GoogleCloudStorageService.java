@@ -162,7 +162,7 @@ public class GoogleCloudStorageService implements StorageService {
             return imageKey;
 
         } catch (IOException e) {
-            log.info(e.getMessage());
+            log.error(e.getMessage());
             throw new RuntimeException("썸네일 업로드 실패: " + e.getMessage());
         }
     }

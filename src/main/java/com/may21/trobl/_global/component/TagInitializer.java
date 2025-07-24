@@ -80,7 +80,7 @@ public class TagInitializer implements CommandLineRunner {
     }
 
     private void initializeTags() {
-        log.info("태그 초기화 작업을 시작합니다.");
+        log.debug("태그 초기화 작업을 시작합니다.");
 
         // 현재 데이터베이스에 있는 태그들의 이름을 가져옴
         Set<String> existingTagNames = tagRepository.findAll()
@@ -96,14 +96,14 @@ public class TagInitializer implements CommandLineRunner {
 
         if (!newTags.isEmpty()) {
             tagRepository.saveAll(newTags);
-            log.info("{}개의 새로운 태그가 생성되었습니다.", newTags.size());
+            log.debug("{}개의 새로운 태그가 생성되었습니다.", newTags.size());
 
             // 생성된 태그들 로깅 (선택적)
             newTags.forEach(tag -> log.debug("생성된 태그: {}", tag.getName()));
         } else {
-            log.info("모든 태그가 이미 존재합니다. 새로 생성할 태그가 없습니다.");
+            log.debug("모든 태그가 이미 존재합니다. 새로 생성할 태그가 없습니다.");
         }
 
-        log.info("현재 전체 태그 개수: {}", tagRepository.count());
+        log.debug("현재 전체 태그 개수: {}", tagRepository.count());
     }
 }

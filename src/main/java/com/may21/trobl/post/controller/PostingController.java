@@ -56,7 +56,6 @@ public class PostingController {
     public ResponseEntity<Message> getPostDetail(@PathVariable Long postId, @AuthenticationPrincipal User user, HttpServletRequest request) {
         if (user == null) {
             String authHeader = request.getHeader("Authorization");
-            System.out.println("🔴 user is null - Authorization 헤더: " + authHeader);
         }
         Long userId = user != null ? user.getId() : null;
         PostDto.Detail response = postingService.getPostDetail(postId, userId);

@@ -4,6 +4,7 @@ import com.may21.trobl._global.enums.RequestStatus;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.notification.domain.ContentUpdateService;
+import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -22,6 +23,7 @@ public class PartnerService {
     private final PartnerRequestRepository partnerRequestRepository;
     private final UserRepository userRepository;
     private final ContentUpdateService contentUpdateService;
+    private final NotificationService notificationService;
 
     public UserDto.PartnerInfo getRequestStatus(Long userId) {
         List<PartnerRequest> request = partnerRequestRepository.findByUserId(userId);
@@ -71,6 +73,7 @@ public class PartnerService {
                 new PartnerRequest(userId, partner.getId(), request.marriageDate());
         partnerRequestRepository.save(partnerRequest);
         contentUpdateService.createPartnerRequestUpdate(userId, partner.getId());
+        notificationService.sendPartnerRequest(partner, user);
         return true;
     }
 
@@ -107,8 +110,16 @@ public class PartnerService {
             user.setPartner(partner);
             partner.setPartner(user);
             partnerRequest.accept();
+            notificationService.sendPartnerAccepted(partner, user);
         }
-        else partnerRequest.reject();
+        else {
+            partnerRequest.reject();
+            User user = userRepository.findById(partnerRequest.getUserId())
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            User partner = userRepository.findById(partnerRequest.getPartnerId())
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+            notificationService.sendPartnerDeclined(partner, user);
+        }
         return true;
     }
 

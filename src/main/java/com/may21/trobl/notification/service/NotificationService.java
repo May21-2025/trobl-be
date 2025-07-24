@@ -52,6 +52,16 @@ public interface NotificationService {
     @Transactional
     void sendFairViewConfirmedRequest(Long fairViewId, Long userId);
 
+    @Transactional
+    void sendPartnerRequest(User targetUser, User sentUser);
+
+    @Transactional
+    void sendPartnerAccepted(User partner, User user);
+
+    @Transactional
+    void sendPartnerDeclined(User partner, User user);
+
+    @Transactional
     boolean getMainNotification(Long userId);
 
 

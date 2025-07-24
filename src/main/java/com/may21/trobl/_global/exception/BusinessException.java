@@ -21,13 +21,13 @@ public class BusinessException extends RuntimeException {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
         this.detailMessage = e.getMessage();
-        log.info("BusinessException occurred: {}", e.getMessage());
+        log.error("BusinessException occurred: {}", e.getMessage());
     }
 
     public BusinessException(ExceptionCode errorCode, String message) {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
         this.detailMessage = message;
-        log.info("BusinessException occurred: {}", message);
+        log.error("BusinessException occurred: {}", message);
     }
 }

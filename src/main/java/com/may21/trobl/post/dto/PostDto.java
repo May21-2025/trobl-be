@@ -193,7 +193,7 @@ public class PostDto {
         private final Long userId;
         private final LocalDateTime createdAt;
         private final PollDto poll;
-        private final List<FairViewItem> opinions;
+        private final List<FairViewItem> fairViewItems;
         private final String content;
         private final int shareCount;
         private final boolean liked;
@@ -209,7 +209,7 @@ public class PostDto {
             this.createdAt = post.getCreatedAt();
             this.poll =
                     post.getPoll() != null ? new PollDto(post.getPoll(), postIds, isOwner) : null;
-            this.opinions = FairViewItem.fromFairViews(post.getFairViews(), userMap);
+            this.fairViewItems = FairViewItem.fromFairViews(post.getFairViews(), userMap);
             this.shareCount = post.getShareCount();
             this.postType = post.getPostType()
                     .name();
@@ -316,11 +316,11 @@ public class PostDto {
             if (fairViews == null) {
                 return new ArrayList<>();
             }
-            List<FairViewItem> opinionItems = new ArrayList<>();
+            List<FairViewItem> fairViewItems = new ArrayList<>();
             for (FairView fairView : fairViews) {
-                opinionItems.add(new FairViewItem(fairView, userMap.get(fairView.getUserId())));
+                fairViewItems.add(new FairViewItem(fairView, userMap.get(fairView.getUserId())));
             }
-            return opinionItems;
+            return fairViewItems;
         }
     }
 
@@ -330,7 +330,7 @@ public class PostDto {
         private final String title;
         private final String content;
         private final String postType;
-        private final FairViewItem optionItem;
+        private final FairViewItem fairViewItem;
         private final PollRequest poll;
         private final List<TagDto.Request> tags;
 

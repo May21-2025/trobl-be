@@ -44,6 +44,9 @@ public class AuthDto {
         public boolean isMarried() {
             return married != null && married;
         }
+        public LocalDate getMarriageDate(){
+            return marriageDate !=null ? marriageDate : marriedDate;
+        }
     }
 
     @Getter

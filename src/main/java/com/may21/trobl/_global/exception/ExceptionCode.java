@@ -63,6 +63,9 @@ public enum ExceptionCode {
     //POLL P100
     POLL_NOT_FOUND(HttpStatus.NOT_FOUND, "P100", "설문조사를 찾을 수 없습니다."),
 
+    // TEST T000
+    TEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T000", "테스트가 실패했습니다."),
+
     // Other Z000
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Z000", "UNAUTHORIZED"),
     RESTRICTED(HttpStatus.UNAUTHORIZED, "Z001", "RESTRICTED"),

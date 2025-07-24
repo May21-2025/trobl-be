@@ -88,7 +88,6 @@ public class AuthController {
             TokenInfo token =
                     jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
             token.tokenToHeaders(response);
-            log.info(response.toString());
             return new ResponseEntity<>(Message.success(infoDto), HttpStatus.OK);
         } catch (BusinessException e) {
             if (e.getErrorCode() == ExceptionCode.USER_NOT_FOUND) {

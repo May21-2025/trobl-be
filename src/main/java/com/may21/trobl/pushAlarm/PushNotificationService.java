@@ -21,54 +21,83 @@ public class PushNotificationService {
 
     private final UserRepository userRepository;
     private final FirebaseMessaging firebaseMessaging;
+    private final DeviceFcmTokenRepository deviceFcmTokenRepository;
 
     /**
      * FCM 알림 전송 - 앱 상태에 따라 자동으로 처리됨
      * - 앱 실행 중: data-only 메시지로 인앱 알림
      * - 백그라운드: 자동으로 푸시 알림으로 표시
      */
-    public void sendNotificationTo(String fcmToken, NotificationDto.SendRequest request) {
-        try {
-            if (fcmToken == null || fcmToken.trim().isEmpty()) {
-                return;
+    public void sendNotificationTo(List<String> fcmTokenList, NotificationDto.SendRequest request) {
+        for (String fcmToken : fcmTokenList) {
+            // 유효한 FCM 토큰 필터링
+            if (fcmToken == null || fcmToken.trim()
+                    .isEmpty()) {
+                continue; // 유효하지 않은 토큰은 건너뜀
             }
 
-            // data-only 메시지 생성
-            Map<String, String> data = createNotificationData(request);
+            try {
+                // data-only 메시지 생성
+                Map<String, String> data = createNotificationData(request);
 
-            Message message = Message.builder()
-                    .setToken(fcmToken)
-                    .putAllData(data)
-                    // notification 필드를 포함하지 않음 - 이렇게 하면 앱 상태에 따라 자동 처리
-                    .setAndroidConfig(AndroidConfig.builder()
-                            .setPriority(AndroidConfig.Priority.HIGH)
-                            .setNotification(AndroidNotification.builder()
-                                    .setTitle(request.getTitle())
-                                    .setBody(request.getBody())
-                                    .setSound("default")
-                                    .setChannelId("trobl_notifications")
-                                    .build())
-                            .build())
-                    .setApnsConfig(ApnsConfig.builder()
-                            .setAps(Aps.builder()
-                                    .setAlert(ApsAlert.builder()
-                                            .setTitle(request.getTitle())
-                                            .setBody(request.getBody())
-                                            .build())
-                                    .setSound("default")
-                                    .build())
-                            .build())
-                    .build();
+                Message message = Message.builder()
+                        .setToken(fcmToken)
+                        .putAllData(data)
+                        // notification 필드를 포함하지 않음 - 이렇게 하면 앱 상태에 따라 자동 처리
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setPriority(AndroidConfig.Priority.HIGH)
+                                .setNotification(AndroidNotification.builder()
+                                        .setTitle(request.getTitle())
+                                        .setBody(request.getBody())
+                                        .setSound("default")
+                                        .setChannelId("trobl_notifications")
+                                        .build())
+                                .build())
+                        .setApnsConfig(ApnsConfig.builder()
+                                .setAps(Aps.builder()
+                                        .setAlert(ApsAlert.builder()
+                                                .setTitle(request.getTitle())
+                                                .setBody(request.getBody())
+                                                .build())
+                                        .setSound("default")
+                                        .build())
+                                .build())
+                        .build();
 
-            String response = firebaseMessaging.send(message);
-            log.info("FCM notification sent successfully to user {}: {}", request.getUserId(), response);
+                String response = firebaseMessaging.send(message);
+                log.debug("FCM notification sent successfully to user {}: {}", request.getUserId(),
+                        response);
+            } catch (FirebaseMessagingException e) {
+                String errorCode = e.getMessagingErrorCode()
+                        .name();
+                log.error("Failed to send FCM notification to token: {} - errorCode: {}", fcmToken,
+                        errorCode);
 
-        } catch (FirebaseMessagingException e) {
-            log.error("Failed to send FCM notification to user {}: {}", request.getUserId(), e.getMessage());
-            handleFCMError(e, request.getUserId());
-        } catch (Exception e) {
-            log.error("Unexpected error while sending FCM notification to user {}", request.getUserId(), e);
+                if (isInvalidTokenError(errorCode)) {
+                    deleteFcmTokenFromDatabase(fcmToken);
+                    log.debug("Deleted invalid FCM token: {}", fcmToken);
+                }
+
+                handleFCMError(e, request.getUserId());
+            } catch (Exception e) {
+                log.error("Unexpected error while sending FCM notification to user {}",
+                        request.getUserId(), e);
+            }
+
         }
+
+    }
+
+    private void deleteFcmTokenFromDatabase(String fcmToken) {
+        deviceFcmTokenRepository.deleteByFcmToken(fcmToken);
+    }
+
+    private boolean isInvalidTokenError(String errorCode) {
+        return errorCode != null &&
+                (errorCode.equals("registration-token-not-registered") || // 토큰 만료, 삭제
+                        errorCode.equals("invalid-argument") ||                  // 유효하지 않은 형식
+                        errorCode.equals("unregistered")                         // iOS 등에서 발생 가능
+                );
     }
 
     /**
@@ -77,10 +106,12 @@ public class PushNotificationService {
     public void sendBatchNotification(NotificationDto.BatchSendRequest request) {
         try {
             // FCM Token들 수집
-            List<String> tokens = userRepository.findFcmTokensByIds(request.getUserIds())
-                    .stream()
-                    .filter(token -> token != null && !token.trim().isEmpty())
-                    .toList();
+            List<String> tokens =
+                    deviceFcmTokenRepository.findFcmTokensByUserIds(request.getUserIds())
+                            .stream()
+                            .filter(token -> token != null && !token.trim()
+                                    .isEmpty())
+                            .toList();
 
             if (tokens.isEmpty()) {
                 log.warn("No valid FCM tokens found for batch notification");
@@ -113,7 +144,7 @@ public class PushNotificationService {
                     .build();
 
             BatchResponse response = firebaseMessaging.sendMulticast(message);
-            log.info("Batch FCM notification sent: success={}, failure={}",
+            log.debug("Batch FCM notification sent: success={}, failure={}",
                     response.getSuccessCount(), response.getFailureCount());
 
             // 실패한 토큰들 처리
@@ -133,7 +164,8 @@ public class PushNotificationService {
         data.put("type", "notification");
         data.put("title", request.getTitle());
         data.put("body", request.getBody());
-        data.put("userId", request.getUserId().toString());
+        data.put("userId", request.getUserId()
+                .toString());
         data.put("timestamp", String.valueOf(System.currentTimeMillis()));
 
         // 커스텀 데이터 추가
@@ -143,7 +175,8 @@ public class PushNotificationService {
 
         // 액션 데이터 (Flutter에서 처리용)
         if (request.getData() != null) {
-            String notificationType = request.getData().get("notificationType");
+            String notificationType = request.getData()
+                    .get("notificationType");
             if (notificationType != null) {
                 data.put("actionType", getActionType(notificationType));
                 data.put("actionData", getActionData(request.getData()));
@@ -153,7 +186,8 @@ public class PushNotificationService {
         return data;
     }
 
-    private Map<String, String> createBatchNotificationData(NotificationDto.BatchSendRequest request) {
+    private Map<String, String> createBatchNotificationData(
+            NotificationDto.BatchSendRequest request) {
         Map<String, String> data = new HashMap<>();
 
         data.put("type", "batch_notification");
@@ -182,7 +216,8 @@ public class PushNotificationService {
 
         if (postId != null) {
             return "/post/" + postId;
-        } else if (commentId != null) {
+        }
+        else if (commentId != null) {
             return "/comment/" + commentId;
         }
 
@@ -190,14 +225,13 @@ public class PushNotificationService {
     }
 
     private void handleFCMError(FirebaseMessagingException e, Long userId) {
-        String errorCode = e.getMessagingErrorCode().name();
+        String errorCode = e.getMessagingErrorCode()
+                .name();
 
         switch (errorCode) {
             case "UNREGISTERED":
             case "INVALID_REGISTRATION_TOKEN":
-                // FCM 토큰이 유효하지 않음 - DB에서 제거
                 log.warn("Invalid FCM token for user {}, removing from database", userId);
-                userRepository.clearFcmToken(userId);
                 break;
 
             case "MESSAGE_RATE_EXCEEDED":
@@ -225,32 +259,17 @@ public class PushNotificationService {
                     FirebaseMessagingException exception = sendResponse.getException();
 
                     if (exception != null) {
-                        String errorCode = exception.getMessagingErrorCode().name();
-                        if ("UNREGISTERED".equals(errorCode) || "INVALID_REGISTRATION_TOKEN".equals(errorCode)) {
+                        String errorCode = exception.getMessagingErrorCode()
+                                .name();
+                        if ("UNREGISTERED".equals(errorCode) ||
+                                "INVALID_REGISTRATION_TOKEN".equals(errorCode)) {
                             // 유효하지 않은 토큰 처리
-                            userRepository.clearFcmTokenByToken(token);
+                            deviceFcmTokenRepository.deleteByFcmToken(token);
                             log.warn("Removed invalid FCM token: {}", token);
                         }
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * FCM 토큰 업데이트
-     */
-    public void updateFcmToken(Long userId, String fcmToken) {
-        try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-
-            user.setFcmToken(fcmToken);
-            userRepository.save(user);
-
-            log.info("FCM token updated for user: {}", userId);
-        } catch (Exception e) {
-            log.error("Failed to update FCM token for user {}", userId, e);
         }
     }
 
@@ -273,24 +292,17 @@ public class PushNotificationService {
         }
     }
 
-    public boolean registerToken(NotificationDto.TokenRegistrationRequest request, Long id) {
+    public boolean registerToken(NotificationDto.TokenRegistrationRequest request, Long userId) {
         try {
-            User user = userRepository.findById(id)
+            User user = userRepository.findById(userId)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
 
-            // 기존 토큰이 있다면 제거
-            if (user.getFcmToken() != null) {
-                userRepository.clearFcmToken(id);
-            }
+            DeviceFcmToken deviceFcmToken = new DeviceFcmToken(user, request.getFcmToken());
+            deviceFcmTokenRepository.save(deviceFcmToken);
 
-            // 새 토큰 저장
-            user.setFcmToken(request.getFcmToken());
-            userRepository.save(user);
-
-            log.info("FCM token registered for user: {}", id);
             return true;
         } catch (Exception e) {
-            log.error("Failed to register FCM token for user {}", id, e);
+            log.error("Failed to register FCM token for user {}", userId, e);
             return false;
         }
     }

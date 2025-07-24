@@ -2,6 +2,7 @@ package com.may21.trobl._global.aop;
 
 import com.may21.trobl._global.component.PerformanceMetrics;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -84,11 +85,11 @@ public class TimeTraceAop {
             List<ApiQueryCounter.QueryTrace> queryTraces = apiQueryCounter.getQueryTraces();
             
             // 디버깅: 쿼리 추적 정보 확인
-            System.out.println("[DEBUG] " + fullMethodName + " - Queries: " + queryCount + ", Traces: " + queryTraces.size());
+            log.debug("[DEBUG] " + fullMethodName + " - Queries: " + queryCount + ", Traces: " + queryTraces.size());
             if (!queryTraces.isEmpty()) {
-                System.out.println("[DEBUG] Sample traces:");
-                queryTraces.stream().limit(3).forEach(trace -> 
-                    System.out.println("[DEBUG]   " + trace.toString()));
+                log.debug("[DEBUG] Sample traces:");
+                queryTraces.stream().limit(3).forEach(trace ->
+                        log.debug("[DEBUG]   " + trace.toString()));
             }
             
             apiQueryCounter.reset();
@@ -145,11 +146,11 @@ public class TimeTraceAop {
         // 상세 로깅 vs 간단 로깅
         if (detailedLogging && (queryThreshold != null || timeThreshold != null)) {
             // 상세한 성능 로그
-            log.info(formatPerformanceLog(requestURI, methodName, execTime, queryCount,
+            log.debug(formatPerformanceLog(requestURI, methodName, execTime, queryCount,
                     queryThreshold, timeThreshold, warnings.toString()));
         } else {
             // 간단한 한 줄 로그
-            log.info("{} | Request ID: {}",
+            log.debug("{} | Request ID: {}",
                     formatSimplePerformanceLog(methodName, execTime, queryCount,
                             queryThreshold, timeThreshold),
                     requestId);
