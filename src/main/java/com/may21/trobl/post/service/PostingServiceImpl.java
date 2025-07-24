@@ -132,7 +132,7 @@ public class PostingServiceImpl implements PostingService {
         Posting post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
         User owner = userRepository.findById(post.getUserId())
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+                .orElse(null);
         boolean isOwner = post.getUserId()
                 .equals(userId);
         Map<Long, User> userMap = new HashMap<>();
@@ -148,8 +148,12 @@ public class PostingServiceImpl implements PostingService {
         List<Tag> tags = tagService.getPostTags(post);
         List<Long> votedOptionIds =
                 userId == null ? List.of() : voteRepository.findVotedPostByUserId(post, userId);
-        return new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked, votedOptionIds,
-                isOwner);
+        PostDto.Detail detailDto =
+                new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked, votedOptionIds,
+                        isOwner);
+        if (post.getPostType() == PostingType.FAIR_VIEW && !post.isConfirmed())
+            detailDto.blindPartnerContent(userId);
+        return detailDto;
     }
 
     @Override
@@ -382,7 +386,8 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public Page<PostDto.MyListItem> getMyPosts(Long userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt")
+                .descending());
         Page<Posting> posts = postRepository.findByUserId(userId, pageable);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));

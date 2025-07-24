@@ -8,6 +8,7 @@ import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
+import com.may21.trobl.partner.PartnerService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -30,6 +31,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     @Lazy
     private final PasswordEncoder passwordEncoder;
     private final KakaoOAuthService kakaoOAuthService;
+    private final PartnerService partnerService;
 
     @Override
     public AuthDto.SignUpResponse registerUser(AuthDto.SignUpRequest signUpDto) {

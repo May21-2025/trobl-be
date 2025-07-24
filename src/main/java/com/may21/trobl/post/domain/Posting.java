@@ -199,4 +199,7 @@ public class Posting {
     public boolean isReported() {
         return reported != null && reported;
     }
+    public boolean isConfirmed() {
+        return confirmed != null && confirmed;
+    }
 }

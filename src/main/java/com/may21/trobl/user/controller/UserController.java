@@ -157,8 +157,7 @@ public class UserController {
     }
     @DeleteMapping("/partner-requests/{partnerRequestId}")
     public ResponseEntity<Message> deleteMarriageInfo(@RequestHeader("Authorization") String token,
-            @PathVariable Long partnerRequestId,
-            @RequestParam LocalDate marriageDate) {
+            @PathVariable Long partnerRequestId) {
         Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
         boolean response = partnerService.deleteMarriageInfo(partnerRequestId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);

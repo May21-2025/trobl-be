@@ -95,7 +95,7 @@ public class PostDto {
         private final boolean newRequest;
 
         public RequestedListItem(Posting post, User user, List<Tag> tags, boolean newRequest) {
-            super(post, user,tags);
+            super(post, user, tags);
             this.content = decodeHtml(post.getContent());
             this.postType = post.getPostType();
             this.createdAt = post.getCreatedAt();
@@ -114,8 +114,9 @@ public class PostDto {
         private final boolean commented;
         private final PostingType postType;
 
-        public ListItem(Posting post, User user, List<Tag> tags, Boolean liked, Boolean viewed, Boolean commented) {
-            super(post, user,tags);
+        public ListItem(Posting post, User user, List<Tag> tags, Boolean liked, Boolean viewed,
+                Boolean commented) {
+            super(post, user, tags);
             this.createdAt = post.getCreatedAt();
             this.commentCount = post.getCommentCount();
             this.likeCount = post.getLikeCount();
@@ -136,9 +137,9 @@ public class PostDto {
         private final boolean newComment;
         private final boolean newLike;
 
-        public MyListItem(Posting post, User user, List<Tag> tags, Boolean liked, Boolean viewed, Boolean commented,
-                NotificationDto.ContentUpdateStatus contentUpdateStatus) {
-            super(post, user,tags, liked, viewed, commented);
+        public MyListItem(Posting post, User user, List<Tag> tags, Boolean liked, Boolean viewed,
+                Boolean commented, NotificationDto.ContentUpdateStatus contentUpdateStatus) {
+            super(post, user, tags, liked, viewed, commented);
             this.unread = contentUpdateStatus.isUnread();
             this.newComment = contentUpdateStatus.isNewComment();
             this.newLike = contentUpdateStatus.isNewLike();
@@ -156,7 +157,7 @@ public class PostDto {
 
         public RequestedItem(Posting post, User user, List<Tag> tags,
                 NotificationDto.ContentUpdateStatus contentUpdateStatus, FairView fairView) {
-            super(post, user,tags);
+            super(post, user, tags);
             this.unread = contentUpdateStatus.isUnread();
             this.confirmed = post.getConfirmed();
             this.content = decodeHtml(post.getContent());
@@ -204,7 +205,7 @@ public class PostDto {
 
         public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags,
                 boolean liked, boolean bookmarked, List<Long> postIds, boolean isOwner) {
-            super(post, user,tags);
+            super(post, user, tags);
             this.userId = post.getUserId();
             this.createdAt = post.getCreatedAt();
             this.poll =
@@ -220,6 +221,16 @@ public class PostDto {
                     .size();
             this.likeCount = post.getPostLikes()
                     .size();
+        }
+
+        public void blindPartnerContent(Long userId) {
+            for (FairViewItem fairViewItem : fairViewItems) {
+                if (!fairViewItem.getUserId()
+                        .equals(userId)) {
+                    fairViewItem.setContent(null);
+                    break;
+                }
+            }
         }
     }
 
@@ -279,13 +290,15 @@ public class PostDto {
         private final String title;
         private final String content;
     }
+
     @Getter
     public static class FairViewItem {
         private final Long fairViewId;
         private final Long userId;
         private final String title;
         private final String nickname;
-        private final String content;
+        @Setter
+        private String content;
         private final boolean confirmed;
 
         @JsonCreator

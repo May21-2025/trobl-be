@@ -24,6 +24,8 @@ public class NotificationSetting {
     @OneToOne
     private User user;
 
+    Boolean marketingEnabled = false;
+
     @LastModifiedDate
     private LocalDateTime updatedAt;
 

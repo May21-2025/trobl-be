@@ -46,7 +46,6 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService;
     private final PostRepository postRepository;
-    private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final ContentUpdateService contentUpdateService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -137,12 +136,11 @@ public class NotificationServiceImpl implements NotificationService {
      */
     private User getUserWithValidFcmTokens(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-
-        if (user.getFcmTokenList()
+                .orElse( null);
+        if(user == null|| user.getFcmTokenList()
                 .isEmpty()) {
             log.warn("FCM token is empty for userId: {}", userId);
-            throw new BusinessException(ExceptionCode.USER_NOT_FOUND);
+            return null;
         }
 
         return user;
@@ -153,10 +151,15 @@ public class NotificationServiceImpl implements NotificationService {
      */
     private void sendNotificationToUser(User user, String title, String body,
             Map<String, String> data, String logContext) {
+        String itemType = data.getOrDefault("itemType", null);
+        Long itemId = data.getOrDefault("itemId", "0")
+                .isEmpty() ? 0L : Long.parseLong(data.get("itemId"));
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(user.getId())
                 .title(title)
                 .body(body)
+                .itemType(itemType == null ? null : itemType.toLowerCase())
+                .itemId(itemId)
                 .data(data)
                 .build();
 
@@ -175,6 +178,9 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendImmediateNotification(Long userId, String title, String body,
             Map<String, String> data) {
         User user = getUserWithValidFcmTokens(userId);
+        if(user == null) {
+            return;
+        }
         sendNotificationToUser(user, title, body, data, "Immediate");
     }
 
@@ -314,37 +320,26 @@ public class NotificationServiceImpl implements NotificationService {
         Map<String, String> data = fromJson(notification.getData());
 
         User user = getUserWithValidFcmTokens(notification.getUserId());
+        if(user == null) {
+            return;
+        }
         String title = data.getOrDefault("title", "예약 알림");
         String body = data.getOrDefault("body", "예약된 알림입니다.");
 
         sendNotificationToUser(user, title, body, data, "Scheduled");
     }
 
-    // 기존 메서드들을 새로운 전략 방식으로 수정
+    // 좋아요 알림을 새로운 배치 서비스로 처리
     @Override
     public void sendPostLikeNotification(Long postId, Long userId) {
-        Posting post = postRepository.findById(postId)
-                .orElse(null);
-        if (post == null || post.getUserId()
-                .equals(userId)) {
-            return;
-        }
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.POST, postId);
-        createAndSendNotification(post.getUserId(), NotificationType.LIKE, LIKE_TITLE,
-                "당신의 게시글이 좋아요를 받았습니다!", itemData, NotificationStrategy.BATCHED, null);
+        // 새로운 배치 서비스 사용
+//        notificationBatchService.addPostLikeToQueue(postId, userId);
     }
 
     @Override
     public void sendCommentLikeNotification(Long commentId, Long userId) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElse(null);
-        if (comment == null || comment.getUserId()
-                .equals(userId)) {
-            return;
-        }
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.COMMENT, commentId);
-        createAndSendNotification(comment.getUserId(), NotificationType.LIKE, LIKE_TITLE,
-                "당신의 댓글이 좋아요를 받았습니다!", itemData, NotificationStrategy.BATCHED, null);
+        // 새로운 배치 서비스 사용
+//        notificationBatchService.addCommentLikeToQueue(commentId, userId);
     }
 
     @Override

@@ -37,13 +37,12 @@ public class PushNotificationService {
             }
 
             try {
-                // data-only 메시지 생성
                 Map<String, String> data = createNotificationData(request);
 
                 Message message = Message.builder()
                         .setToken(fcmToken)
                         .putAllData(data)
-                        // notification 필드를 포함하지 않음 - 이렇게 하면 앱 상태에 따라 자동 처리
+                        //  앱 상태에 따라 자동 처리
                         .setAndroidConfig(AndroidConfig.builder()
                                 .setPriority(AndroidConfig.Priority.HIGH)
                                 .setNotification(AndroidNotification.builder()
@@ -160,28 +159,15 @@ public class PushNotificationService {
     private Map<String, String> createNotificationData(NotificationDto.SendRequest request) {
         Map<String, String> data = new HashMap<>();
 
-        // 필수 데이터
         data.put("type", "notification");
         data.put("title", request.getTitle());
         data.put("body", request.getBody());
         data.put("userId", request.getUserId()
                 .toString());
         data.put("timestamp", String.valueOf(System.currentTimeMillis()));
-
-        // 커스텀 데이터 추가
-        if (request.getData() != null) {
-            data.putAll(request.getData());
-        }
-
-        // 액션 데이터 (Flutter에서 처리용)
-        if (request.getData() != null) {
-            String notificationType = request.getData()
-                    .get("notificationType");
-            if (notificationType != null) {
-                data.put("actionType", getActionType(notificationType));
-                data.put("actionData", getActionData(request.getData()));
-            }
-        }
+        data.put("itemId", request.getItemId() != null ? request.getData()
+                .get("itemId") : "");
+        data.put("itemType", request.getItemType() != null ? request.getItemType() : "");
 
         return data;
     }
@@ -194,6 +180,10 @@ public class PushNotificationService {
         data.put("title", request.getTitle());
         data.put("body", request.getBody());
         data.put("timestamp", String.valueOf(System.currentTimeMillis()));
+        data.put("itemId", request.getData() != null ? request.getData()
+                .get("itemId") : "");
+        data.put("itemType", request.getData() != null ? request.getData()
+                .get("itemType") : "");
 
         if (request.getData() != null) {
             data.putAll(request.getData());

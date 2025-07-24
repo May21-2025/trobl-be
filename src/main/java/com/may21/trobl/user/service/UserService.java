@@ -212,11 +212,11 @@ public class UserService implements UserDetailsService {
         }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        if (user.getNicknameUpdatedAt()
-                .plusDays(30)
-                .isAfter(LocalDate.now())) {
-            throw new BusinessException(ExceptionCode.NICKNAME_UPDATE_RESTRICTED);
-        }
+//        if (user.getNicknameUpdatedAt()
+//                .plusDays(30)
+//                .isAfter(LocalDate.now())) {
+//            throw new BusinessException(ExceptionCode.NICKNAME_UPDATE_RESTRICTED);
+//        }
 
         if (Objects.equals(user.getNickname(), nickname)) {
             throw new BusinessException(ExceptionCode.NICKNAME_EQUAL_TO_EXISTING);

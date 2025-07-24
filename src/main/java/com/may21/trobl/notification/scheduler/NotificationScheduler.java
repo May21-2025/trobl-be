@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 알림 스케줄러
- * - 10분마다 배치 알림 처리
+ * - 10분마다 배치 알림 처리 (좋아요 알림 포함)
  * - 1분마다 예약 알림 처리
  */
 @Component
@@ -23,10 +23,11 @@ public class NotificationScheduler {
      */
     @Scheduled(fixedRate = 600000) // 10분 = 600,000ms
     public void processBatchNotifications() {
-        log.info("Starting batch notification processing...");
+        log.debug("Starting batch notification processing...");
         try {
             notificationService.processBatchNotifications();
-            log.info("Batch notification processing completed successfully");
+
+            log.debug("Batch notification processing completed successfully");
         } catch (Exception e) {
             log.error("Failed to process batch notifications", e);
         }
@@ -51,11 +52,11 @@ public class NotificationScheduler {
      */
     @Scheduled(cron = "0 0 0 * * *")
     public void cleanupOldNotificationData() {
-        log.info("Starting cleanup of old notification data...");
+        log.debug("Starting cleanup of old notification data...");
         try {
             // Redis에서 오래된 배치 알림 데이터 정리
             // 필요에 따라 NotificationService에 정리 메서드 추가
-            log.info("Cleanup of old notification data completed");
+            log.debug("Cleanup of old notification data completed");
         } catch (Exception e) {
             log.error("Failed to cleanup old notification data", e);
         }
