@@ -155,6 +155,15 @@ public class UserController {
         boolean response = partnerService.checkMarriageDate(partnerRequestId, marriageDate);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+    @DeleteMapping("/partner-requests/{partnerRequestId}")
+    public ResponseEntity<Message> deleteMarriageInfo(@RequestHeader("Authorization") String token,
+            @PathVariable Long partnerRequestId,
+            @RequestParam LocalDate marriageDate) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+        boolean response = partnerService.deleteMarriageInfo(partnerRequestId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
 
     @PatchMapping("/partner-requests/{partnerRequestId}")
     public ResponseEntity<Message> responseToRequest(@RequestHeader("Authorization") String token,

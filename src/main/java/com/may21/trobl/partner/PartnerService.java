@@ -132,4 +132,14 @@ public class PartnerService {
         return partnerRequest.getMarriageDate() != null && partnerRequest.getMarriageDate()
                 .isEqual(marriageDate);
     }
+
+    public boolean deleteMarriageInfo(Long partnerRequestId) {
+        PartnerRequest partnerRequest = partnerRequestRepository.findById(partnerRequestId)
+                .orElse(null);
+        if (partnerRequest == null) {
+            return false;
+        }
+        partnerRequestRepository.delete(partnerRequest);
+        return true;
+    }
 }
