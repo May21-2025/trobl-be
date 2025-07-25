@@ -45,15 +45,18 @@ public class CommentDto {
     }
 
     @Getter
-    public static class RecentInfo extends Response {
+    public static class MyComments extends Response {
         private final String postTitle;
-        private boolean unread;
-        private boolean newComment;
-        private boolean newLike;
+        private final boolean unread;
+        private final boolean newComment;
+        private final boolean newLike;
 
-        public RecentInfo(Posting post, Comment comment, User user, boolean liked, NotificationDto.ContentUpdateStatus contentUpdateStatus) {
+        public MyComments(Posting post, Comment comment, User user, boolean liked, NotificationDto.ContentUpdateStatus contentUpdateStatus) {
             super(comment, user, liked);
             this.postTitle = post.getTitle();
+            this.unread = contentUpdateStatus.isUnread();
+            this.newComment = contentUpdateStatus.isNewComment();
+            this.newLike = contentUpdateStatus.isNewLike();
         }
     }
 }

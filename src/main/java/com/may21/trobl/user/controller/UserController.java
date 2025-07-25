@@ -57,7 +57,7 @@ public class UserController {
     public ResponseEntity<Message> getMyComments(@RequestHeader("Authorization") String token,
                                                  @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        Page<CommentDto.RecentInfo> response = commentService.getMyComments(user.getId(), page, size);
+        Page<CommentDto.MyComments> response = commentService.getMyComments(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

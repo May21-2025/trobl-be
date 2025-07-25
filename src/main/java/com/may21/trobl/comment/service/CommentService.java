@@ -27,7 +27,7 @@ public interface CommentService {
     boolean deleteComment(Long id, Long commentId);
 
     @Transactional(readOnly = true)
-    Page<CommentDto.RecentInfo> getMyComments(Long id, int page, int size);
+    Page<CommentDto.MyComments> getMyComments(Long id, int page, int size);
 
     @Transactional(readOnly = true)
     Map<Long, Integer> getPostCommentMap(List<Posting> posts);

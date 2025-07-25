@@ -133,7 +133,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public Page<CommentDto.RecentInfo> getMyComments(Long userId, int page, int size) {
+    public Page<CommentDto.MyComments> getMyComments(Long userId, int page, int size) {
         Page<Comment> comments = commentRepository.findByUserId(userId, PageRequest.of(page, size));
         User user =
                 userRepository
@@ -146,7 +146,7 @@ public class CommentServiceImpl implements CommentService {
 
         return comments.map(
                 comment ->
-                        new CommentDto.RecentInfo(
+                        new CommentDto.MyComments(
                                 comment.getPosting(),
                                 comment,
                                 user,
