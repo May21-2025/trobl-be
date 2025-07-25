@@ -44,7 +44,7 @@ public class CommentController {
     public ResponseEntity<Message> createComment(@PathVariable Long postId,
                                                  @RequestBody CommentDto.Request request, @AuthenticationPrincipal User user) {
         CommentDto.Response response = commentService.createComment(postId, request, user.getId());
-//        notificationService.sendNewCommentNotification(postId, response);
+        notificationService.sendNewCommentNotification(postId, response);
         contentUpdateService.commentUpdate(postId, request);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
