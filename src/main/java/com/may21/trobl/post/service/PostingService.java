@@ -97,4 +97,6 @@ public interface PostingService {
 
     @Transactional
     boolean deletePostByAdmin(Long postId);
+
+    Page<PostDto.ListItem> getFairViewList(Long userId, int page, int size);
 }

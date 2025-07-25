@@ -135,6 +135,15 @@ public class PostingController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
+    @GetMapping("/fair-view")
+    public ResponseEntity<Message> getFairView(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal User user) {
+        Long userId = user != null ? user.getId() : null;
+            Page<PostDto.ListItem> response = postingService.getFairViewList(userId, page, size);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
     @GetMapping("/top-list")
     public ResponseEntity<Message> getTopListPostsView(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "all") String type, @RequestParam(required = false, defaultValue = "10") int count) {
         Long userId = user != null ? user.getId() : null;

@@ -788,6 +788,36 @@ public class PostingServiceImpl implements PostingService {
         return true;
     }
 
+    @Override
+    public Page<PostDto.ListItem> getFairViewList(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt")
+                .descending());
+        Page<Posting> posts =
+                postRepository.findAllByUserIdAndPostType(userId, PostingType.FAIR_VIEW, pageable);
+        if (posts.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        List<Posting> postList = posts.stream()
+                .toList();
+        Set<Long> userIds = posts.stream()
+                .map(Posting::getUserId)
+                .collect(Collectors.toSet());
+        List<User> users = userRepository.findAllById(userIds);
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, postList);
+        List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, postList);
+        List<Long> commentedPostIds =
+                postRepository.getAllIdsInListCommentedByUserId(userId, postList);
+        Map<Long, List<Tag>> tagMap = tagService.getPostTagsMap(postList);
+        return posts.map(post -> {
+            User user = userMap.get(post.getUserId());
+            return new PostDto.ListItem(post, user, tagMap.getOrDefault(post.getId(), List.of()),
+                    likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()),
+                    commentedPostIds.contains(post.getId()));
+        });
+    }
+
 
     private void evictTopPostsCache(Long userId) {
         Cache cache = cacheManager.getCache("topPosts");
