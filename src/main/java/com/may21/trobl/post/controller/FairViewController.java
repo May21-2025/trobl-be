@@ -35,7 +35,7 @@ public class FairViewController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @PatchMapping("/{fairViewId}")
+    @PatchMapping("/{fairViewId}/confirm")
     public ResponseEntity<Message> confirmFairView(
             @PathVariable Long fairViewId,  @RequestHeader("Authorization") String token)  {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);

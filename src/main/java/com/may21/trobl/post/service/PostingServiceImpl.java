@@ -475,6 +475,7 @@ public class PostingServiceImpl implements PostingService {
             throw new BusinessException(ExceptionCode.UNAUTHORIZED);
         }
         fairView.update(request);
+        fairView.setConfirmed(true);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         return new PostDto.FairViewItem(fairView, user);
