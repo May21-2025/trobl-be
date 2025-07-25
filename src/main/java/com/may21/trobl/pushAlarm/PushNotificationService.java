@@ -8,6 +8,7 @@ import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -28,6 +29,7 @@ public class PushNotificationService {
      * - 앱 실행 중: data-only 메시지로 인앱 알림
      * - 백그라운드: 자동으로 푸시 알림으로 표시
      */
+    @Async
     public void sendNotificationTo(List<String> fcmTokenList, NotificationDto.SendRequest request) {
         for (String fcmToken : fcmTokenList) {
             // 유효한 FCM 토큰 필터링

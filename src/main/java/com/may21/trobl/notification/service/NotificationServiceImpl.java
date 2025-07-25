@@ -8,8 +8,6 @@ import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
-import com.may21.trobl.comment.domain.Comment;
-import com.may21.trobl.comment.domain.CommentRepository;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.domain.Notification;
@@ -27,6 +25,7 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -48,6 +47,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final ContentUpdateService contentUpdateService;
+    private final NotificationBatchService notificationBatchService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String LIKE_TITLE = "많은 사람들이 당신의 이야기에 공감하고 있어요!";
@@ -58,18 +58,6 @@ public class NotificationServiceImpl implements NotificationService {
     private static final String PARTNER_ACCEPTED_TITLE = "${partnerName}님이 배우자로 등록되었습니다.";
     private static final String PARTNER_DECLINED_TITLE = "${partnerName}님이 배우자 등록을 거절하셨습니다.";
 
-    public void testNotification(Long testUserId, NotificationType notificationType, String s,
-            String s1, Map<String, String> data, NotificationStrategy notificationStrategy) {
-        NotificationBasicData itemData =
-                new NotificationBasicData(data.get("itemType"), data.get("itemId"));
-        LocalDateTime scheduledTime = data.containsKey("scheduledTime") ?
-                LocalDateTime.parse(data.get("scheduledTime"), DateTimeFormatter.ISO_DATE_TIME) :
-                null;
-        createAndSendNotification(testUserId, notificationType, s, s1, itemData,
-                notificationStrategy, scheduledTime);
-    }
-
-
     @Getter
     @AllArgsConstructor
     @NoArgsConstructor
@@ -78,8 +66,7 @@ public class NotificationServiceImpl implements NotificationService {
         private Long itemId;
 
         public String getItemType() {
-            return itemType.name()
-                    .toLowerCase();
+            return itemType.name().toLowerCase();
         }
 
         public String getItemId() {
@@ -98,8 +85,7 @@ public class NotificationServiceImpl implements NotificationService {
     private Map<String, String> createStandardDataMap(NotificationType type, String title,
             String body, NotificationBasicData itemData) {
         Map<String, String> data = new HashMap<>();
-        data.put("type", type.name()
-                .toLowerCase());
+        data.put("type", type.name().toLowerCase());
         data.put("title", title);
         data.put("body", body);
         data.put("itemType", itemData.getItemType());
@@ -108,7 +94,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     /**
-     * 알림 생성 및 전송 (itemType, itemId 포함)
+     * 알림 생성 및 전송
      */
     public void createAndSendNotification(Long userId, NotificationType type, String title,
             String body, NotificationBasicData data, NotificationStrategy strategy,
@@ -131,35 +117,24 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    /**
-     * 사용자 조회 및 FCM 토큰 검증
-     */
     private User getUserWithValidFcmTokens(Long userId) {
         User user = userRepository.findById(userId)
-                .orElse( null);
-        if(user == null|| user.getFcmTokenList()
-                .isEmpty()) {
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+        if (user.getFcmTokenList().isEmpty()) {
             log.warn("FCM token is empty for userId: {}", userId);
-            return null;
+            throw new BusinessException(ExceptionCode.USER_NOT_FOUND);
         }
 
         return user;
     }
 
-    /**
-     * 알림 전송 공통 로직
-     */
     private void sendNotificationToUser(User user, String title, String body,
             Map<String, String> data, String logContext) {
-        String itemType = data.getOrDefault("itemType", null);
-        Long itemId = data.getOrDefault("itemId", "0")
-                .isEmpty() ? 0L : Long.parseLong(data.get("itemId"));
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(user.getId())
                 .title(title)
                 .body(body)
-                .itemType(itemType == null ? null : itemType.toLowerCase())
-                .itemId(itemId)
                 .data(data)
                 .build();
 
@@ -172,46 +147,35 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     /**
-     * 1. 즉시 전송
+     * 즉시 전송 (비동기)
      */
+    @Async("notificationTaskExecutor")
     @Override
     public void sendImmediateNotification(Long userId, String title, String body,
             Map<String, String> data) {
         User user = getUserWithValidFcmTokens(userId);
-        if(user == null) {
-            return;
-        }
         sendNotificationToUser(user, title, body, data, "Immediate");
     }
 
-    /**
-     * 2. 10분마다 일괄 전송용 큐잉
-     */
     @Override
     public void queueForBatchNotification(Long userId, Notification notification) {
         String key = "batch_notifications:" + userId;
-        redisTemplate.opsForList()
-                .rightPush(key, notification.getId());
+        redisTemplate.opsForList().rightPush(key, notification.getId());
         redisTemplate.expire(key, Duration.ofMinutes(15));
         log.debug("Notification queued for batch processing: userId={}, notificationId={}", userId,
                 notification.getId());
     }
 
-    /**
-     * 3. 예약 전송용 스케줄링
-     */
     @Override
     public void scheduleNotification(Long userId, Notification notification,
             LocalDateTime scheduledTime) {
         if (scheduledTime == null) {
-            scheduledTime = LocalDateTime.now()
-                    .plusHours(1);
+            scheduledTime = LocalDateTime.now().plusHours(1);
         }
 
         String key = "scheduled_notifications:" +
                 scheduledTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-        redisTemplate.opsForList()
-                .rightPush(key, notification.getId());
+        redisTemplate.opsForList().rightPush(key, notification.getId());
 
         Instant expireInstant = scheduledTime.plusHours(1)
                 .atZone(ZoneId.systemDefault())
@@ -222,22 +186,19 @@ public class NotificationServiceImpl implements NotificationService {
                 notification.getId(), scheduledTime);
     }
 
-    /**
-     * 일괄 처리용 - 스케줄러에서 10분마다 호출
-     */
     @Override
     public void processBatchNotifications() {
         Set<String> userKeys = redisTemplate.keys("batch_notifications:*");
 
-        for (String key : userKeys) {
-            String userId = key.substring("batch_notifications:".length());
-            List<Object> notificationIds = redisTemplate.opsForList()
-                    .range(key, 0, -1);
+        if (userKeys != null) {
+            for (String key : userKeys) {
+                String userId = key.substring("batch_notifications:".length());
+                List<Object> notificationIds = redisTemplate.opsForList().range(key, 0, -1);
 
-            if (!Objects.requireNonNull(notificationIds)
-                    .isEmpty()) {
-                processBatchNotificationsForUser(Long.parseLong(userId), notificationIds);
-                redisTemplate.delete(key);
+                if (notificationIds != null && !notificationIds.isEmpty()) {
+                    processBatchNotificationsForUser(Long.parseLong(userId), notificationIds);
+                    redisTemplate.delete(key);
+                }
             }
         }
     }
@@ -248,11 +209,9 @@ public class NotificationServiceImpl implements NotificationService {
                         .map(id -> Long.parseLong(id.toString()))
                         .toList());
 
-        User user = userRepository.findById(userId)
-                .orElse(null);
+        User user = userRepository.findById(userId).orElse(null);
         if (Objects.isNull(user) || notifications.isEmpty()) return;
 
-        // 같은 타입별로 그룹핑하여 요약
         Map<NotificationType, List<Notification>> groupedNotifications = notifications.stream()
                 .collect(Collectors.groupingBy(Notification::getType));
 
@@ -261,17 +220,19 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private void sendBatchNotification(User user, NotificationType type,
+    @Async("notificationTaskExecutor")
+    public void sendBatchNotification(User user, NotificationType type,
             List<Notification> notifications) {
         String title = getBatchTitle(type);
         String body = getBatchBody(type, notifications.size());
-        String itemType = switch (type) {
-            case LIKE, COMMENT, FAIRVIEW_CONFIRMATION, FAIRVIEW_REQUEST, CONTENT_RECOMMENDATION,
-                 POPULAR_POST, QUICK_POLL_PARTICIPATION -> ItemType.POST.name();
-            case PARTNER_ACCEPTED, PARTNER_DECLINED, PARTNER_REQUEST -> ItemType.USER.name();
-
-            default -> null;
-        };
+        
+        Map<String, String> data = new HashMap<>();
+        data.put("type", type.name().toLowerCase());
+        data.put("title", title);
+        data.put("body", body);
+        data.put("count", String.valueOf(notifications.size()));
+        
+        sendNotificationToUser(user, title, body, data, "Batch");
     }
 
     private String getBatchTitle(NotificationType type) {
@@ -290,19 +251,14 @@ public class NotificationServiceImpl implements NotificationService {
         };
     }
 
-    /**
-     * 예약 알림 처리용 - 스케줄러에서 1분마다 호출
-     */
     @Override
     public void processScheduledNotifications() {
         String currentTimeKey = "scheduled_notifications:" + LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
 
-        List<Object> notificationIds = redisTemplate.opsForList()
-                .range(currentTimeKey, 0, -1);
+        List<Object> notificationIds = redisTemplate.opsForList().range(currentTimeKey, 0, -1);
 
-        if (!Objects.requireNonNull(notificationIds)
-                .isEmpty()) {
+        if (notificationIds != null && !notificationIds.isEmpty()) {
             List<Notification> notifications = notificationRepository.findAllById(
                     notificationIds.stream()
                             .map(id -> Long.parseLong(id.toString()))
@@ -316,30 +272,26 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private void sendScheduledNotification(Notification notification) {
+    @Async("notificationTaskExecutor")
+    public void sendScheduledNotification(Notification notification) {
         Map<String, String> data = fromJson(notification.getData());
 
         User user = getUserWithValidFcmTokens(notification.getUserId());
-        if(user == null) {
-            return;
-        }
         String title = data.getOrDefault("title", "예약 알림");
         String body = data.getOrDefault("body", "예약된 알림입니다.");
 
         sendNotificationToUser(user, title, body, data, "Scheduled");
     }
 
-    // 좋아요 알림을 새로운 배치 서비스로 처리
+    // 좋아요 알림 - 새로운 배치 서비스 사용
     @Override
     public void sendPostLikeNotification(Long postId, Long userId) {
-        // 새로운 배치 서비스 사용
-//        notificationBatchService.addPostLikeToQueue(postId, userId);
+        notificationBatchService.addPostLikeToQueue(postId, userId);
     }
 
     @Override
     public void sendCommentLikeNotification(Long commentId, Long userId) {
-        // 새로운 배치 서비스 사용
-//        notificationBatchService.addCommentLikeToQueue(commentId, userId);
+        notificationBatchService.addCommentLikeToQueue(commentId, userId);
     }
 
     @Override
@@ -363,17 +315,7 @@ public class NotificationServiceImpl implements NotificationService {
         return content.length() > 20 ? content.substring(0, 20) + "..." : content;
     }
 
-    // 관리자용 공지사항 등 예약 전송 예시
-    public void sendScheduledAnnouncement(List<Long> userIds, String title, String body,
-            LocalDateTime scheduledTime) {
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.ANNOUNCEMENT, 0L);
-        for (Long userId : userIds) {
-            createAndSendNotification(userId, NotificationType.ANNOUNCEMENT, title, body, itemData,
-                    NotificationStrategy.SCHEDULED, scheduledTime);
-        }
-    }
-
-    private Map fromJson(String json) {
+    private Map<String, String> fromJson(String json) {
         try {
             return objectMapper.readValue(json, Map.class);
         } catch (JsonProcessingException e) {
@@ -381,13 +323,11 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-
     @Override
     public boolean markAsRead(Long notificationId, Long userId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.NOTIFICATION_NOT_FOUND));
-        if (!notification.getUserId()
-                .equals(userId)) {
+        if (!notification.getUserId().equals(userId)) {
             throw new BusinessException(ExceptionCode.FORBIDDEN);
         }
         notification.markAsRead();
@@ -396,9 +336,8 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void setNotificationSetting(User user) {
-        // 알림 설정을 초기화
         for (NotificationType type : NotificationType.values()) {
-            user.setNotification(type, true); // 기본적으로 모든 알림을 활성화
+            user.setNotification(type, true);
         }
         userRepository.save(user);
     }
@@ -424,10 +363,8 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public boolean notifyMarketingAlert(AdminDto.PushNotification message) {
-        User user = userRepository.findById(message.getUserId())
-                .orElse(null);
-        if (user == null || user.getFcmTokenList()
-                .isEmpty()) return false;
+        User user = userRepository.findById(message.getUserId()).orElse(null);
+        if (user == null || user.getFcmTokenList().isEmpty()) return false;
 
         NotificationBasicData itemData = new NotificationBasicData(ItemType.REPORT, 0L);
         createAndSendNotification(user.getId(), NotificationType.MARKETING, message.getTitle(),
@@ -506,11 +443,25 @@ public class NotificationServiceImpl implements NotificationService {
     public boolean readAllNotifications(Long userId) {
         List<Notification> notifications = notificationRepository.findByUserIdAndReadFalse(userId);
         if (notifications.isEmpty()) {
-            return true; // 이미 읽을 알림이 없음
+            return true;
         }
         for (Notification notification : notifications) {
             notification.markAsRead();
         }
         return false;
+    }
+
+    @Override
+    public void testNotification(Long testUserId, NotificationType notificationType, String s,
+            String s1, Map<String, String> itemType, NotificationStrategy notificationStrategy) {
+        User user = userRepository.findById(testUserId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        NotificationBasicData itemData = new NotificationBasicData(
+                itemType.get("itemType"), itemType.get("itemId"));
+        createAndSendNotification(testUserId, notificationType, s, s1, itemData,
+                notificationStrategy, LocalDateTime.now().plusMinutes(1));
+        log.info("Test notification sent to user: {}, type: {}, title: {}, body: {}, itemData: {}",
+                testUserId, notificationType, s, s1, itemData);
+
     }
 }
