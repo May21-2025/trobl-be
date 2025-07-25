@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -288,14 +289,16 @@ public class PushNotificationService {
         }
     }
 
+    @Transactional
     public boolean registerToken(NotificationDto.TokenRegistrationRequest request, Long userId) {
         try {
+            if(deviceFcmTokenRepository.existsByUserIdAndFcmToken(userId, request.getFcmToken())) {
+                return true; // 이미 등록된 토큰은 무시
+            }
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-
             DeviceFcmToken deviceFcmToken = new DeviceFcmToken(user, request.getFcmToken());
             deviceFcmTokenRepository.save(deviceFcmToken);
-
             return true;
         } catch (Exception e) {
             log.error("Failed to register FCM token for user {}", userId, e);

@@ -20,7 +20,4 @@ public class NotificationConfig {
         resolver.setDefaultLocale(Locale.KOREAN);
         return resolver;
     }
-
-    // TaskExecutor와 TaskScheduler는 AsyncConfig에서 관리하도록 이동
-    // 더 세밀한 비동기 설정을 위해 AsyncConfig 사용
 }
