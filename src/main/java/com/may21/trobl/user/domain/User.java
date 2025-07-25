@@ -7,6 +7,7 @@ import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.notification.domain.NotificationSetting;
 import com.may21.trobl.pushAlarm.DeviceFcmToken;
 import com.may21.trobl.user.UserDto;
@@ -245,7 +246,7 @@ public class User implements UserDetails, OAuth2User {
 
     public void setUnregistered(int unregisteredUserCount) {
         this.unregistered = true;
-        this.nickname = "unregistered_" + unregisteredUserCount;
+        this.nickname = Utility.getRandomNickname();
         this.username = "unregistered_" + unregisteredUserCount;
         this.password = "unregistered";
         this.thumbnailKey = null;
