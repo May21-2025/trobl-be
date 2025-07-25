@@ -75,7 +75,7 @@ public interface PostingService {
     boolean confirmFairView(Long userId, Long fairViewId);
 
     @Transactional(readOnly = true)
-    List<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword);
+    Page<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword, Pageable pageable);
 
     @Transactional
     void setNickname(Long id, String nickname);

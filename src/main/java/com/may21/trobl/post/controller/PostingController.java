@@ -155,9 +155,12 @@ public class PostingController {
 
     @GetMapping("/search")
     public ResponseEntity<Message> search(
-            @AuthenticationPrincipal User user, @RequestParam String keyword) {
+            @AuthenticationPrincipal User user, @RequestParam String keyword,
+        @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "20") int size) {
         Long userId = user != null ? user.getId() : null;
-        List<PostDto.ListItem> response = postingService.searchPostsByKeyword(userId, keyword);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PostDto.ListItem> response = postingService.searchPostsByKeyword(userId, keyword,pageable);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

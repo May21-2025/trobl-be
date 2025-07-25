@@ -642,44 +642,186 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
-    public List<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword) {
+    public Page<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword, Pageable pageable) {
 
         List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
         List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, TargetType.USER);
-        List<Posting> posts =
-                postRepository.searchByKeyword(keyword, blockedPostIds, blockedUserIds);
 
+
+        String normalizedKeyword = normalizeKeyword(keyword);
+
+        List<Posting> prioritizedResults = searchWithPriority(normalizedKeyword, blockedPostIds, blockedUserIds);
+
+        if (prioritizedResults.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 페이징 처리
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), prioritizedResults.size());
+
+        if (start >= prioritizedResults.size()) {
+            return Page.empty(pageable);
+        }
+
+        List<Posting> pagedResults = prioritizedResults.subList(start, end);
+
+        // DTO 변환
+        List<PostDto.ListItem> searchResults = convertToListItems(pagedResults, userId);
+
+        return new PageImpl<>(searchResults, pageable, prioritizedResults.size());
+    }
+
+    // 우선순위 기반 검색 메서드
+    private List<Posting> searchWithPriority(String keyword, List<Long> blockedPostIds, List<Long> blockedUserIds) {
+        Set<Long> addedIds = new HashSet<>();
+        List<Posting> orderedResults = new ArrayList<>();
+
+        // 1. 제목 정확 일치 (최고 우선순위)
+        List<Posting> titleExact = postRepository.searchByTitleExact(keyword, blockedPostIds, blockedUserIds);
+        addUniqueResults(orderedResults, addedIds, titleExact);
+
+        // 2. 제목 부분 일치 (높은 우선순위)
+        List<Posting> titlePartial = postRepository.searchByTitlePartial(keyword, blockedPostIds, blockedUserIds);
+        addUniqueResults(orderedResults, addedIds, titlePartial);
+
+        // 3. Poll 제목 검색
+        List<Posting> pollTitle = postRepository.searchByPollTitle(keyword, blockedPostIds, blockedUserIds);
+        addUniqueResults(orderedResults, addedIds, pollTitle);
+
+        // 4. 내용 검색 (중간 우선순위)
+        List<Posting> content = postRepository.searchByContent(keyword, blockedPostIds, blockedUserIds);
+        addUniqueResults(orderedResults, addedIds, content);
+
+        // 5. FairView 내용 검색
+        List<Posting> fairViewContent = postRepository.searchByFairViewContent(keyword, blockedPostIds, blockedUserIds);
+        addUniqueResults(orderedResults, addedIds, fairViewContent);
+
+        // 6. 태그 검색 (낮은 우선순위)
+        List<Posting> tags = postRepository.searchByTags(keyword, blockedPostIds, blockedUserIds);
+        addUniqueResults(orderedResults, addedIds, tags);
+
+        return orderedResults;
+    }
+
+    // 중복 제거 헬퍼 메서드
+    private void addUniqueResults(List<Posting> orderedResults, Set<Long> addedIds, List<Posting> newResults) {
+        for (Posting post : newResults) {
+            if (!addedIds.contains(post.getId())) {
+                addedIds.add(post.getId());
+                orderedResults.add(post);
+            }
+        }
+    }
+
+    // 키워드 정규화 메서드
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return "";
+        }
+        return keyword.trim().replaceAll("\\s+", " ");
+    }
+
+    // DTO 변환 메서드
+    private List<PostDto.ListItem> convertToListItems(List<Posting> posts, Long userId) {
         if (posts.isEmpty()) {
             return List.of();
         }
+
         Set<Long> userIds = posts.stream()
                 .map(Posting::getUserId)
                 .collect(Collectors.toSet());
+
         List<User> users = userRepository.findAllById(userIds);
         Map<Long, User> userMap = users.stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
-        // if userId is null, return posts without user information
+
         List<Long> likedPostIds = userId == null ? List.of() :
                 postRepository.getAllIdsInListLikedByUserId(userId, posts);
         List<Long> viewedPostIds = userId == null ? List.of() :
                 postRepository.getAllIdsInListViewedByUserId(userId, posts);
-
         List<Long> commentedPostIds = userId == null ? List.of() :
                 postRepository.getAllIdsInListCommentedByUserId(userId, posts);
+
         Map<Long, List<Tag>> tagMap = tagService.getPostTagsMap(posts);
+
         List<PostDto.ListItem> response = new ArrayList<>();
         for (Posting post : posts) {
             User user = userMap.get(post.getUserId());
             response.add(
-                    new PostDto.ListItem(post, user, tagMap.getOrDefault(post.getId(), List.of()),
+                    new PostDto.ListItem(
+                            post,
+                            user,
+                            tagMap.getOrDefault(post.getId(), List.of()),
                             likedPostIds.contains(post.getId()),
                             viewedPostIds.contains(post.getId()),
-                            commentedPostIds.contains(post.getId())));
+                            commentedPostIds.contains(post.getId())
+                    )
+            );
         }
-        if (!response.isEmpty()) {
-            return response;
+
+        return response;
+    }
+
+    // 5. 추가 개선사항 - 다중 키워드 검색 지원
+
+    // 공백으로 구분된 여러 키워드 검색
+    private List<Posting> searchMultipleKeywords(String keyword, List<Long> blockedPostIds, List<Long> blockedUserIds) {
+        String[] keywords = keyword.split("\\s+");
+
+        if (keywords.length == 1) {
+            return searchWithPriority(keyword, blockedPostIds, blockedUserIds);
         }
-        return List.of();
+
+        // 모든 키워드가 포함된 게시물 검색 (AND 조건)
+        Set<Long> intersectionIds = null;
+
+        for (String singleKeyword : keywords) {
+            List<Posting> singleResults = searchWithPriority(singleKeyword.trim(), blockedPostIds, blockedUserIds);
+            Set<Long> currentIds = singleResults.stream()
+                    .map(Posting::getId)
+                    .collect(Collectors.toSet());
+
+            if (intersectionIds == null) {
+                intersectionIds = currentIds;
+            } else {
+                intersectionIds.retainAll(currentIds);
+            }
+
+            if (intersectionIds.isEmpty()) {
+                break;
+            }
+        }
+
+        if (intersectionIds == null || intersectionIds.isEmpty()) {
+            // AND 조건으로 찾지 못한 경우, OR 조건으로 다시 검색
+            return searchWithPriority(keyword, blockedPostIds, blockedUserIds);
+        }
+
+        // 교집합 결과를 다시 우선순위 순으로 정렬
+        return postRepository.findAllById(intersectionIds).stream()
+                .sorted((p1, p2) -> compareBySearchPriority(p1, p2, keyword))
+                .collect(Collectors.toList());
+    }
+
+    // 검색 우선순위 비교 메서드
+    private int compareBySearchPriority(Posting p1, Posting p2, String keyword) {
+        // 제목 정확 일치가 최우선
+        boolean p1TitleExact = p1.getTitle().toLowerCase().equals(keyword.toLowerCase());
+        boolean p2TitleExact = p2.getTitle().toLowerCase().equals(keyword.toLowerCase());
+
+        if (p1TitleExact && !p2TitleExact) return -1;
+        if (!p1TitleExact && p2TitleExact) return 1;
+
+        // 제목 포함 여부
+        boolean p1TitleContains = p1.getTitle().toLowerCase().contains(keyword.toLowerCase());
+        boolean p2TitleContains = p2.getTitle().toLowerCase().contains(keyword.toLowerCase());
+
+        if (p1TitleContains && !p2TitleContains) return -1;
+        if (!p1TitleContains && p2TitleContains) return 1;
+
+        // 생성일 기준 내림차순 (최신순)
+        return p2.getCreatedAt().compareTo(p1.getCreatedAt());
     }
 
     @Override
