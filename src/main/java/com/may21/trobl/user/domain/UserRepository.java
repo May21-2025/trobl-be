@@ -46,4 +46,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 
     OAuthProvider getOAuthByUsername(String username);
+
+    int countByUnregistered(boolean b);
 }

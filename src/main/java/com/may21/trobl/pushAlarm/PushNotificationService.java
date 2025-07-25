@@ -71,8 +71,12 @@ public class PushNotificationService {
             } catch (FirebaseMessagingException e) {
                 String errorCode = e.getMessagingErrorCode()
                         .name();
-                log.error("Failed to send FCM notification to token: {} - errorCode: {}", fcmToken,
-                        errorCode);
+                log.error("=======================================\n" +
+                                "Failed to send FCM notification to token: {} - errorCode: {}\n"+
+                                "Detail : {}"+
+                                "=======================================",
+                        fcmToken,
+                        errorCode, e.toString());
 
                 if (isInvalidTokenError(errorCode)) {
                     deleteFcmTokenFromDatabase(fcmToken);

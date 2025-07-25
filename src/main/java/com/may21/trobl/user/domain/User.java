@@ -52,7 +52,7 @@ public class User implements UserDetails, OAuth2User {
     private Long partnerId;
     private LocalDate weddingAnniversaryDate;
 
-
+    private Boolean unregistered = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeviceFcmToken> fcmTokens;
@@ -90,8 +90,8 @@ public class User implements UserDetails, OAuth2User {
     }
 
     @Builder
-    public User(String username, String encryptPassword, String nickname,
-            String provider, RoleType role) {
+    public User(String username, String encryptPassword, String nickname, String provider,
+            RoleType role) {
         this.username = username;
         this.provider = OAuthProvider.fromString(provider);
         this.password = encryptPassword == null ? "oauth" : encryptPassword;
@@ -241,5 +241,27 @@ public class User implements UserDetails, OAuth2User {
         // 값이 null인 경우 현재에서 한달 전 날짜를 반환
         return nicknameUpdatedAt != null ? nicknameUpdatedAt : LocalDate.now()
                 .minusMonths(1);
+    }
+
+    public void setUnregistered(int unregisteredUserCount) {
+        this.unregistered = true;
+        this.nickname = "unregistered_" + unregisteredUserCount;
+        this.username = "unregistered_" + unregisteredUserCount;
+        this.password = "unregistered";
+        this.thumbnailKey = null;
+        this.address = null;
+        this.married = false;
+        this.partnerId = null;
+        this.weddingAnniversaryDate = null;
+        this.language = Language.KOR;
+        this.setting = new NotificationSetting();
+        this.fcmTokens = new ArrayList<>();
+        this.roles = List.of(RoleType.NONE.name());
+        this.failedLoginAttempts = 0;
+        this.accountNonExpired = true;
+        this.accountNonLocked = true;
+        this.credentialsNonExpired = true;
+        this.enabled = false;
+        this.signUpDate = LocalDate.now();
     }
 }

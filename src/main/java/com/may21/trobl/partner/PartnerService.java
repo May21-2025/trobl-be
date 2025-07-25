@@ -3,7 +3,6 @@ package com.may21.trobl.partner;
 import com.may21.trobl._global.enums.RequestStatus;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
-import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
@@ -22,7 +21,6 @@ import java.util.List;
 public class PartnerService {
     private final PartnerRequestRepository partnerRequestRepository;
     private final UserRepository userRepository;
-    private final ContentUpdateService contentUpdateService;
     private final NotificationService notificationService;
 
     public UserDto.PartnerInfo getRequestStatus(Long userId) {
@@ -32,7 +30,7 @@ public class PartnerService {
         }
         User me = userRepository.findById(userId)
                 .orElse(null);
-        PartnerRequest partnerRequest = request.get(0);
+        PartnerRequest partnerRequest = request.getFirst();
         User partner = null;
         Long requesterId = partnerRequest.getUserId();
         Long receiverId = partnerRequest.getPartnerId();
@@ -72,7 +70,6 @@ public class PartnerService {
         PartnerRequest partnerRequest =
                 new PartnerRequest(userId, partner.getId(), request.marriageDate());
         partnerRequestRepository.save(partnerRequest);
-        contentUpdateService.createPartnerRequestUpdate(userId, partner.getId());
         notificationService.sendPartnerRequest(partner, user);
         return true;
     }

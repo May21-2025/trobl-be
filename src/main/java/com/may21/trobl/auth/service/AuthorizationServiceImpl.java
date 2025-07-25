@@ -134,8 +134,14 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         OAuthProvider type = user.getAttribute("OAuth") != null ? OAuthProvider.valueOf(user.getAttribute("OAuth")) : OAuthProvider.NONE;
         unlinkOAuth(type, user);
-        userRepository.delete(user);
+        setUnregisteredInfo(user);
         return true;
+    }
+
+    private void setUnregisteredInfo(User user) {
+        int unregisteredUserCount = userRepository.countByUnregistered(true);
+        user.setUnregistered(unregisteredUserCount);
+        userRepository.save(user);
     }
 
     @Override

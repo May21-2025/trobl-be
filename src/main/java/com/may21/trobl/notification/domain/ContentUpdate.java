@@ -1,7 +1,7 @@
 package com.may21.trobl.notification.domain;
 
-import com.may21.trobl._global.enums.UpdateType;
 import com.may21.trobl._global.enums.ItemType;
+import com.may21.trobl._global.enums.UpdateType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -24,7 +24,9 @@ public class ContentUpdate {
 
     private Long userId;
     private Long targetId;
+    @Enumerated(EnumType.STRING)
     private ItemType targetType;
+    @Enumerated(EnumType.STRING)
     private UpdateType changeType;
     @CreatedDate
     private LocalDateTime createdAt;

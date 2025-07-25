@@ -2,12 +2,10 @@ package com.may21.trobl.notification.domain;
 
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.UpdateType;
-import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.domain.CommentRepository;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.post.domain.PostRepository;
-import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +29,8 @@ public class ContentUpdateService {
 
 
     public void readIfExist(Long userId, Long targetId, ItemType itemType) {
-        contentUpdateRepository.deleteAllByUserIdAndTargetIdAndTargetType(userId, targetId, itemType);
+        contentUpdateRepository.deleteAllByUserIdAndTargetIdAndTargetType(userId, targetId,
+                itemType);
     }
 
     public void readIfExist(Long userId, List<Long> commentIds, ItemType itemType) {
@@ -39,7 +38,8 @@ public class ContentUpdateService {
             return;
         }
         for (Long commentId : commentIds) {
-            contentUpdateRepository.deleteAllByUserIdAndTargetIdAndTargetType(userId, commentId, itemType);
+            contentUpdateRepository.deleteAllByUserIdAndTargetIdAndTargetType(userId, commentId,
+                    itemType);
         }
     }
 
@@ -49,18 +49,25 @@ public class ContentUpdateService {
         Long commentId = request.getCommentId();
         if (commentId != null) {
             Long commentUserId = commentRepository.getOwnerIdByCommentId(commentId);
-            if (!contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(commentUserId, commentId, ItemType.COMMENT
+            if (!contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(commentUserId,
+                    commentId, ItemType.COMMENT
 
-            ) && commentUserId != null && userRepository.findById(commentUserId).isPresent()) {
-                ContentUpdate contentUpdate = new ContentUpdate(commentUserId, commentId, ItemType.COMMENT, UpdateType.COMMENT);
+            ) && commentUserId != null && userRepository.findById(commentUserId)
+                    .isPresent()) {
+                ContentUpdate contentUpdate =
+                        new ContentUpdate(commentUserId, commentId, ItemType.COMMENT,
+                                UpdateType.COMMENT);
                 contentUpdates.add(contentUpdate);
             }
         }
         Long postOwnerId = postRepository.getPostOwnerIdByPostId(postId);
-        if (!contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(postOwnerId, postId, ItemType.POST
+        if (!contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(postOwnerId, postId,
+                ItemType.POST
 
-        ) && postOwnerId != null && userRepository.findById(postOwnerId).isPresent()) {
-            ContentUpdate contentUpdate = new ContentUpdate(postOwnerId, postId, ItemType.POST, UpdateType.COMMENT);
+        ) && postOwnerId != null && userRepository.findById(postOwnerId)
+                .isPresent()) {
+            ContentUpdate contentUpdate =
+                    new ContentUpdate(postOwnerId, postId, ItemType.POST, UpdateType.COMMENT);
             contentUpdates.add(contentUpdate);
         }
         if (!contentUpdates.isEmpty()) {
@@ -78,8 +85,11 @@ public class ContentUpdateService {
         if (targetUserId == null) {
             return;
         }
-        if (!contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, targetId, itemType) && userRepository.findById(targetUserId).isPresent()) {
-            ContentUpdate contentUpdate = new ContentUpdate(targetUserId, targetId, itemType, UpdateType.LIKE);
+        if (!contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, targetId,
+                itemType) && userRepository.findById(targetUserId)
+                .isPresent()) {
+            ContentUpdate contentUpdate =
+                    new ContentUpdate(targetUserId, targetId, itemType, UpdateType.LIKE);
             contentUpdateRepository.save(contentUpdate);
 
         }
@@ -88,16 +98,24 @@ public class ContentUpdateService {
 
     @Transactional
     public void fairViewConfirmUpdate(Long postId, Long targetUserId) {
-        if (userRepository.findById(targetUserId).isPresent() && !contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, postId, ItemType.POST)) {
-            ContentUpdate contentUpdate = new ContentUpdate(targetUserId, postId, ItemType.POST, UpdateType.CONFIRMED);
+        if (userRepository.findById(targetUserId)
+                .isPresent() &&
+                !contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, postId,
+                        ItemType.POST)) {
+            ContentUpdate contentUpdate =
+                    new ContentUpdate(targetUserId, postId, ItemType.POST, UpdateType.CONFIRMED);
             contentUpdateRepository.save(contentUpdate);
         }
     }
 
     @Transactional
     public void fairViewRequestUpdate(Long postId, Long targetUserId) {
-        if (userRepository.findById(targetUserId).isPresent() && !contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, postId, ItemType.POST)) {
-            ContentUpdate contentUpdate = new ContentUpdate(targetUserId, postId, ItemType.POST, UpdateType.REQUESTED);
+        if (userRepository.findById(targetUserId)
+                .isPresent() &&
+                !contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, postId,
+                        ItemType.POST)) {
+            ContentUpdate contentUpdate =
+                    new ContentUpdate(targetUserId, postId, ItemType.POST, UpdateType.REQUESTED);
             contentUpdateRepository.save(contentUpdate);
         }
     }
@@ -113,33 +131,39 @@ public class ContentUpdateService {
         boolean requestedPost = false;
         for (ContentUpdate contentUpdate : contentUpdates) {
             UpdateType changeType = contentUpdate.getChangeType();
-            if (contentUpdate.getTargetType().equals(ItemType.POST)) {
-                if (!requestedPost && (changeType == UpdateType.REQUESTED || changeType == UpdateType.CONFIRMED)) {
+            if (contentUpdate.getTargetType()
+                    .equals(ItemType.POST)) {
+                if (!requestedPost && (changeType == UpdateType.REQUESTED ||
+                        changeType == UpdateType.CONFIRMED)) {
                     requestedPost = true;
-                } else if (!myPost && (changeType == UpdateType.COMMENT || changeType == UpdateType.LIKE)) {
+                }
+                else if (!myPost &&
+                        (changeType == UpdateType.COMMENT || changeType == UpdateType.LIKE)) {
                     myPost = true;
                 }
 
-            } else if (!myComment && contentUpdate.getTargetType().equals(ItemType.COMMENT)) myComment = true;
+            }
+            else if (!myComment && contentUpdate.getTargetType()
+                    .equals(ItemType.COMMENT)) myComment = true;
         }
 
         return new NotificationDto.SubMenu(myPost, myComment, requestedPost);
     }
 
-    public <T> Map<Long, NotificationDto.ContentUpdateStatus> getContentUpdatesByUserId(
-            Long userId,
-            List<T> itemList,
-            Function<T, Long> idExtractor,
-            ItemType itemType
-    ) {
-        List<Long> itemIds = itemList.stream().map(idExtractor).toList();
-        List<ContentUpdate> contentUpdates = contentUpdateRepository.findByUserIdInTargetIdsAndTargetType(userId, itemIds, itemType);
+    public <T> Map<Long, NotificationDto.ContentUpdateStatus> getContentUpdatesByUserId(Long userId,
+            List<T> itemList, Function<T, Long> idExtractor, ItemType itemType) {
+        List<Long> itemIds = itemList.stream()
+                .map(idExtractor)
+                .toList();
+        List<ContentUpdate> contentUpdates =
+                contentUpdateRepository.findByUserIdInTargetIdsAndTargetType(userId, itemIds,
+                        itemType);
 
         Map<Long, NotificationDto.ContentUpdateStatus> contentUpdateStatuses = new HashMap<>();
 
         for (ContentUpdate contentUpdate : contentUpdates) {
-            contentUpdateStatuses
-                    .computeIfAbsent(contentUpdate.getTargetId(), id -> new NotificationDto.ContentUpdateStatus(contentUpdate))
+            contentUpdateStatuses.computeIfAbsent(contentUpdate.getTargetId(),
+                            id -> new NotificationDto.ContentUpdateStatus(contentUpdate))
                     .update(contentUpdate);
         }
 
@@ -149,12 +173,5 @@ public class ContentUpdateService {
         }
 
         return contentUpdateStatuses;
-    }
-
-    public void createPartnerRequestUpdate(Long userId, Long partnerId) {
-        if (userRepository.findById(partnerId).isPresent() && !contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(partnerId, userId, ItemType.USER)) {
-            ContentUpdate contentUpdate = new ContentUpdate(partnerId, userId, ItemType.USER, UpdateType.REQUESTED);
-            contentUpdateRepository.save(contentUpdate);
-        }
     }
 }

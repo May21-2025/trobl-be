@@ -66,7 +66,8 @@ public class NotificationServiceImpl implements NotificationService {
         private Long itemId;
 
         public String getItemType() {
-            return itemType.name().toLowerCase();
+            return itemType.name()
+                    .toLowerCase();
         }
 
         public String getItemId() {
@@ -85,7 +86,8 @@ public class NotificationServiceImpl implements NotificationService {
     private Map<String, String> createStandardDataMap(NotificationType type, String title,
             String body, NotificationBasicData itemData) {
         Map<String, String> data = new HashMap<>();
-        data.put("type", type.name().toLowerCase());
+        data.put("type", type.name()
+                .toLowerCase());
         data.put("title", title);
         data.put("body", body);
         data.put("itemType", itemData.getItemType());
@@ -119,11 +121,11 @@ public class NotificationServiceImpl implements NotificationService {
 
     private User getUserWithValidFcmTokens(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+                .orElse(null);
 
-        if (user.getFcmTokenList().isEmpty()) {
-            log.warn("FCM token is empty for userId: {}", userId);
-            throw new BusinessException(ExceptionCode.USER_NOT_FOUND);
+        if (user == null || user.getFcmTokenList()
+                .isEmpty()) {
+            return null;
         }
 
         return user;
@@ -154,13 +156,17 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendImmediateNotification(Long userId, String title, String body,
             Map<String, String> data) {
         User user = getUserWithValidFcmTokens(userId);
+        if (user == null) {
+            return;
+        }
         sendNotificationToUser(user, title, body, data, "Immediate");
     }
 
     @Override
     public void queueForBatchNotification(Long userId, Notification notification) {
         String key = "batch_notifications:" + userId;
-        redisTemplate.opsForList().rightPush(key, notification.getId());
+        redisTemplate.opsForList()
+                .rightPush(key, notification.getId());
         redisTemplate.expire(key, Duration.ofMinutes(15));
         log.debug("Notification queued for batch processing: userId={}, notificationId={}", userId,
                 notification.getId());
@@ -170,12 +176,14 @@ public class NotificationServiceImpl implements NotificationService {
     public void scheduleNotification(Long userId, Notification notification,
             LocalDateTime scheduledTime) {
         if (scheduledTime == null) {
-            scheduledTime = LocalDateTime.now().plusHours(1);
+            scheduledTime = LocalDateTime.now()
+                    .plusHours(1);
         }
 
         String key = "scheduled_notifications:" +
                 scheduledTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-        redisTemplate.opsForList().rightPush(key, notification.getId());
+        redisTemplate.opsForList()
+                .rightPush(key, notification.getId());
 
         Instant expireInstant = scheduledTime.plusHours(1)
                 .atZone(ZoneId.systemDefault())
@@ -193,7 +201,8 @@ public class NotificationServiceImpl implements NotificationService {
         if (userKeys != null) {
             for (String key : userKeys) {
                 String userId = key.substring("batch_notifications:".length());
-                List<Object> notificationIds = redisTemplate.opsForList().range(key, 0, -1);
+                List<Object> notificationIds = redisTemplate.opsForList()
+                        .range(key, 0, -1);
 
                 if (notificationIds != null && !notificationIds.isEmpty()) {
                     processBatchNotificationsForUser(Long.parseLong(userId), notificationIds);
@@ -209,7 +218,8 @@ public class NotificationServiceImpl implements NotificationService {
                         .map(id -> Long.parseLong(id.toString()))
                         .toList());
 
-        User user = userRepository.findById(userId).orElse(null);
+        User user = userRepository.findById(userId)
+                .orElse(null);
         if (Objects.isNull(user) || notifications.isEmpty()) return;
 
         Map<NotificationType, List<Notification>> groupedNotifications = notifications.stream()
@@ -225,13 +235,14 @@ public class NotificationServiceImpl implements NotificationService {
             List<Notification> notifications) {
         String title = getBatchTitle(type);
         String body = getBatchBody(type, notifications.size());
-        
+
         Map<String, String> data = new HashMap<>();
-        data.put("type", type.name().toLowerCase());
+        data.put("type", type.name()
+                .toLowerCase());
         data.put("title", title);
         data.put("body", body);
         data.put("count", String.valueOf(notifications.size()));
-        
+
         sendNotificationToUser(user, title, body, data, "Batch");
     }
 
@@ -256,7 +267,8 @@ public class NotificationServiceImpl implements NotificationService {
         String currentTimeKey = "scheduled_notifications:" + LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
 
-        List<Object> notificationIds = redisTemplate.opsForList().range(currentTimeKey, 0, -1);
+        List<Object> notificationIds = redisTemplate.opsForList()
+                .range(currentTimeKey, 0, -1);
 
         if (notificationIds != null && !notificationIds.isEmpty()) {
             List<Notification> notifications = notificationRepository.findAllById(
@@ -277,6 +289,9 @@ public class NotificationServiceImpl implements NotificationService {
         Map<String, String> data = fromJson(notification.getData());
 
         User user = getUserWithValidFcmTokens(notification.getUserId());
+        if (user == null) {
+            return;
+        }
         String title = data.getOrDefault("title", "예약 알림");
         String body = data.getOrDefault("body", "예약된 알림입니다.");
 
@@ -327,7 +342,8 @@ public class NotificationServiceImpl implements NotificationService {
     public boolean markAsRead(Long notificationId, Long userId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.NOTIFICATION_NOT_FOUND));
-        if (!notification.getUserId().equals(userId)) {
+        if (!notification.getUserId()
+                .equals(userId)) {
             throw new BusinessException(ExceptionCode.FORBIDDEN);
         }
         notification.markAsRead();
@@ -363,8 +379,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public boolean notifyMarketingAlert(AdminDto.PushNotification message) {
-        User user = userRepository.findById(message.getUserId()).orElse(null);
-        if (user == null || user.getFcmTokenList().isEmpty()) return false;
+        User user = userRepository.findById(message.getUserId())
+                .orElse(null);
+        if (user == null || user.getFcmTokenList()
+                .isEmpty()) return false;
 
         NotificationBasicData itemData = new NotificationBasicData(ItemType.REPORT, 0L);
         createAndSendNotification(user.getId(), NotificationType.MARKETING, message.getTitle(),
@@ -454,12 +472,11 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void testNotification(Long testUserId, NotificationType notificationType, String s,
             String s1, Map<String, String> itemType, NotificationStrategy notificationStrategy) {
-        User user = userRepository.findById(testUserId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        NotificationBasicData itemData = new NotificationBasicData(
-                itemType.get("itemType"), itemType.get("itemId"));
+        NotificationBasicData itemData =
+                new NotificationBasicData(itemType.get("itemType"), itemType.get("itemId"));
         createAndSendNotification(testUserId, notificationType, s, s1, itemData,
-                notificationStrategy, LocalDateTime.now().plusMinutes(1));
+                notificationStrategy, LocalDateTime.now()
+                        .plusMinutes(1));
         log.info("Test notification sent to user: {}, type: {}, title: {}, body: {}, itemData: {}",
                 testUserId, notificationType, s, s1, itemData);
 
