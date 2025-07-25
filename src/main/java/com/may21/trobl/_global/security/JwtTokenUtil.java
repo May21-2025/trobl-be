@@ -187,11 +187,16 @@ public class JwtTokenUtil {
     }
 
     private Claims getClaims(String jwt) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(jwt)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(jwt)
+                    .getPayload();
+        }catch (Exception e) {
+            log.error("JWT 파싱 실패: {}", e.getMessage());
+            throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED, e);
+        }
     }
 
     /**
