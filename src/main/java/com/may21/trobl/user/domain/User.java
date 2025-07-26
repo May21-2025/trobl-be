@@ -54,6 +54,7 @@ public class User implements UserDetails, OAuth2User {
     private LocalDate weddingAnniversaryDate;
 
     private Boolean unregistered = false;
+    private Boolean testUser = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeviceFcmToken> fcmTokens;

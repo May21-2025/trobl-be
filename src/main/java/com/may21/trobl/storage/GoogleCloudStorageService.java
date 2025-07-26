@@ -31,6 +31,7 @@ import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_
 @RequiredArgsConstructor
 public class GoogleCloudStorageService implements StorageService {
     private final Storage storage;
+    private final CdnCacheService cdnCacheService;
 
     @Value("${BUCKET_NAME}")
     private String BUCKET_NAME;
@@ -44,7 +45,8 @@ public class GoogleCloudStorageService implements StorageService {
         BlobId blobId = BlobId.of(BUCKET_NAME, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                 .setContentType(file.getContentType())
-                .setAcl(Collections.singletonList(Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER))) // 공개 읽기 권한
+                .setAcl(Collections.singletonList(
+                        Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER))) // 공개 읽기 권한
                 .setCacheControl("public, max-age=31536000") // 1년 캐싱
                 .build();
 
@@ -53,14 +55,17 @@ public class GoogleCloudStorageService implements StorageService {
         // CDN 도메인이 설정되어 있으면 CDN URL 반환, 없으면 일반 공개 URL 반환
         if (cdnLbIp != null && !cdnLbIp.isEmpty()) {
             return String.format("https://%s/%s", cdnLbIp, fileName);
-        } else {
+        }
+        else {
             return String.format("https://storage.googleapis.com/%s/%s", BUCKET_NAME, fileName);
         }
     }
 
     // 이미지 최적화 업로드
-    public String uploadOptimizedImage(MultipartFile file, String folder, ImageSize size) throws IOException {
-        String fileName = folder + "/" + size.getPrefix() + "_" + UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+    public String uploadOptimizedImage(MultipartFile file, String folder, ImageSize size)
+            throws IOException {
+        String fileName = folder + "/" + size.getPrefix() + "_" + UUID.randomUUID()
+                .toString() + "_" + file.getOriginalFilename();
 
         // 이미지 리사이징 (실제 구현시에는 BufferedImage 사용)
         byte[] optimizedImage = optimizeImage(file.getBytes(), size);
@@ -70,11 +75,8 @@ public class GoogleCloudStorageService implements StorageService {
                 .setContentType("image/webp") // WebP 형식으로 최적화
                 .setAcl(Collections.singletonList(Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER)))
                 .setCacheControl("public, max-age=31536000")
-                .setMetadata(Map.of(
-                        "width", String.valueOf(size.getWidth()),
-                        "height", String.valueOf(size.getHeight()),
-                        "optimized", "true"
-                ))
+                .setMetadata(Map.of("width", String.valueOf(size.getWidth()), "height",
+                        String.valueOf(size.getHeight()), "optimized", "true"))
                 .build();
 
         storage.create(blobInfo, optimizedImage);
@@ -86,7 +88,8 @@ public class GoogleCloudStorageService implements StorageService {
     private String getCdnUrl(String fileName) {
         if (cdnLbIp != null && !cdnLbIp.isEmpty()) {
             return String.format("http://%s/%s", cdnLbIp, fileName);
-        } else {
+        }
+        else {
             // CDN이 비활성화되어 있으면 일반 Storage URL 반환
             return String.format("https://storage.googleapis.com/%s/%s", BUCKET_NAME, fileName);
         }
@@ -121,26 +124,20 @@ public class GoogleCloudStorageService implements StorageService {
         storage.setIamPolicy(BUCKET_NAME, updatedPolicy);
     }
 
-    // 파일 삭제 (CDN 캐시 무효화 포함)
     public boolean deleteFileWithCacheInvalidation(String fileName) {
         boolean deleted = storage.delete(BlobId.of(BUCKET_NAME, fileName));
         if (deleted && cdnLbIp != null && !cdnLbIp.isEmpty()) {
-            // CDN 캐시 무효화 요청 (실제 구현 필요)
-            invalidateCdnCache(fileName);
+            cdnCacheService.invalidateCdnCache(fileName);
         }
         return deleted;
     }
 
-    private void invalidateCdnCache(String fileName) {
-        // Google Cloud CDN 캐시 무효화 API 호출
-        // 실제 구현시에는 Cloud CDN API 사용
-    }
 
     @Override
     public String uploadUserProfileImage(Long userId, MultipartFile file) {
         try {
 
-            String imageKey = userId+ ".webp";
+            String imageKey = userId + ".webp";
             String thumbnailFileName = USER_PROFILE_IMAGE_PATH + imageKey;
 
             byte[] thumbnailBytes = createThumbnail(file.getBytes(), 150, 150);
@@ -149,15 +146,16 @@ public class GoogleCloudStorageService implements StorageService {
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                     .setContentType("image/webp")
                     .setCacheControl("public, max-age=2592000") // 30일 캐싱
-                    .setMetadata(Map.of(
-                            "userId", String.valueOf(userId),
-                            "type", "thumbnail",
+                    .setMetadata(Map.of("userId", String.valueOf(userId), "type", "thumbnail",
                             "originalFileName", Objects.requireNonNull(file.getOriginalFilename()),
-                            "uploadTime", String.valueOf(System.currentTimeMillis())
-                    ))
+                            "uploadTime", String.valueOf(System.currentTimeMillis())))
                     .build();
 
             storage.create(blobInfo, thumbnailBytes);
+            // CDN CAche 무효화
+            if (cdnLbIp != null && !cdnLbIp.isEmpty()) {
+                cdnCacheService.invalidateCdnCache(thumbnailFileName);
+            }
 
             return imageKey;
 
@@ -179,7 +177,8 @@ public class GoogleCloudStorageService implements StorageService {
             }
 
             // 비율 유지하면서 리사이징
-            BufferedImage thumbnailImage = resizeImageWithAspectRatio(originalBufferedImage, width, height);
+            BufferedImage thumbnailImage =
+                    resizeImageWithAspectRatio(originalBufferedImage, width, height);
 
             // WebP로 변환 (WebP Writer가 없으면 JPEG 사용)
             return convertToWebP(thumbnailImage);
@@ -190,7 +189,8 @@ public class GoogleCloudStorageService implements StorageService {
     }
 
     // 비율 유지 리사이징
-    private BufferedImage resizeImageWithAspectRatio(BufferedImage original, int targetWidth, int targetHeight) {
+    private BufferedImage resizeImageWithAspectRatio(BufferedImage original, int targetWidth,
+            int targetHeight) {
         int originalWidth = original.getWidth();
         int originalHeight = original.getHeight();
 
@@ -202,18 +202,21 @@ public class GoogleCloudStorageService implements StorageService {
             // 가로가 더 긴 경우
             newWidth = targetWidth;
             newHeight = (int) (targetWidth / aspectRatio);
-        } else {
+        }
+        else {
             // 세로가 더 긴 경우
             newWidth = (int) (targetHeight * aspectRatio);
             newHeight = targetHeight;
         }
 
         // 고품질 리사이징
-        BufferedImage resized = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+        BufferedImage resized =
+                new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = resized.createGraphics();
 
         // 렌더링 힌트 설정 (고품질)
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
@@ -224,7 +227,8 @@ public class GoogleCloudStorageService implements StorageService {
         // 이미지를 중앙에 그리기
         int x = (targetWidth - newWidth) / 2;
         int y = (targetHeight - newHeight) / 2;
-        g2d.drawImage(original.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH), x, y, null);
+        g2d.drawImage(original.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH), x, y,
+                null);
 
         g2d.dispose();
         return resized;
@@ -236,14 +240,16 @@ public class GoogleCloudStorageService implements StorageService {
 
         try {
             // WebP writer 시도
-            ImageWriter webpWriter = ImageIO.getImageWritersByFormatName("webp").next();
+            ImageWriter webpWriter = ImageIO.getImageWritersByFormatName("webp")
+                    .next();
             if (webpWriter != null) {
                 ImageOutputStream ios = ImageIO.createImageOutputStream(outputStream);
                 webpWriter.setOutput(ios);
                 webpWriter.write(image);
                 webpWriter.dispose();
                 ios.close();
-            } else {
+            }
+            else {
                 throw new IOException("WebP writer not available");
             }
         } catch (Exception e) {

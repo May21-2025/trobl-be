@@ -11,8 +11,6 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -193,7 +191,7 @@ public class JwtTokenUtil {
                     .build()
                     .parseSignedClaims(jwt)
                     .getPayload();
-        }catch (Exception e) {
+        } catch (Exception e) {
             log.error("JWT 파싱 실패: {}", e.getMessage());
             throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED, e);
         }
