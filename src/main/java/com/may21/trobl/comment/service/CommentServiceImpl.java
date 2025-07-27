@@ -1,7 +1,6 @@
 package com.may21.trobl.comment.service;
 
 import com.may21.trobl._global.enums.ItemType;
-import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.comment.domain.Comment;
@@ -196,7 +195,7 @@ public class CommentServiceImpl implements CommentService {
                         .findById(commentId)
                         .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
 
-        int reportedCount = reportService.report(userId, commentId, TargetType.COMMENT, reportRequest);
+        int reportedCount = reportService.report(userId, commentId, ItemType.COMMENT, reportRequest);
         if (reportedCount >= 10) {
             comment.setReported(true);
         }

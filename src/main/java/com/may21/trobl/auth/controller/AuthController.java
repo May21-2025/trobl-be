@@ -96,6 +96,35 @@ public class AuthController {
             throw e;
         }
     }
+    // 로그인
+    @PostMapping("/admin/sign-in")
+    public ResponseEntity<Message> signInForAdmin(
+            @RequestBody AuthDto.LoginRequest signRequestDto,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        try {
+            UserDto.InfoDetail infoDto = authorizationService.signIn(signRequestDto);
+
+            String ipAddress = HeaderExtractor.extractIpAddress(request);
+            String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
+            String deviceId = HeaderExtractor.extractDeviceId(request);
+
+            User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", infoDto.getRoles());
+            if(!user.getRoles().contains("ADMIN")) {
+                return new ResponseEntity<>(Message.fail(null, ExceptionCode.UNAUTHORIZED),
+                        HttpStatus.FORBIDDEN);
+            }
+            TokenInfo token =
+                    jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
+            token.tokenToHeaders(response);
+            return new ResponseEntity<>(Message.success(infoDto), HttpStatus.OK);
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ExceptionCode.USER_NOT_FOUND) {
+                return new ResponseEntity<>(Message.fail(null, ExceptionCode.USER_NOT_FOUND), HttpStatus.OK);
+            }
+            throw e;
+        }
+    }
 
     @PutMapping("/password")
     public ResponseEntity<Message> changePassword(

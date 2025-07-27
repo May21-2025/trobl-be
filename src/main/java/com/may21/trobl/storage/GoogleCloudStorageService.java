@@ -127,7 +127,7 @@ public class GoogleCloudStorageService implements StorageService {
     public boolean deleteFileWithCacheInvalidation(String fileName) {
         boolean deleted = storage.delete(BlobId.of(BUCKET_NAME, fileName));
         if (deleted && cdnLbIp != null && !cdnLbIp.isEmpty()) {
-            cdnCacheService.invalidateCdnCache(fileName);
+//            cdnCacheService.invalidateCdnCache(fileName);
         }
         return deleted;
     }
@@ -154,7 +154,7 @@ public class GoogleCloudStorageService implements StorageService {
             storage.create(blobInfo, thumbnailBytes);
             // CDN CAche 무효화
             if (cdnLbIp != null && !cdnLbIp.isEmpty()) {
-                cdnCacheService.invalidateCdnCache(thumbnailFileName);
+//                cdnCacheService.invalidateCdnCache(thumbnailFileName);
             }
 
             return imageKey;

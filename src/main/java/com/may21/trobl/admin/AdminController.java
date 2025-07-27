@@ -1,24 +1,33 @@
 package com.may21.trobl.admin;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.NotificationStrategy;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
+import com.may21.trobl._global.utility.Utility;
+import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
 import com.may21.trobl.notification.service.NotificationService;
-import com.may21.trobl.notification.service.NotificationServiceImpl;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
+import com.may21.trobl.storage.StorageService;
+import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -32,12 +41,21 @@ import java.util.Map;
 public class AdminController {
     private final PostingService postingService;
     private final NotificationService notificationService;
-    private final NotificationServiceImpl notificationServiceImpl;
     private final JwtTokenUtil jwtTokenUtil;
     private final UserService userService;
     private final AdminService adminService;
+    private final StorageService storageService;
 
     private static final Long TEST_USER_ID = 42L;
+
+    // ========== 대시보드 API ==========
+
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<Message> getDashboardStats(@RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        AdminDto.DashboardStats stats = adminService.getDashboardStats();
+        return new ResponseEntity<>(Message.success(stats), HttpStatus.OK);
+    }
 
     @GetMapping("/authenticate")
     public ResponseEntity<Message> authenticateAdmin(@RequestHeader("Authorization") String token) {
@@ -47,10 +65,48 @@ public class AdminController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @GetMapping("/reported-posts")
+    @GetMapping("/users")
+    public ResponseEntity<Message> getAllUsers(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        Page<AdminDto.UserDetails> response =
+                userService.getAllUsers(page, size, sortBy, sortDirection);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<Message> deleteUser(@RequestHeader("Authorization") String token,
+            @PathVariable Long userId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = adminService.deleteUser(userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    // ========== 게시글 관리 API ==========
+
+
+    @DeleteMapping("/posts/{postId}")
+    public ResponseEntity<Message> deletePost(@RequestHeader("Authorization") String token,
+            @PathVariable Long postId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = adminService.deletePost(postId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/reported-items")
     public ResponseEntity<Message> getReportedPosts(@RequestHeader("Authorization") String token) {
         jwtTokenUtil.getAdminUserByToken(token);
-        List<PostDto.ListItem> response = postingService.getAllReportedPosts();
+        List<AdminDto.ReportedListItem> response = adminService.getReportedItems();
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @PatchMapping("/reported-items/{itemId}")
+    public ResponseEntity<Message> unblockPost(@RequestHeader("Authorization") String token,
+            @PathVariable Long itemId, @RequestParam ItemType itemType,
+            @RequestParam boolean delete) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = adminService.processReportedItems(itemId, itemType, delete);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -65,30 +121,97 @@ public class AdminController {
         return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
     }
 
-    @PatchMapping("/reported-posts/{postId}/block")
-    public ResponseEntity<Message> unblockPost(@RequestHeader("Authorization") String token,
-            @PathVariable Long postId) {
+
+    // ========== 콘텐츠 시뮬레이터 기능 ==========
+
+    @GetMapping("/content-simulator/users")
+    public ResponseEntity<Message> getVirtualUsers(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
         jwtTokenUtil.getAdminUserByToken(token);
-        boolean response = postingService.unblockPost(postId);
+
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<AdminDto.VirtualUserInfo> response = adminService.getVirtualUsers(pageable);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @DeleteMapping("/reported-posts/{postId}")
-    public ResponseEntity<Message> deletePost(@RequestHeader("Authorization") String token,
-            @PathVariable Long postId) {
+
+    @PostMapping("/content-simulator/users")
+    public ResponseEntity<Message> createVirtualUsers(@RequestHeader("Authorization") String token,
+            @RequestPart AuthDto.SignUpRequest signUpRequest,
+            @RequestPart(required = false) MultipartFile thumbnail) {
         jwtTokenUtil.getAdminUserByToken(token);
-        boolean response = postingService.deletePostByAdmin(postId);
+        UserDto.Info response = userService.createVirtualUsers(signUpRequest);
+        if (thumbnail != null) {
+            String imageKey =
+                    storageService.uploadUserProfileImage(response.getUserId(), thumbnail);
+            userService.setThumbnail(response.getUserId(), imageKey);
+            response.setThumbnailUrl(Utility.getUserProfileUrl(imageKey));
+        }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-
-    @PostMapping("/notifications/send")
-    public ResponseEntity<Message> sendNotification(@RequestHeader("Authorization") String token,
-            @RequestBody AdminDto.PushNotification message) {
-        jwtTokenUtil.getUserFromValidateAccessToken(token);
-        boolean response = notificationService.notifyMarketingAlert(message);
+    @PutMapping("/content-simulator/users/{userId}")
+    public ResponseEntity<Message> updateVirtualUsers(@PathVariable Long userId,
+            @RequestHeader("Authorization") String token, @RequestPart UserDto.Update request,
+            @RequestPart(required = false) MultipartFile thumbnail) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        UserDto.Info response = userService.updateVirtualUsers(userId, request);
+        if (thumbnail != null) {
+            String imageKey =
+                    storageService.uploadUserProfileImage(response.getUserId(), thumbnail);
+            userService.setThumbnail(response.getUserId(), imageKey);
+            response.setThumbnailUrl(Utility.getUserProfileUrl(imageKey));
+        }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
+    @PostMapping("/content-simulator/users/partner")
+    public ResponseEntity<Message> connectPartners(@RequestHeader("Authorization") String token,
+            @RequestBody AdminDto.ConnectPartners request) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = userService.connectPartners(request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/content-simulator/posts")
+    public ResponseEntity<Message> getPosts(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.fromString(sortDirection), sortBy));
+        Page<AdminDto.PostItem> response = adminService.getVirtualPosts(pageable);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PostMapping("/content-simulator/posts")
+    public ResponseEntity<Message> createVirtualPosts(@RequestHeader("Authorization") String token,
+            @RequestBody AdminDto.VirtualPostRequest createRequest) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        PostDto.ListItem response = postingService.createVirtualPost(createRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @PostMapping("/content-simulator/posts/fair-view")
+    public ResponseEntity<Message> createVirtualPosts(@RequestHeader("Authorization") String token,
+            @RequestBody AdminDto.FairViewPostRequest request) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        PostDto.ListItem response = postingService.createFairViewByAdmin(request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PutMapping("/content-simulator/posts/{postId}")
+    public ResponseEntity<Message> updateVirtualPost(@RequestHeader("Authorization") String token,
+            @PathVariable Long postId, @RequestBody PostDto.Request updateRequest) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        PostDto.ListItem response = postingService.updateVirtualPost(postId, updateRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
 
     // ========== 42번 유저 알림 테스트 기능 ==========
 
@@ -159,7 +282,7 @@ public class AdminController {
         jwtTokenUtil.getAdminUserByToken(token);
 
 
-        notificationServiceImpl.testNotification(TEST_USER_ID, NotificationType.ANNOUNCEMENT,
+        notificationService.testNotification(TEST_USER_ID, NotificationType.ANNOUNCEMENT,
                 "🚀 즉시 전송 테스트", "즉시 전송 알림이 잘 작동하는지 테스트합니다!",
                 Map.of("itemType", "post", "itemId", "1"), NotificationStrategy.IMMEDIATE);
 
@@ -176,7 +299,7 @@ public class AdminController {
 
         // 여러 개의 일괄 처리 알림을 연속으로 보내서 테스트
         for (int i = 1; i <= 3; i++) {
-            notificationServiceImpl.testNotification(TEST_USER_ID, NotificationType.LIKE,
+            notificationService.testNotification(TEST_USER_ID, NotificationType.LIKE,
                     "👍 좋아요 알림 " + i, "일괄 처리 테스트용 좋아요 알림입니다.",
                     Map.of("itemType", "post", "itemId", "1"), NotificationStrategy.BATCHED);
         }
@@ -195,33 +318,11 @@ public class AdminController {
         LocalDateTime scheduledTime = LocalDateTime.now()
                 .plusMinutes(1);
         String formattedTime = scheduledTime.toString();
-        notificationServiceImpl.testNotification(TEST_USER_ID, NotificationType.MARKETING,
+        notificationService.testNotification(TEST_USER_ID, NotificationType.MARKETING,
                 "⏰ 예약 전송 테스트 ", formattedTime + "에 받게 될 예약 알림입니다!",
                 Map.of("itemType", "post", "itemId", "1", "scheduledTime",
                         scheduledTime.toString()), NotificationStrategy.SCHEDULED);
         return new ResponseEntity<>(Message.success("예약 전송 테스트 완료 (1분 후 전송 예정)"), HttpStatus.OK);
-    }
-
-    /**
-     * 현재 설정된 모든 알림 유형 목록 반환
-     */
-    @GetMapping("/notifications/types")
-    public ResponseEntity<Message> getAllNotificationTypes(
-            @RequestHeader("Authorization") String token) {
-        jwtTokenUtil.getAdminUserByToken(token);
-
-        Map<String, Object> result = new HashMap<>();
-
-        for (NotificationType type : NotificationType.values()) {
-            Map<String, String> typeInfo = new HashMap<>();
-            typeInfo.put("name", type.name());
-            typeInfo.put("strategy", type.getDefaultStrategy()
-                    .name());
-            typeInfo.put("messageKey", type.getMessageKey());
-            result.put(type.name(), typeInfo);
-        }
-
-        return new ResponseEntity<>(Message.success(result), HttpStatus.OK);
     }
 
     /**
@@ -240,11 +341,11 @@ public class AdminController {
                 LocalDateTime scheduledTime = LocalDateTime.now()
                         .plusSeconds(30);
                 data.put("scheduledTime", scheduledTime.toString());
-                notificationServiceImpl.testNotification(TEST_USER_ID, type, title, body, data,
+                notificationService.testNotification(TEST_USER_ID, type, title, body, data,
                         strategy);
             }
             else {
-                notificationServiceImpl.testNotification(TEST_USER_ID, type, title, body, data,
+                notificationService.testNotification(TEST_USER_ID, type, title, body, data,
                         strategy);
             }
         } catch (Exception e) {
@@ -325,5 +426,4 @@ public class AdminController {
 
         return data;
     }
-
 }

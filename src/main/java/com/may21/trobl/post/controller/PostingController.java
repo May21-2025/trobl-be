@@ -140,7 +140,7 @@ public class PostingController {
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal User user) {
         Long userId = user != null ? user.getId() : null;
-            Page<PostDto.ListItem> response = postingService.getFairViewList(userId, page, size);
+            Page<PostDto.HotFairView> response = postingService.getFairViewList(userId, page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

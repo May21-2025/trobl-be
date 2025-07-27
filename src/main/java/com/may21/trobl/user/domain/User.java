@@ -56,6 +56,7 @@ public class User implements UserDetails, OAuth2User {
 
     private boolean unregistered = false;
     private boolean testUser = false;
+    private Boolean reported = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeviceFcmToken> fcmTokens;

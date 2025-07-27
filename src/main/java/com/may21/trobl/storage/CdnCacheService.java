@@ -24,8 +24,7 @@ public class CdnCacheService {
     @Value("${GOOGLE_CLOUD_PROJECT_ID}")
     private String PROJECT_ID;
 
-    @Value("${CDN_LB_DOMAIN}")
-    private String urlMapName;
+    private String urlMapName = "trobl-cdn";
 
     private final GoogleCredentials credentials;
     private final HttpTransport httpTransport = new NetHttpTransport();
@@ -34,47 +33,99 @@ public class CdnCacheService {
 
     public void invalidateCdnCache(String fileName) {
         try {
-            // 캐시 무효화할 경로 설정
-            String objectPath = fileName;
-            if (!objectPath.startsWith("/")) {
-                objectPath = "/" + objectPath;
-            }
+            String normalizedPath = normalizePath(fileName);
 
-            // CacheInvalidationRule 생성
-            Map<String, Object> invalidationRule = new HashMap<>();
-            invalidationRule.put("path", objectPath);
+            log.info("🔄 Starting CDN cache invalidation for: {}", normalizedPath);
 
-            // 요청 본문 생성
+            // 올바른 Google Cloud CDN API 요청 형식
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("cacheInvalidationRules", List.of(invalidationRule));
+            requestBody.put("path", normalizedPath);
 
-            // API 호출
-            GenericUrl url = new GenericUrl(String.format(
+            log.info("📤 Request body: {}", requestBody);
+
+            executeInvalidationRequest(requestBody, normalizedPath);
+
+        } catch (Exception e) {
+            log.error("❌ Failed to invalidate CDN cache for: {}", fileName, e);
+        }
+    }
+    private void executeInvalidationRequest(Map<String, Object> requestBody, String path) {
+        try {
+            // API 엔드포인트 URL
+            String apiUrl = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/global/urlMaps/%s/invalidateCache",
-                    PROJECT_ID, urlMapName));
+                    PROJECT_ID, urlMapName);
 
-            HttpRequestFactory requestFactory =
-                    httpTransport.createRequestFactory(new HttpCredentialsAdapter(credentials));
+            GenericUrl url = new GenericUrl(apiUrl);
 
-            HttpRequest request = requestFactory.buildPostRequest(url,
-                    new JsonHttpContent(jsonFactory, requestBody));
+            // HTTP 요청 생성
+            HttpRequestFactory requestFactory = httpTransport.createRequestFactory(
+                    new HttpCredentialsAdapter(credentials));
 
+            // JSON 본문 생성
+            JsonHttpContent jsonContent = new JsonHttpContent(jsonFactory, requestBody);
+            HttpRequest request = requestFactory.buildPostRequest(url, jsonContent);
+
+            // 요청 헤더 설정
+            request.getHeaders().setContentType("application/json");
+            request.getHeaders().set("User-Agent", "trobl-backend/1.0");
             HttpResponse response = request.execute();
 
+            // 응답 처리
+            String responseContent = response.parseAsString();
+
             if (response.isSuccessStatusCode()) {
-                String responseContent = response.parseAsString();
-                log.info("CDN cache invalidation successful for file: {}, Response: {}", fileName,
-                        responseContent);
+                log.info("✅ CDN cache invalidation successful for: {}", path);
+                log.info("📥 Response: {}", responseContent);
+            } else {
+                log.error("❌ CDN cache invalidation failed for: {}", path);
+                log.error("📥 Status: {}, Response: {}", response.getStatusCode(), responseContent);
             }
-            else {
-                log.error("CDN cache invalidation failed for file: {}, Status: {}, Response: {}",
-                        fileName, response.getStatusCode(), response.parseAsString());
+
+        } catch (HttpResponseException e) {
+            log.error("❌ HTTP error for path: {}", path);
+            log.error("   Status: {}", e.getStatusCode());
+            log.error("   Message: {}", e.getStatusMessage());
+            log.error("   Content: {}", e.getContent());
+
+            // 400 에러 분석
+            if (e.getStatusCode() == 400) {
+                log.error("🔍 Bad Request Analysis:");
+                log.error("   - Check if path '{}' is valid", path);
+                log.error("   - Path should start with '/' and be URL-encoded if needed");
+                log.error("   - For all content use '/*'");
             }
 
         } catch (Exception e) {
-            log.error("Failed to invalidate CDN cache for file: {}", fileName, e);
-            return;
+            log.error("❌ Unexpected error for path: {}", path, e);
         }
+    }
+
+    /**
+     * 경로 정규화 및 검증
+     */
+    private String normalizePath(String path) {
+        if (path == null || path.trim().isEmpty()) {
+            log.warn("⚠️ Empty path provided, using wildcard '/*'");
+            return "/*";
+        }
+
+        String normalized = path.trim();
+
+        // 앞에 슬래시가 없으면 추가
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+
+        // 중복 슬래시 제거
+        normalized = normalized.replaceAll("/+", "/");
+
+        // URL 인코딩 (필요한 경우)
+        // normalized = URLEncoder.encode(normalized, StandardCharsets.UTF_8).replace("%2F", "/");
+
+        log.debug("🔧 Path normalized: '{}' → '{}'", path, normalized);
+
+        return normalized;
     }
 
     // 여러 파일 일괄 무효화

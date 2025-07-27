@@ -146,7 +146,13 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     @Query("SELECT p.id FROM Posting p JOIN p.fairViews f WHERE f.id = :fairViewId")
     Long findPostIdByFairViewId(Long fairViewId);
 
-    Page<Posting> findAllByUserIdAndPostType(Long userId, PostingType postingType, Pageable pageable);
+    @Query("SELECT p FROM Posting p WHERE " +
+            "p.reported != true AND p.id NOT IN :blockedPostIds AND " +
+            "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND p.postType = :postingType")
+    Page<Posting> findAllByPostType(PostingType postingType,
+            List<Long> blockedPostIds,
+            List<Long> blockedUserIds, Pageable pageable);
+
     @Query("SELECT DISTINCT p FROM Posting p WHERE " +
             "p.reported != true AND p.id NOT IN :blockedPostIds AND " +
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND " +
