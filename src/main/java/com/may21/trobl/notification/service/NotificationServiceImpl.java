@@ -7,6 +7,7 @@ import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
+import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.domain.Notification;
@@ -51,9 +52,9 @@ public class NotificationServiceImpl implements NotificationService {
     private static final String COMMENT_TITLE = "내 글에 누군가 댓글을 남겼어요! 어떤 이야기일까요?";
     private static final String FAIRVIEW_REQUEST_TITLE = "배우자가 페어뷰 작성을 요청하셨습니다.";
     private static final String FAIRVIEW_CONFIRMATION_TITLE = "배우자의 글 작성이 완료되었습니다.";
-    private static final String PARTNER_REQUEST_TITLE = "${partnerName}님이 배우자 등록 신청이 왔습니다!";
-    private static final String PARTNER_ACCEPTED_TITLE = "${partnerName}님이 배우자로 등록되었습니다.";
-    private static final String PARTNER_DECLINED_TITLE = "${partnerName}님이 배우자 등록을 거절하셨습니다.";
+    private static final String PARTNER_REQUEST_TITLE = "${partnerName}님이\n배우자 등록 신청을 하였습니다.";
+    private static final String PARTNER_ACCEPTED_TITLE = "${partnerName}님이\n배우자로 등록되었습니다.";
+    private static final String PARTNER_DECLINED_TITLE = "${partnerName}님이\n배우자 등록을 거절하셨습니다.";
 
     public void createAndSendNotification(Long userId, NotificationDto.SendRequest request,
             NotificationStrategy strategy, LocalDateTime scheduledTime) {
@@ -94,8 +95,9 @@ public class NotificationServiceImpl implements NotificationService {
             return;
         }
         try {
+            NotificationType type = request.getNotificationType();
             pushNotificationService.sendNotificationTo(user.getFcmTokenList(), request);
-            log.debug("{} notification sent to user: {}", "Immediate", user.getId());
+            log.error("{} notification sent to user: {}", type, user.getId());
         } catch (Exception e) {
             log.error("Failed to send {} notification to user: {}", "Immediate", user.getId(), e);
         }
@@ -490,6 +492,24 @@ public class NotificationServiceImpl implements NotificationService {
                 .plusMinutes(1));
         log.info("Test notification sent to user: {}, type: {}, title: {}, body: {}, itemData: {}",
                 testUserId, notificationType, s, s1, itemData);
+
+    }
+
+    @Override
+    public void notifyCommentDeleted(Comment comment) {
+        Long targetUserId = comment.getUserId();
+        String title = "서비스 규정을 위반하여 댓글이 삭제되었습니다";
+        String body = String.format("게시글 '%s'의 댓글이 삭제되었습니다.", comment.getContent());
+
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(targetUserId)
+                .title(title)
+                .body(body)
+                .itemType(ItemType.COMMENT)
+                .itemId(comment.getId())
+                .notificationType(NotificationType.COMMENT_DELETED)
+                .build();
+        createAndSendNotification(targetUserId, request, NotificationStrategy.IMMEDIATE, null);
 
     }
 }

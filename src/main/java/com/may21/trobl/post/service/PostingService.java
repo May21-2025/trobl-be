@@ -100,7 +100,7 @@ public interface PostingService {
     boolean deletePostByAdmin(Long postId);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getFairViewList(Long userId, int page, int size);
+    Page<PostDto.HotFairView> getFairViewList(Long userId, int page, int size);
 
     @Transactional
     PostDto.ListItem createVirtualPost(AdminDto.VirtualPostRequest createRequest);

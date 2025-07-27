@@ -2,7 +2,6 @@ package com.may21.trobl.post.service;
 
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.PostingType;
-import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
@@ -63,8 +62,8 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
-        List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
-        List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, TargetType.USER);
+        List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, ItemType.POST);
+        List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, ItemType.USER);
         Page<Posting> posts =
                 postRepository.findAllExceptBlocked(pageable, blockedPostIds, blockedUserIds);
         Set<Long> userIds = posts.stream()
@@ -97,7 +96,7 @@ public class PostingServiceImpl implements PostingService {
         LocalDate threeMonthsAgo = LocalDate.now()
                 .minusMonths(3);
         List<Long> blockedPostIds =
-                userId != null ? reportService.getBlockedTargetIds(userId, TargetType.POSTING) :
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.POST) :
                         List.of();
         List<Posting> posts = switch (type.toLowerCase()) {
             case "like" -> postRepository.findTopPostsByLikes(10, PostingType.POLL, blockedPostIds);
@@ -484,10 +483,9 @@ public class PostingServiceImpl implements PostingService {
     @Override
     public List<PostDto.QuickPoll> getRandomQuickPoll(Long userId) {
         List<Long> blockedPostIds =
-                userId != null ? reportService.getBlockedTargetIds(userId, TargetType.POSTING) :
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.POST) :
                         List.of();
 
-        // ✅ 1번째 쿼리: Native Query로 랜덤 Posting 조회 (안전하게 RANDOM() 사용)
         List<Posting> posts =
                 postRepository.findRandomPostsByType(5, PostingType.POLL, blockedPostIds);
 
@@ -495,23 +493,28 @@ public class PostingServiceImpl implements PostingService {
             return List.of();
         }
 
-        // ✅ 2번째 쿼리: Poll 정보를 별도로 조회 (여러 개 Posting에 대해 한 번에)
         List<Long> postIds = posts.stream()
                 .map(Posting::getId)
                 .toList();
-        postRepository.findPostsWithPollByIds(postIds); // 이는 별도로 만들어야 함
+        postRepository.findPostsWithPollByIds(postIds);
 
-        // ✅ 3번째 쿼리: 투표 정보를 한 번의 쿼리로 조회
         List<Long> votedOptionIds =
                 userId != null ? voteRepository.findVotedOptionIdsByUserId(posts, userId) :
                         List.of();
 
-        // ✅ 스트림으로 처리하여 추가 쿼리 방지
+        List<User> users = userRepository.findAllById(posts.stream()
+                .map(Posting::getUserId)
+                .collect(Collectors.toSet()));
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
         return posts.stream()
                 .map(post -> {
-                    boolean isOwner = post.getUserId()
+                    Long ownerId = post.getUserId();
+                    boolean isOwner = ownerId
                             .equals(userId);
-                    return new PostDto.QuickPoll(post, votedOptionIds, isOwner);
+                    return new PostDto.QuickPoll(post, userMap.getOrDefault(ownerId, null),
+                            votedOptionIds, isOwner);
                 })
                 .toList();
     }
@@ -645,8 +648,8 @@ public class PostingServiceImpl implements PostingService {
     public Page<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword,
             Pageable pageable) {
 
-        List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
-        List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, TargetType.USER);
+        List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, ItemType.POST);
+        List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, ItemType.USER);
 
 
         String normalizedKeyword = normalizeKeyword(keyword);
@@ -860,7 +863,7 @@ public class PostingServiceImpl implements PostingService {
     public boolean reportPost(Long userId, Long postId, ReportDto.Request reportRequest) {
         Posting post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
-        int reportedCount = reportService.report(userId, postId, TargetType.POSTING, reportRequest);
+        int reportedCount = reportService.report(userId, postId, ItemType.POST, reportRequest);
         if (reportedCount >= 10) {
             post.setReported(true);
         }
@@ -947,32 +950,46 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
-    public Page<PostDto.ListItem> getFairViewList(Long userId, int page, int size) {
+    public Page<PostDto.HotFairView> getFairViewList(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt")
                 .descending());
+
+        List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, ItemType.POST);
+        List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, ItemType.USER);
         Page<Posting> posts =
-                postRepository.findAllByUserIdAndPostType(userId, PostingType.FAIR_VIEW, pageable);
+                postRepository.findAllByPostType(PostingType.FAIR_VIEW, blockedPostIds,
+                        blockedUserIds, pageable);
         if (posts.isEmpty()) {
             return Page.empty(pageable);
         }
         List<Posting> postList = posts.stream()
                 .toList();
-        Set<Long> userIds = posts.stream()
-                .map(Posting::getUserId)
+
+        List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, postList);
+        List<FairView> fairViews = fairViewRepository.findAllByPostingIdIn(postList.stream()
+                .map(Posting::getId)
+                .toList());
+        Set<Long> userIds = fairViews.stream()
+                .map(FairView::getUserId)
                 .collect(Collectors.toSet());
         List<User> users = userRepository.findAllById(userIds);
         Map<Long, User> userMap = users.stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
-        List<Long> likedPostIds = postRepository.getAllIdsInListLikedByUserId(userId, postList);
-        List<Long> viewedPostIds = postRepository.getAllIdsInListViewedByUserId(userId, postList);
-        List<Long> commentedPostIds =
-                postRepository.getAllIdsInListCommentedByUserId(userId, postList);
-        Map<Long, List<Tag>> tagMap = tagService.getPostTagsMap(postList);
+        Map<Long, List<FairView>> fairViewMap = new HashMap<>();
+        for (FairView fairView : fairViews) {
+            fairViewMap.computeIfAbsent(fairView.getPosting()
+                            .getId(), k -> new ArrayList<>())
+                    .add(fairView);
+        }
+
         return posts.map(post -> {
-            User user = userMap.get(post.getUserId());
-            return new PostDto.ListItem(post, user, tagMap.getOrDefault(post.getId(), List.of()),
-                    likedPostIds.contains(post.getId()), viewedPostIds.contains(post.getId()),
-                    commentedPostIds.contains(post.getId()));
+            List<PostDto.FairViewItem> fairViewItems =
+                    fairViewMap.getOrDefault(post.getId(), List.of())
+                            .stream()
+                            .map(fv -> new PostDto.FairViewItem(fv, userMap.get(fv.getUserId())))
+                            .toList();
+            return new PostDto.HotFairView(post, fairViewItems,
+                    likedPostIds.contains(post.getId()));
         });
     }
 

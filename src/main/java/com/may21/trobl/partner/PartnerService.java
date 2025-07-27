@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -80,17 +81,11 @@ public class PartnerService {
         PartnerRequest partnerRequest =
                 partnerRequestRepository.findByIdAndStatus(partnerRequestId, RequestStatus.PENDING)
                         .orElse(null);
-        if (partnerRequest == null) {
-            return false;
+        if (partnerRequest == null || partnerRequest.getStatus() != RequestStatus.PENDING ||
+                !Objects.equals(partnerRequest.getPartnerId(), userid)) {
+            throw new BusinessException(ExceptionCode.INVALID_REQUEST);
         }
-        RequestStatus status = partnerRequest.getStatus();
-        if (status != RequestStatus.PENDING) return false;
         //check if the request's partnerId matches the given userId
-        if (!partnerRequest.getPartnerId()
-                .equals(userid)) {
-            throw new BusinessException(ExceptionCode.FORBIDDEN,
-                    "You are not authorized to accept this request");
-        }
         if (request.accepted()) {
             if (partnerRequest.getMarriageDate() == null || !partnerRequest.getMarriageDate()
                     .isEqual(request.marriageDate())) {
@@ -102,12 +97,12 @@ public class PartnerService {
             User partner = userRepository.findById(partnerRequest.getPartnerId())
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
             if (user.getPartnerId() != null || partner.getPartnerId() != null) {
-                throw new BusinessException(ExceptionCode.RESTRICTED);
+                throw new BusinessException(ExceptionCode.RESTRICTED, "이미 배우자가 존재합니다.");
             }
             user.setPartner(partner);
             partner.setPartner(user);
             partnerRequest.accept();
-            notificationService.sendPartnerAccepted(partner, user);
+            notificationService.sendPartnerAccepted(user, partner);
         }
         else {
             partnerRequest.reject();
@@ -115,7 +110,7 @@ public class PartnerService {
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
             User partner = userRepository.findById(partnerRequest.getPartnerId())
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-            notificationService.sendPartnerDeclined(partner, user);
+            notificationService.sendPartnerDeclined(user, partner);
         }
         return true;
     }

@@ -174,8 +174,8 @@ public class PostDto {
         private final int voteCount;
         private final PollDto poll;
 
-        public QuickPoll(Posting post, List<Long> votedOptionIds, boolean isOwner) {
-            super(post, null);
+        public QuickPoll(Posting post, User user, List<Long> votedOptionIds, boolean isOwner) {
+            super(post, user);
             Poll poll = post.getPoll();
             this.userId = post.getUserId();
             this.createdAt = post.getCreatedAt();
@@ -425,6 +425,33 @@ public class PostDto {
             this.title = decodeHtml(post.getTitle());
             this.createdAt = post.getCreatedAt();
 
+        }
+    }
+
+    @Getter
+    public static class HotFairView {
+        private final Long postId;
+        private final PostingType postType;
+        private final String title;
+        private final String content;
+        private final long viewCount;
+        private final long commentCount;
+        private final long likeCount;
+        private final List<FairViewItem> fairViewItems;
+        private final LocalDateTime createdAt;
+        private final boolean liked;
+
+        public HotFairView(Posting post, List<FairViewItem> fairViewItems, boolean liked) {
+            this.postId = post.getId();
+            this.postType = post.getPostType();
+            this.title = decodeHtml(post.getTitle());
+            this.content = decodeHtml(post.getContent());
+            this.viewCount = post.getAllViewCount();
+            this.commentCount = post.getCommentCount();
+            this.likeCount = post.getLikeCount();
+            this.fairViewItems = fairViewItems;
+            this.createdAt = post.getCreatedAt();
+            this.liked = liked;
         }
     }
 }

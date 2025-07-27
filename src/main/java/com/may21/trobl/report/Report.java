@@ -1,7 +1,7 @@
 package com.may21.trobl.report;
 
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.ReportType;
-import com.may21.trobl._global.enums.TargetType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,11 +17,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 @Table(uniqueConstraints = {
-        @UniqueConstraint(
-                name = "uk_report_unique_per_user_target",
-                columnNames = {"reportedBy", "targetId", "targetType"}
-        )
-})
+        @UniqueConstraint(name = "uk_report_unique_per_user_target", columnNames = {"reportedBy",
+                "targetId", "targetType"})})
 public class Report {
 
     @Id
@@ -31,7 +28,7 @@ public class Report {
     private Long targetId;
 
     @Enumerated(EnumType.STRING)
-    private TargetType targetType;
+    private ItemType targetType;
 
     private Long reportedBy;
 
@@ -41,7 +38,8 @@ public class Report {
     @CreatedDate
     private LocalDateTime reportedAt;
 
-    public Report(Long targetId, TargetType targetType, Long userId, ReportDto.Request reportRequest) {
+    public Report(Long targetId, ItemType targetType, Long userId,
+            ReportDto.Request reportRequest) {
         this.targetId = targetId;
         this.targetType = targetType;
         this.reportedBy = userId;

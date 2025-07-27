@@ -1,6 +1,6 @@
 package com.may21.trobl.report;
 
-import com.may21.trobl._global.enums.TargetType;
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.post.domain.Posting;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,8 @@ public class ReportService {
 
     private final ReportRepository reportRepository;
 
-    public int report(Long userId, Long targetId, TargetType targetType, ReportDto.Request reportRequest) {
+    public int report(Long userId, Long targetId, ItemType targetType,
+            ReportDto.Request reportRequest) {
         if (!reportRepository.existsByTargetIdAndTargetTypeAndReportedBy(targetId, targetType, userId)) {
 
             Report report = new Report(targetId, targetType, userId, reportRequest);
@@ -25,11 +26,11 @@ public class ReportService {
         return reportRepository.countReportByTargetIdAndTargetType(targetId, targetType) + 1;
     }
 
-    public List<Long> getBlockedTargetIds(Long userId, List<Long> targetIds, TargetType targetType) {
+    public List<Long> getBlockedTargetIds(Long userId, List<Long> targetIds, ItemType targetType) {
         return reportRepository.findBlockedIdsByUserIdAndTargetTypeInTargetIds(userId, targetType, targetIds);
     }
 
-    public List<Long> getBlockedTargetIds(Long userId, TargetType targetType) {
+    public List<Long> getBlockedTargetIds(Long userId, ItemType targetType) {
         return reportRepository.findIdsByReportedByAndTargetType(userId, targetType);
     }
 
@@ -37,13 +38,13 @@ public class ReportService {
         List<Long> commentIds = comments.stream()
                 .map(Comment::getId)
                 .toList();
-        List<Report> reports = reportRepository.getRelatedReports(userId, commentIds, TargetType.COMMENT, TargetType.USER);
+        List<Report> reports = reportRepository.getRelatedReports(userId, commentIds, ItemType.COMMENT, ItemType.USER);
         List<Long> blockedCommentIds = reports.stream()
-                .filter(report -> report.getTargetType() == TargetType.COMMENT)
+                .filter(report -> report.getTargetType() == ItemType.COMMENT)
                 .map(Report::getTargetId)
                 .toList();
         List<Long> blockedUserIds = reports.stream()
-                .filter(report -> report.getTargetType() == TargetType.USER)
+                .filter(report -> report.getTargetType() == ItemType.USER)
                 .map(Report::getTargetId)
                 .toList();
         if (!blockedCommentIds.isEmpty()) {
@@ -59,13 +60,13 @@ public class ReportService {
         List<Long> postIds = posts.stream()
                 .map(Posting::getId)
                 .toList();
-        List<Report> reports = reportRepository.getRelatedReports(userId, postIds, TargetType.POSTING, TargetType.USER);
+        List<Report> reports = reportRepository.getRelatedReports(userId, postIds, ItemType.POST, ItemType.USER);
         List<Long> blockedPostIds = reports.stream()
-                .filter(report -> report.getTargetType() == TargetType.POSTING)
+                .filter(report -> report.getTargetType() == ItemType.POST)
                 .map(Report::getTargetId)
                 .toList();
         List<Long> blockedUserIds = reports.stream()
-                .filter(report -> report.getTargetType() == TargetType.USER)
+                .filter(report -> report.getTargetType() == ItemType.USER)
                 .map(Report::getTargetId)
                 .toList();
         if (!blockedPostIds.isEmpty()) {
@@ -76,4 +77,5 @@ public class ReportService {
         }
         return posts;
     }
+
 }

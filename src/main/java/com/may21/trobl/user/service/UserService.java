@@ -1,8 +1,8 @@
 package com.may21.trobl.user.service;
 
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.enums.RoleType;
-import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.Utility;
@@ -274,7 +274,7 @@ public class UserService implements UserDetailsService {
             throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
                     "Report type cannot be null");
         }
-        return reportService.report(userId, targetId, TargetType.USER, reportRequest) > 0;
+        return reportService.report(userId, targetId, ItemType.USER, reportRequest) > 0;
 
     }
 

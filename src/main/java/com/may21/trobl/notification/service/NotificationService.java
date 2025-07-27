@@ -3,6 +3,7 @@ package com.may21.trobl.notification.service;
 import com.may21.trobl._global.enums.NotificationStrategy;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl.admin.AdminDto;
+import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.notification.domain.Notification;
 import com.may21.trobl.notification.dto.NotificationDto;
@@ -67,11 +68,12 @@ public interface NotificationService {
     @Transactional
     boolean getMainNotification(Long userId);
 
-
     NotificationDto.SubMenu getSubManuNotification(Long userId);
 
     @Transactional
     boolean readAllNotifications(Long userId);
 
     void testNotification(Long testUserId, NotificationType notificationType, String s, String s1, Map<String, String> itemType, NotificationStrategy notificationStrategy);
+
+    void notifyCommentDeleted(Comment comment);
 }

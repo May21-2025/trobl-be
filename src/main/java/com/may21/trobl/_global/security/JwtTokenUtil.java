@@ -254,7 +254,7 @@ public class JwtTokenUtil {
         }
     }
 
-    public User getAdminUserByToken(String tokenStr) {
+    public void getAdminUserByToken(String tokenStr) {
         if (tokenStr == null) {
             throw new BusinessException(ExceptionCode.TOKEN_MISSING);
         }
@@ -269,6 +269,6 @@ public class JwtTokenUtil {
         if (!role.contains("ADMIN")) {
             throw new BusinessException(ExceptionCode.UNAUTHORIZED, "Admin access required");
         }
-        return new User(userId, username, "", role);
+        new User(userId, username, "", role);
     }
 }
