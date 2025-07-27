@@ -69,13 +69,11 @@ public class CdnCacheService {
             else {
                 log.error("CDN cache invalidation failed for file: {}, Status: {}, Response: {}",
                         fileName, response.getStatusCode(), response.parseAsString());
-                throw new RuntimeException(
-                        "CDN cache invalidation failed with status: " + response.getStatusCode());
             }
 
         } catch (Exception e) {
             log.error("Failed to invalidate CDN cache for file: {}", fileName, e);
-            throw new RuntimeException("CDN cache invalidation failed", e);
+            return;
         }
     }
 

@@ -1,12 +1,15 @@
 package com.may21.trobl.user.domain;
 
 import com.may21.trobl._global.enums.OAuthProvider;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +38,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByIdIn(List<Long> userIds);
 
+    @Query("SELECT EXISTS (SELECT 1 FROM User u WHERE u.nickname = :nickname)")
     boolean existsByNickname(String nickname);
 
     Optional<User> findPartnerById(Long id);
@@ -45,7 +49,26 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findAllOAuth();
 
 
+    @Query("SELECT u.provider FROM User u WHERE u.username = :username")
     OAuthProvider getOAuthByUsername(String username);
 
     int countByUnregistered(boolean b);
+
+    long countBySignUpDateAfter(LocalDate weekAgo);
+
+    long countByLastLoginDateAfter(LocalDate thirtyDaysAgo);
+
+    Page<User> findByTestUserIsTrue(Pageable pageable);
+
+    Page<User> findByTestUserIsFalseAndUnregisteredIsFalse(Pageable pageable);
+
+    @Query("SELECT u.id FROM User u WHERE u.testUser = true")
+    List<Long> findUserIdsByTestUserIsTrue();
+
+    @Query("SELECT u FROM User u WHERE u.testUser = true")
+    boolean isVirtualUser(Long userId);
+
+    Optional<User> findByIdAndTestUserIsTrue(Long userId);
+
+    List<User> findUserByTestUserIsTrue();
 }

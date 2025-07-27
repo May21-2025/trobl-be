@@ -14,11 +14,12 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 public interface NotificationService {
-    void sendImmediateNotification(Long userId, String title, String message, Map<String, String> data);
+    void sendImmediateNotification(Long userId, NotificationDto.SendRequest request);
 
-    void queueForBatchNotification(Long userId, Notification notification);
+    void queueForBatchNotification(Long userId, NotificationDto.SendRequest request);
 
-    void scheduleNotification(Long userId, Notification notification, LocalDateTime scheduledTime);
+    void scheduleNotification(Long userId, NotificationDto.SendRequest request,
+            LocalDateTime scheduledTime);
 
     void processBatchNotifications();
 

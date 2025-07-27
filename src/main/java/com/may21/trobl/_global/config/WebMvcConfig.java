@@ -11,10 +11,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // 개발 환경에서 모든 오리진 허용
         registry
                 .addMapping("/**")
-                .allowedOrigins("*")  // 모든 오리진 허용
+                .allowedOrigins("*")
                 .allowedMethods(
                         HttpMethod.GET.name(),
                         HttpMethod.POST.name(),
@@ -22,9 +21,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         HttpMethod.DELETE.name(),
                         HttpMethod.PATCH.name(),
                         HttpMethod.OPTIONS.name())
-                .allowedHeaders("*")  // 모든 헤더 허용 (간단하게)
-                .exposedHeaders("Authorization", "X-Device-ID")
-                .allowCredentials(false)  // allowedOrigins("*")와 함께 사용 시 false여야 함
+                .allowedHeaders("*")
+                .exposedHeaders("Authorization", "Refresh-Token", "X-Device-ID")
+                .allowCredentials(false)
                 .maxAge(3600);
     }
 

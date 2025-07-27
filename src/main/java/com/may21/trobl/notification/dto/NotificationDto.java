@@ -1,6 +1,7 @@
 package com.may21.trobl.notification.dto;
 
 import com.may21.trobl._global.enums.ItemType;
+import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.enums.UpdateType;
 import com.may21.trobl.notification.domain.ContentUpdate;
 import lombok.AllArgsConstructor;
@@ -24,9 +25,6 @@ public class NotificationDto {
     public static class TokenRegistrationRequest {
         private String fcmToken;
 
-        public String getFcmToken() {
-            return fcmToken;
-        }
     }
 
     @Getter
@@ -34,18 +32,20 @@ public class NotificationDto {
         private final Long userId;
         private final String title;
         private final String body;
-        private final String itemType;
+        private final ItemType itemType;
         private final Long itemId;
+        private final NotificationType notificationType;
         private final Map<String, String> data;
 
         @Builder
-        public SendRequest(Long userId, String title, String body, String itemType, Long itemId,
-                Map<String, String> data) {
+        public SendRequest(Long userId, String title, String body, ItemType itemType, Long itemId,
+                NotificationType notificationType, Map<String, String> data) {
             this.userId = userId;
             this.title = title;
             this.body = body;
             this.itemType = itemType;
             this.itemId = itemId;
+            this.notificationType = notificationType;
             this.data = data;
         }
     }

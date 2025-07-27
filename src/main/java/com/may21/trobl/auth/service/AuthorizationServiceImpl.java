@@ -8,7 +8,6 @@ import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
-import com.may21.trobl.partner.PartnerService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -31,7 +30,6 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     @Lazy
     private final PasswordEncoder passwordEncoder;
     private final KakaoOAuthService kakaoOAuthService;
-    private final PartnerService partnerService;
 
     @Override
     public AuthDto.SignUpResponse registerUser(AuthDto.SignUpRequest signUpDto) {
@@ -72,30 +70,37 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                 case GOOGLE -> {
                     String identityToken = oAuthData.get("idToken");
                     if (identityToken == null || identityToken.isEmpty()) {
-                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Google ID Token is required");
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
+                                "Google ID Token is required");
                     }
                     username = googleOAuthService.getEmailFromIdentityToken(identityToken);
                 }
                 case APPLE -> {
                     String identityToken = oAuthData.get("identityToken");
                     if (identityToken == null || identityToken.isEmpty()) {
-                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, " Apple ID Token is required");
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
+                                " Apple ID Token is required");
                     }
                     username = appleOAuthService.getEmailFromAppleToken(identityToken);
                 }
                 case KAKAO -> {
                     String accessToken = oAuthData.get("accessToken");
                     if (accessToken == null || accessToken.isEmpty())
-                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE, "Kakao Access Token is required");
+                        throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
+                                "Kakao Access Token is required");
                     username = kakaoOAuthService.getUserEmailFromAccessToken(accessToken);
                 }
             }
             user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-            if (!user.getProvider().equals(oAuthProvider)) {
-                throw new BusinessException(ExceptionCode.OAUTH_MISMATCH, "{ \"provider\": " + oAuthProvider + ", \"username\": " + username + "}");
+            user.setLastLoginDate();
+            if (!user.getProvider()
+                    .equals(oAuthProvider)) {
+                throw new BusinessException(ExceptionCode.OAUTH_MISMATCH,
+                        "{ \"provider\": " + oAuthProvider + ", \"username\": " + username + "}");
             }
-        } else {
+        }
+        else {
             user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
             if (!passwordEncoder.matches(password, user.getPassword())) {
@@ -104,7 +109,8 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         }
 
         Long partnerId = user.getPartnerId();
-        User partner = partnerId != null ? userRepository.findById(partnerId).orElse(null) : null;
+        User partner = partnerId != null ? userRepository.findById(partnerId)
+                .orElse(null) : null;
         return new UserDto.InfoDetail(user, partner);
     }
 
@@ -132,7 +138,8 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     public boolean unregister(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        OAuthProvider type = user.getAttribute("OAuth") != null ? OAuthProvider.valueOf(user.getAttribute("OAuth")) : OAuthProvider.NONE;
+        OAuthProvider type = user.getAttribute("OAuth") != null ?
+                OAuthProvider.valueOf(user.getAttribute("OAuth")) : OAuthProvider.NONE;
         unlinkOAuth(type, user);
         setUnregisteredInfo(user);
         return true;

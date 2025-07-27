@@ -18,5 +18,6 @@ public class TokenInfo {
     public void tokenToHeaders(HttpServletResponse response) {
         response.addHeader("Authorization", "Bearer " + getAccessToken());
         response.addHeader("Refresh-Token", getRefreshToken());
+        response.addHeader("Access-Control-Expose-Headers", "Authorization, Refresh-Token");
     }
 }

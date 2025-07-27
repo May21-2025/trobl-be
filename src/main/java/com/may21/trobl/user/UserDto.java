@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.may21.trobl._global.enums.RequestStatus;
 import com.may21.trobl.partner.PartnerRequest;
-import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.time.LocalDate;
@@ -20,7 +20,8 @@ public class UserDto {
     public static class Info {
         private final Long userId;
         private final String nickname;
-        private final String thumbnailUrl;
+        @Setter
+        private String thumbnailUrl;
 
         @JsonCreator
         public Info(@JsonProperty("userId") Long userId, @JsonProperty("nickname") String nickname,
@@ -36,10 +37,22 @@ public class UserDto {
             this.thumbnailUrl = user.getThumbnailUrl();
         }
 
-        public Info(Posting post) {
-            this.userId = post.getUserId();
-            this.nickname = post.getNickname();
-            this.thumbnailUrl = null;
+    }
+
+    @Getter
+    public static class Update {
+        private final String nickname;
+        private final String address;
+        private final Boolean married;
+        private final LocalDate marriageDate;
+
+        @JsonCreator
+        public Update(@JsonProperty("nickname") String nickname, @JsonProperty("address") String address,
+                @JsonProperty("married") Boolean married, @JsonProperty("marriageDate") LocalDate marriageDate) {
+            this.nickname = nickname;
+            this.address = address;
+            this.married = married;
+            this.marriageDate = marriageDate;
         }
     }
 

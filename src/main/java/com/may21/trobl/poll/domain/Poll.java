@@ -22,7 +22,7 @@ public class Poll {
     private String title;
 
     @Setter
-    private Boolean allowMultipleVotes = false;
+    private boolean allowMultipleVotes = false;
 
     @Setter
     @OneToMany(
@@ -44,6 +44,6 @@ public class Poll {
 
 
     public boolean isAllowedMultipleVotes() {
-        return allowMultipleVotes != null && allowMultipleVotes;
+        return allowMultipleVotes;
     }
 }

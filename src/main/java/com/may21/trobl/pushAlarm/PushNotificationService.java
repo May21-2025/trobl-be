@@ -67,16 +67,14 @@ public class PushNotificationService {
                         .build();
 
                 String response = firebaseMessaging.send(message);
-                log.debug("FCM notification sent successfully to user {}: {}", request.getUserId(),
+                log.error("FCM notification sent successfully to user {}: {}", request.getUserId(),
                         response);
             } catch (FirebaseMessagingException e) {
                 String errorCode = e.getMessagingErrorCode()
                         .name();
                 log.error("=======================================\n" +
-                                "Failed to send FCM notification to token: {} - errorCode: {}\n"+
-                                "Detail : {}"+
-                                "=======================================",
-                        fcmToken,
+                                "Failed to send FCM notification to token: {} - errorCode: {}\n" +
+                                "Detail : {}" + "=======================================\n", fcmToken,
                         errorCode, e.toString());
 
                 if (isInvalidTokenError(errorCode)) {
@@ -166,15 +164,16 @@ public class PushNotificationService {
     private Map<String, String> createNotificationData(NotificationDto.SendRequest request) {
         Map<String, String> data = new HashMap<>();
 
-        data.put("type", "notification");
-        data.put("title", request.getTitle());
-        data.put("body", request.getBody());
+        data.put("type", request.getNotificationType()
+                .name()
+                .toLowerCase());
         data.put("userId", request.getUserId()
                 .toString());
         data.put("timestamp", String.valueOf(System.currentTimeMillis()));
-        data.put("itemId", request.getItemId() != null ? request.getData()
-                .get("itemId") : "");
-        data.put("itemType", request.getItemType() != null ? request.getItemType() : "");
+        data.put("itemId", request.getItemId() != null ? request.getItemId()
+                .toString() : "");
+        data.put("itemType", request.getItemType() != null ? request.getItemType().toString().toLowerCase() :
+                "");
 
         return data;
     }
@@ -292,7 +291,7 @@ public class PushNotificationService {
     @Transactional
     public boolean registerToken(NotificationDto.TokenRegistrationRequest request, Long userId) {
         try {
-            if(deviceFcmTokenRepository.existsByUserIdAndFcmToken(userId, request.getFcmToken())) {
+            if (deviceFcmTokenRepository.existsByUserIdAndFcmToken(userId, request.getFcmToken())) {
                 return true; // 이미 등록된 토큰은 무시
             }
             User user = userRepository.findById(userId)

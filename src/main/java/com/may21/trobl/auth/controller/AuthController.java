@@ -158,7 +158,7 @@ public class AuthController {
 
     @GetMapping("/check/nickname")
     public ResponseEntity<Message> checkNickname(@RequestParam String nickname) {
-        boolean isAvailable = !userService.checkNicknameValid(nickname);
+        boolean isAvailable = userService.checkNicknameValid(nickname);
         return new ResponseEntity<>(Message.success(isAvailable), HttpStatus.OK);
     }
 }

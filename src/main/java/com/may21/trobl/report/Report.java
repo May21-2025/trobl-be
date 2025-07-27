@@ -6,11 +6,16 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 @Table(uniqueConstraints = {
         @UniqueConstraint(
                 name = "uk_report_unique_per_user_target",
@@ -33,6 +38,8 @@ public class Report {
     @Enumerated(EnumType.STRING)
     private ReportType reason;
 
+    @CreatedDate
+    private LocalDateTime reportedAt;
 
     public Report(Long targetId, TargetType targetType, Long userId, ReportDto.Request reportRequest) {
         this.targetId = targetId;

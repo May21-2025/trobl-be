@@ -51,10 +51,11 @@ public class User implements UserDetails, OAuth2User {
 
     private boolean married;
     private Long partnerId;
+    @Setter
     private LocalDate weddingAnniversaryDate;
 
-    private Boolean unregistered = false;
-    private Boolean testUser = false;
+    private boolean unregistered = false;
+    private boolean testUser = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeviceFcmToken> fcmTokens;
@@ -80,6 +81,8 @@ public class User implements UserDetails, OAuth2User {
     private boolean credentialsNonExpired = true;
     private boolean enabled = true;
 
+    private LocalDate lastLoginDate;
+
     @CreatedDate
     private LocalDate signUpDate;
 
@@ -93,12 +96,14 @@ public class User implements UserDetails, OAuth2User {
 
     @Builder
     public User(String username, String encryptPassword, String nickname, String provider,
-            RoleType role) {
+            RoleType role, Boolean isTestUser, String address) {
         this.username = username;
         this.provider = OAuthProvider.fromString(provider);
         this.password = encryptPassword == null ? "oauth" : encryptPassword;
         this.nickname = nickname;
         this.roles = List.of(role.name());
+        this.testUser = isTestUser != null && isTestUser;
+        this.address = address;
     }
 
     public User(Long userId, String subject, String s, String role) {
@@ -247,7 +252,7 @@ public class User implements UserDetails, OAuth2User {
 
     public void setUnregistered(int unregisteredUserCount) {
         this.unregistered = true;
-        this.nickname = Utility.getRandomNickname();
+        this.nickname = Utility.getRandomString();
         this.username = "unregistered_" + unregisteredUserCount;
         this.password = "unregistered";
         this.thumbnailKey = null;
@@ -265,5 +270,11 @@ public class User implements UserDetails, OAuth2User {
         this.credentialsNonExpired = true;
         this.enabled = false;
         this.signUpDate = LocalDate.now();
+    }
+
+    public void setLastLoginDate() {
+        if (this.lastLoginDate == null || this.lastLoginDate.isBefore(LocalDate.now())) {
+            this.lastLoginDate = LocalDate.now();
+        }
     }
 }

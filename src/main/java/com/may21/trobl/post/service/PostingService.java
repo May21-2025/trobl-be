@@ -1,5 +1,6 @@
 package com.may21.trobl.post.service;
 
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.report.ReportDto;
 import org.springframework.cache.annotation.CacheEvict;
@@ -98,5 +99,15 @@ public interface PostingService {
     @Transactional
     boolean deletePostByAdmin(Long postId);
 
+    @Transactional(readOnly = true)
     Page<PostDto.ListItem> getFairViewList(Long userId, int page, int size);
+
+    @Transactional
+    PostDto.ListItem createVirtualPost(AdminDto.VirtualPostRequest createRequest);
+
+    @Transactional
+    PostDto.ListItem updateVirtualPost(Long postId, PostDto.Request updateRequest);
+
+    @Transactional
+    PostDto.ListItem  createFairViewByAdmin(AdminDto.FairViewPostRequest request);
 }

@@ -36,8 +36,8 @@ public class PostDto {
 
         public BasePostDto(Posting post, User user) {
             this.postId = post.getId();
-            this.user = user == null ? new UserDto.Info(post) : new UserDto.Info(user);
-            this.viewCount = post.getViewCount();
+            this.user = user == null ? null : new UserDto.Info(user);
+            this.viewCount = post.getAllViewCount();
         }
     }
 
@@ -78,8 +78,8 @@ public class PostDto {
 
         public Card(Posting post, int commentCount, User user) {
             this.postId = post.getId();
-            this.user = user == null ? new UserDto.Info(post) : new UserDto.Info(user);
-            this.viewCount = post.getViewCount();
+            this.user = user == null ?null: new UserDto.Info(user);
+            this.viewCount = post.getAllViewCount();
             this.title = decodeHtml(post.getTitle());
 
             this.commentCount = commentCount;
@@ -159,7 +159,7 @@ public class PostDto {
                 NotificationDto.ContentUpdateStatus contentUpdateStatus, FairView fairView) {
             super(post, user, tags);
             this.unread = contentUpdateStatus.isUnread();
-            this.confirmed = post.getConfirmed();
+            this.confirmed = post.isConfirmed();
             this.content = decodeHtml(post.getContent());
             this.createdAt = post.getCreatedAt();
             this.postType = post.getPostType();

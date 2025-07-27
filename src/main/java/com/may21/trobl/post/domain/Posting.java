@@ -12,6 +12,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -28,13 +29,12 @@ public class Posting {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
-    @Setter
-    private String nickname;
-
     private Long userId;
 
+    @Setter
     private String title;
 
+    @Setter
     @Column(columnDefinition = "text")
     private String content;
 
@@ -80,20 +80,21 @@ public class Posting {
     @CreatedDate
     private LocalDateTime createdAt;
 
-    @Setter
-    private Boolean confirmed;
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 
     @Setter
-    private Boolean reported;
+    private boolean confirmed;
+
+    @Setter
+    private boolean reported;
 
     @Builder
     public Posting(
-            String title, PostingType postType, String content, Long userId, String nickname) {
+            String title, PostingType postType, String content, Long userId) {
         this.userId = userId;
         this.title = title;
         this.content = content;
-
-        this.nickname = nickname;
         this.postType = postType;
         this.viewCount = 0;
         this.shareCount = 0;
@@ -109,7 +110,7 @@ public class Posting {
         this.shareCount++;
     }
 
-    public int getViewCount() {
+    public int getAllViewCount() {
         int viewsNum = views == null ? 0 : views.size();
         return viewCount + viewsNum;
     }
@@ -196,10 +197,4 @@ public class Posting {
         return comments.size();
     }
 
-    public boolean isReported() {
-        return reported != null && reported;
-    }
-    public boolean isConfirmed() {
-        return confirmed != null && confirmed;
-    }
 }

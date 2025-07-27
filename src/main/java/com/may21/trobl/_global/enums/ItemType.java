@@ -6,5 +6,14 @@ public enum ItemType {
     POST,
     COMMENT,
     ANNOUNCEMENT,
-    REPORT
+    REPORT;
+
+    public static ItemType fromString(String itemType) {
+        for (ItemType type : ItemType.values()) {
+            if (type.name().equalsIgnoreCase(itemType)) {
+                return type;
+            }
+        }
+        return POST;
+    }
 }

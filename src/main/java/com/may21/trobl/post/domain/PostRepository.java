@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -199,4 +200,9 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     List<Posting> searchByFairViewContent(@Param("keyword") String keyword,
             List<Long> blockedPostIds,
             List<Long> blockedUserIds);
+
+    long countByCreatedAtAfter(LocalDateTime weekAgo);
+
+    @Query("SELECT p FROM Posting p WHERE p.userId IN :testUserIds")
+    Page<Posting> findByUserIdIn(List<Long> testUserIds, Pageable pageable);
 }

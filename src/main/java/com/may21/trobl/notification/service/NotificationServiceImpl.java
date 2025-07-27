@@ -1,6 +1,5 @@
 package com.may21.trobl.notification.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.NotificationStrategy;
@@ -19,9 +18,6 @@ import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.pushAlarm.PushNotificationService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -48,6 +44,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final UserRepository userRepository;
     private final ContentUpdateService contentUpdateService;
     private final NotificationBatchService notificationBatchService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String LIKE_TITLE = "많은 사람들이 당신의 이야기에 공감하고 있어요!";
@@ -58,63 +55,18 @@ public class NotificationServiceImpl implements NotificationService {
     private static final String PARTNER_ACCEPTED_TITLE = "${partnerName}님이 배우자로 등록되었습니다.";
     private static final String PARTNER_DECLINED_TITLE = "${partnerName}님이 배우자 등록을 거절하셨습니다.";
 
-    @Getter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class NotificationBasicData {
-        private ItemType itemType;
-        private Long itemId;
-
-        public String getItemType() {
-            return itemType.name()
-                    .toLowerCase();
-        }
-
-        public String getItemId() {
-            return itemId.toString();
-        }
-
-        public NotificationBasicData(String itemType, String itemId) {
-            this.itemType = ItemType.valueOf(itemType.toUpperCase());
-            this.itemId = itemId.isEmpty() ? 0L : Long.parseLong(itemId);
-        }
-    }
-
-    /**
-     * 표준화된 데이터 맵 생성
-     */
-    private Map<String, String> createStandardDataMap(NotificationType type, String title,
-            String body, NotificationBasicData itemData) {
-        Map<String, String> data = new HashMap<>();
-        data.put("type", type.name()
-                .toLowerCase());
-        data.put("title", title);
-        data.put("body", body);
-        data.put("itemType", itemData.getItemType());
-        data.put("itemId", itemData.getItemId());
-        return data;
-    }
-
-    /**
-     * 알림 생성 및 전송
-     */
-    public void createAndSendNotification(Long userId, NotificationType type, String title,
-            String body, NotificationBasicData data, NotificationStrategy strategy,
-            LocalDateTime scheduledTime) {
-        Map<String, String> dataMap = createStandardDataMap(type, title, body, data);
-        Notification notification = new Notification(userId, type, dataMap, null);
-
-        notificationRepository.save(notification);
+    public void createAndSendNotification(Long userId, NotificationDto.SendRequest request,
+            NotificationStrategy strategy, LocalDateTime scheduledTime) {
 
         switch (strategy) {
             case IMMEDIATE:
-                sendImmediateNotification(userId, title, body, dataMap);
+                sendImmediateNotification(userId, request);
                 break;
             case BATCHED:
-                queueForBatchNotification(userId, notification);
+                queueForBatchNotification(userId, request);
                 break;
             case SCHEDULED:
-                scheduleNotification(userId, notification, scheduledTime);
+                scheduleNotification(userId, request, scheduledTime);
                 break;
         }
     }
@@ -131,59 +83,52 @@ public class NotificationServiceImpl implements NotificationService {
         return user;
     }
 
-    private void sendNotificationToUser(User user, String title, String body,
-            Map<String, String> data, String logContext) {
-        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
-                .userId(user.getId())
-                .title(title)
-                .body(body)
-                .data(data)
-                .build();
-
-        try {
-            pushNotificationService.sendNotificationTo(user.getFcmTokenList(), request);
-            log.debug("{} notification sent to user: {}", logContext, user.getId());
-        } catch (Exception e) {
-            log.error("Failed to send {} notification to user: {}", logContext, user.getId(), e);
-        }
-    }
-
     /**
      * 즉시 전송 (비동기)
      */
     @Async("notificationTaskExecutor")
     @Override
-    public void sendImmediateNotification(Long userId, String title, String body,
-            Map<String, String> data) {
+    public void sendImmediateNotification(Long userId, NotificationDto.SendRequest request) {
         User user = getUserWithValidFcmTokens(userId);
         if (user == null) {
             return;
         }
-        sendNotificationToUser(user, title, body, data, "Immediate");
+        try {
+            pushNotificationService.sendNotificationTo(user.getFcmTokenList(), request);
+            log.debug("{} notification sent to user: {}", "Immediate", user.getId());
+        } catch (Exception e) {
+            log.error("Failed to send {} notification to user: {}", "Immediate", user.getId(), e);
+        }
     }
 
     @Override
-    public void queueForBatchNotification(Long userId, Notification notification) {
-        String key = "batch_notifications:" + userId;
+    public void queueForBatchNotification(Long userId, NotificationDto.SendRequest request) {
+        Long notificationId = notificationRepository.save(new Notification(userId, request, null))
+                .getId();
+        String key = "batch_notifications:" + notificationId;
         redisTemplate.opsForList()
-                .rightPush(key, notification.getId());
+                .rightPush(key, notificationId);
         redisTemplate.expire(key, Duration.ofMinutes(15));
         log.debug("Notification queued for batch processing: userId={}, notificationId={}", userId,
-                notification.getId());
+                notificationId);
     }
 
     @Override
-    public void scheduleNotification(Long userId, Notification notification,
+    public void scheduleNotification(Long userId, NotificationDto.SendRequest request,
             LocalDateTime scheduledTime) {
         if (scheduledTime == null) {
             scheduledTime = LocalDateTime.now()
                     .plusHours(1);
         }
 
+        Long notificationId =
+                notificationRepository.save(new Notification(userId, request, scheduledTime))
+                        .getId();
+
         String key = "scheduled_notifications:" +
                 scheduledTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
         redisTemplate.opsForList()
-                .rightPush(key, notification.getId());
+                .rightPush(key, notificationId);
 
         Instant expireInstant = scheduledTime.plusHours(1)
                 .atZone(ZoneId.systemDefault())
@@ -191,23 +136,21 @@ public class NotificationServiceImpl implements NotificationService {
         redisTemplate.expireAt(key, expireInstant);
 
         log.debug("Notification scheduled: userId={}, notificationId={}, scheduledTime={}", userId,
-                notification.getId(), scheduledTime);
+                notificationId, scheduledTime);
     }
 
     @Override
     public void processBatchNotifications() {
         Set<String> userKeys = redisTemplate.keys("batch_notifications:*");
 
-        if (userKeys != null) {
-            for (String key : userKeys) {
-                String userId = key.substring("batch_notifications:".length());
-                List<Object> notificationIds = redisTemplate.opsForList()
-                        .range(key, 0, -1);
+        for (String key : userKeys) {
+            String userId = key.substring("batch_notifications:".length());
+            List<Object> notificationIds = redisTemplate.opsForList()
+                    .range(key, 0, -1);
 
-                if (notificationIds != null && !notificationIds.isEmpty()) {
-                    processBatchNotificationsForUser(Long.parseLong(userId), notificationIds);
-                    redisTemplate.delete(key);
-                }
+            if (notificationIds != null && !notificationIds.isEmpty()) {
+                processBatchNotificationsForUser(Long.parseLong(userId), notificationIds);
+                redisTemplate.delete(key);
             }
         }
     }
@@ -237,13 +180,24 @@ public class NotificationServiceImpl implements NotificationService {
         String body = getBatchBody(type, notifications.size());
 
         Map<String, String> data = new HashMap<>();
-        data.put("type", type.name()
-                .toLowerCase());
-        data.put("title", title);
-        data.put("body", body);
         data.put("count", String.valueOf(notifications.size()));
 
-        sendNotificationToUser(user, title, body, data, "Batch");
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(user.getId())
+                .title(title)
+                .body(body)
+                .itemType(ItemType.POST)
+                .itemId(0L)
+                .notificationType(type)
+                .data(data)
+                .build();
+
+        try {
+            pushNotificationService.sendNotificationTo(user.getFcmTokenList(), request);
+            log.debug("{} notification sent to user: {}", "batch", user.getId());
+        } catch (Exception e) {
+            log.error("Failed to send {} notification to user: {}", "batch", user.getId(), e);
+        }
     }
 
     private String getBatchTitle(NotificationType type) {
@@ -286,16 +240,22 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Async("notificationTaskExecutor")
     public void sendScheduledNotification(Notification notification) {
-        Map<String, String> data = fromJson(notification.getData());
-
         User user = getUserWithValidFcmTokens(notification.getUserId());
         if (user == null) {
             return;
         }
-        String title = data.getOrDefault("title", "예약 알림");
-        String body = data.getOrDefault("body", "예약된 알림입니다.");
+        String title = notification.getTitle();
+        String body = notification.getBody();
 
-        sendNotificationToUser(user, title, body, data, "Scheduled");
+        pushNotificationService.sendNotificationTo(user.getFcmTokenList(),
+                NotificationDto.SendRequest.builder()
+                        .userId(notification.getUserId())
+                        .title(title)
+                        .body(body)
+                        .itemType(notification.getItemType())
+                        .itemId(notification.getItemId())
+                        .notificationType(notification.getType())
+                        .build());
     }
 
     // 좋아요 알림 - 새로운 배치 서비스 사용
@@ -320,23 +280,21 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         String commentSnippet = getCommentSnippet(commentDto.getContent());
-        NotificationBasicData itemData =
-                new NotificationBasicData(ItemType.COMMENT, commentDto.getCommentId());
-        createAndSendNotification(receiverUserId, NotificationType.COMMENT, COMMENT_TITLE,
-                commentSnippet, itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(receiverUserId)
+                .title(COMMENT_TITLE)
+                .body(commentSnippet)
+                .itemType(ItemType.POST)
+                .itemId(postId)
+                .notificationType(NotificationType.COMMENT)
+                .build();
+        createAndSendNotification(receiverUserId, request, NotificationStrategy.IMMEDIATE, null);
     }
 
     private String getCommentSnippet(String content) {
         return content.length() > 20 ? content.substring(0, 20) + "..." : content;
     }
 
-    private Map<String, String> fromJson(String json) {
-        try {
-            return objectMapper.readValue(json, Map.class);
-        } catch (JsonProcessingException e) {
-            return new HashMap<>();
-        }
-    }
 
     @Override
     public boolean markAsRead(Long notificationId, Long userId) {
@@ -372,9 +330,16 @@ public class NotificationServiceImpl implements NotificationService {
         String title = "게시글이 삭제되었습니다";
         String body = String.format("게시글 '%s'이(가) 삭제되었습니다.", info.getTitle());
 
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.REPORT, 0L);
-        createAndSendNotification(targetUserId, NotificationType.POST_DELETED, title, body,
-                itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(targetUserId)
+                .title(title)
+                .body(body)
+                .itemType(ItemType.POST)
+                .itemId(info.getPostId())
+                .notificationType(NotificationType.POST_DELETED)
+                .build();
+
+        createAndSendNotification(targetUserId, request, NotificationStrategy.IMMEDIATE, null);
     }
 
     @Override
@@ -384,9 +349,16 @@ public class NotificationServiceImpl implements NotificationService {
         if (user == null || user.getFcmTokenList()
                 .isEmpty()) return false;
 
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.REPORT, 0L);
-        createAndSendNotification(user.getId(), NotificationType.MARKETING, message.getTitle(),
-                message.getMessage(), itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(user.getId())
+                .title(message.getTitle())
+                .body(message.getMessage())
+                .itemType(ItemType.POST)
+                .itemId(0L) // 마케팅 알림은 특정 아이템이 없으므로 0으로 설정
+                .notificationType(NotificationType.MARKETING)
+                .data(message.getData())
+                .build();
+        createAndSendNotification(user.getId(), request, NotificationStrategy.IMMEDIATE, null);
         return true;
     }
 
@@ -394,9 +366,15 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendFairViewRequest(Long postId, User partner) {
         String body = "페어뷰 요청이 도착했습니다. 확인해주세요!";
 
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.POST, postId);
-        createAndSendNotification(partner.getId(), NotificationType.FAIRVIEW_REQUEST,
-                FAIRVIEW_REQUEST_TITLE, body, itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(partner.getId())
+                .title(FAIRVIEW_REQUEST_TITLE)
+                .body(body)
+                .itemType(ItemType.POST)
+                .itemId(postId)
+                .notificationType(NotificationType.FAIRVIEW_REQUEST)
+                .build();
+        createAndSendNotification(partner.getId(), request, NotificationStrategy.IMMEDIATE, null);
     }
 
     @Override
@@ -412,9 +390,15 @@ public class NotificationServiceImpl implements NotificationService {
 
         String body = "페어뷰 게시가 가능합니다. 게시하겠습니까?";
 
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.POST, postId);
-        createAndSendNotification(targetUserId, NotificationType.FAIRVIEW_REQUEST,
-                FAIRVIEW_CONFIRMATION_TITLE, body, itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(targetUserId)
+                .title(FAIRVIEW_CONFIRMATION_TITLE)
+                .body(body)
+                .itemType(ItemType.POST)
+                .itemId(postId)
+                .notificationType(NotificationType.FAIRVIEW_CONFIRMATION)
+                .build();
+        createAndSendNotification(targetUserId, request, NotificationStrategy.IMMEDIATE, null);
     }
 
     @Override
@@ -422,9 +406,16 @@ public class NotificationServiceImpl implements NotificationService {
         String title = PARTNER_REQUEST_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록 신청이 도착했습니다. 확인해주세요!";
 
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.USER, sentUser.getId());
-        createAndSendNotification(targetUser.getId(), NotificationType.PARTNER_REQUEST, title, body,
-                itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(targetUser.getId())
+                .title(title)
+                .body(body)
+                .itemType(ItemType.USER)
+                .itemId(sentUser.getId())
+                .notificationType(NotificationType.PARTNER_REQUEST)
+                .build();
+        createAndSendNotification(targetUser.getId(), request, NotificationStrategy.IMMEDIATE,
+                null);
     }
 
     @Override
@@ -432,9 +423,16 @@ public class NotificationServiceImpl implements NotificationService {
         String title = PARTNER_ACCEPTED_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록이 완료되었습니다!";
 
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.USER, sentUser.getId());
-        createAndSendNotification(targetUser.getId(), NotificationType.PARTNER_ACCEPTED, title,
-                body, itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(targetUser.getId())
+                .title(title)
+                .body(body)
+                .itemType(ItemType.USER)
+                .itemId(sentUser.getId())
+                .notificationType(NotificationType.PARTNER_ACCEPTED)
+                .build();
+        createAndSendNotification(targetUser.getId(), request, NotificationStrategy.IMMEDIATE,
+                null);
     }
 
     @Override
@@ -442,9 +440,16 @@ public class NotificationServiceImpl implements NotificationService {
         String title = PARTNER_DECLINED_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록 신청이 거절되었습니다. 다시 시도해주세요!";
 
-        NotificationBasicData itemData = new NotificationBasicData(ItemType.USER, sentUser.getId());
-        createAndSendNotification(targetUser.getId(), NotificationType.PARTNER_DECLINED, title,
-                body, itemData, NotificationStrategy.IMMEDIATE, null);
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(targetUser.getId())
+                .title(title)
+                .body(body)
+                .itemType(ItemType.USER)
+                .itemId(sentUser.getId())
+                .notificationType(NotificationType.PARTNER_DECLINED)
+                .build();
+        createAndSendNotification(targetUser.getId(), request, NotificationStrategy.IMMEDIATE,
+                null);
     }
 
     @Override
@@ -472,11 +477,17 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void testNotification(Long testUserId, NotificationType notificationType, String s,
             String s1, Map<String, String> itemType, NotificationStrategy notificationStrategy) {
-        NotificationBasicData itemData =
-                new NotificationBasicData(itemType.get("itemType"), itemType.get("itemId"));
-        createAndSendNotification(testUserId, notificationType, s, s1, itemData,
-                notificationStrategy, LocalDateTime.now()
-                        .plusMinutes(1));
+        NotificationDto.SendRequest itemData = NotificationDto.SendRequest.builder()
+                .userId(testUserId)
+                .title(s)
+                .body(s1)
+                .itemType(ItemType.valueOf(itemType.get("itemType")))
+                .itemId(Long.parseLong(itemType.get("itemId")))
+                .notificationType(notificationType)
+                .data(itemType)
+                .build();
+        createAndSendNotification(testUserId, itemData, notificationStrategy, LocalDateTime.now()
+                .plusMinutes(1));
         log.info("Test notification sent to user: {}, type: {}, title: {}, body: {}, itemData: {}",
                 testUserId, notificationType, s, s1, itemData);
 

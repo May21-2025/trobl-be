@@ -5,11 +5,12 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl._global.utility.Utility;
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
-import com.may21.trobl.partner.PartnerRequestRepository;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.user.UserDto;
@@ -18,6 +19,9 @@ import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -44,7 +48,6 @@ public class UserService implements UserDetailsService {
     private final AppleOAuthService appleOAuthService;
     private final ReportService reportService;
     private final KakaoOAuthService kakaoOAuthService;
-    private final PartnerRequestRepository partnerRequestRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -323,5 +326,118 @@ public class UserService implements UserDetailsService {
     public User getUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+    }
+
+    @Transactional
+    public UserDto.Info createVirtualUsers(AuthDto.SignUpRequest signUpRequest) {
+        // Generate a random username if exist regenerate
+        String nickname = signUpRequest.getNickname();
+        if (nickname == null || userRepository.existsByNickname(nickname)) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
+                    "Nickname cannot be null");
+        }
+        String username = Utility.getRandomString();
+        while (userRepository.existsByUsername(username)) {
+            username = Utility.getRandomString();
+        }
+
+        User user = User.builder()
+                .username(username)
+                .encryptPassword(passwordEncoder.encode(UUID.randomUUID()
+                        .toString()))
+                .nickname(nickname)
+                .role(RoleType.USER)
+                .provider(OAuthProvider.NONE.name())
+                .isTestUser(true)
+                .address(signUpRequest.getAddress())
+                .build();
+        userRepository.save(user);
+
+        return new UserDto.Info(user);
+    }
+
+    public boolean connectPartners(AdminDto.ConnectPartners request) {
+        Long userId = request.getUserId();
+        Long partnerId = request.getPartnerId();
+
+        if (userId == null || partnerId == null) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
+                    "User ID and Partner ID cannot be null");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        User partner = userRepository.findById(partnerId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+        if (user.getPartnerId() != null || partner.getPartnerId() != null) {
+            throw new BusinessException(ExceptionCode.USER_ALREADY_HAS_PARTNER);
+        }
+
+        user.setPartner(partner);
+        partner.setPartner(user);
+        UserDto.MarriedInfo marriedInfo =
+                new UserDto.MarriedInfo(request.getMarriageDate(), partner.getUsername());
+        user.updateInformation(marriedInfo);
+        partner.updateInformation(marriedInfo);
+
+        userRepository.saveAll(List.of(user, partner));
+
+        return true;
+    }
+
+    public Page<AdminDto.UserDetails> getAllUsers(int page, int size, String sortBy,
+            String sortDirection) {
+        if (page < 0 || size <= 0) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
+                    "Page and size must be positive integers");
+        }
+        if (sortBy == null || sortBy.isEmpty()) {
+            sortBy = "createdAt";
+        }
+        if (sortDirection == null || sortDirection.isEmpty()) {
+            sortDirection = "desc";
+        }
+        Pageable pageable = Utility.getPageable(page, size, sortBy, sortDirection);
+
+        Page<User> userPage = userRepository.findByTestUserIsFalseAndUnregisteredIsFalse(pageable);
+        List<AdminDto.UserDetails> userDetailsList = userPage.getContent()
+                .stream()
+                .map(AdminDto.UserDetails::new)
+                .toList();
+
+        return new PageImpl<>(userDetailsList, pageable, userPage.getTotalElements());
+    }
+
+    @Transactional
+    public UserDto.Info updateVirtualUsers(Long userId, UserDto.Update request) {
+        User user = userRepository.findByIdAndTestUserIsTrue(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+        if (!Objects.equals(user.getNickname(), request.getNickname()) &&
+                (request.getNickname() != null && !request.getNickname()
+                        .isEmpty())) {
+            if (userRepository.existsByNickname(request.getNickname())) {
+                throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
+            }
+            user.updateNickname(request.getNickname());
+        }
+
+        if (request.getAddress() != null) {
+            user.updateAddress(request.getAddress());
+        }
+
+        return new UserDto.Info(userRepository.save(user));
+    }
+
+    public void setThumbnail(Long userId, String imageKey) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        if (imageKey == null || imageKey.isEmpty()) {
+            throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE,
+                    "Image key cannot be null or empty");
+        }
+        user.setThumbnailKey(imageKey);
+        userRepository.save(user);
     }
 }

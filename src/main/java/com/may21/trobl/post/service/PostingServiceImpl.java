@@ -5,6 +5,7 @@ import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.TargetType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.bookmark.PostBookmark;
 import com.may21.trobl.bookmark.PostBookmarkRepository;
 import com.may21.trobl.comment.service.CommentService;
@@ -167,7 +168,6 @@ public class PostingServiceImpl implements PostingService {
                 .postType(postType)
                 .content(request.getContent())
                 .userId(userId)
-                .nickname(user.getNickname())
                 .build();
         postRepository.save(post);
         if (postType == PostingType.POLL) {
@@ -642,7 +642,8 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
-    public Page<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword, Pageable pageable) {
+    public Page<PostDto.ListItem> searchPostsByKeyword(Long userId, String keyword,
+            Pageable pageable) {
 
         List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, TargetType.POSTING);
         List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, TargetType.USER);
@@ -650,7 +651,8 @@ public class PostingServiceImpl implements PostingService {
 
         String normalizedKeyword = normalizeKeyword(keyword);
 
-        List<Posting> prioritizedResults = searchWithPriority(normalizedKeyword, blockedPostIds, blockedUserIds);
+        List<Posting> prioritizedResults =
+                searchWithPriority(normalizedKeyword, blockedPostIds, blockedUserIds);
 
         if (prioritizedResults.isEmpty()) {
             return Page.empty(pageable);
@@ -673,28 +675,34 @@ public class PostingServiceImpl implements PostingService {
     }
 
     // 우선순위 기반 검색 메서드
-    private List<Posting> searchWithPriority(String keyword, List<Long> blockedPostIds, List<Long> blockedUserIds) {
+    private List<Posting> searchWithPriority(String keyword, List<Long> blockedPostIds,
+            List<Long> blockedUserIds) {
         Set<Long> addedIds = new HashSet<>();
         List<Posting> orderedResults = new ArrayList<>();
 
         // 1. 제목 정확 일치 (최고 우선순위)
-        List<Posting> titleExact = postRepository.searchByTitleExact(keyword, blockedPostIds, blockedUserIds);
+        List<Posting> titleExact =
+                postRepository.searchByTitleExact(keyword, blockedPostIds, blockedUserIds);
         addUniqueResults(orderedResults, addedIds, titleExact);
 
         // 2. 제목 부분 일치 (높은 우선순위)
-        List<Posting> titlePartial = postRepository.searchByTitlePartial(keyword, blockedPostIds, blockedUserIds);
+        List<Posting> titlePartial =
+                postRepository.searchByTitlePartial(keyword, blockedPostIds, blockedUserIds);
         addUniqueResults(orderedResults, addedIds, titlePartial);
 
         // 3. Poll 제목 검색
-        List<Posting> pollTitle = postRepository.searchByPollTitle(keyword, blockedPostIds, blockedUserIds);
+        List<Posting> pollTitle =
+                postRepository.searchByPollTitle(keyword, blockedPostIds, blockedUserIds);
         addUniqueResults(orderedResults, addedIds, pollTitle);
 
         // 4. 내용 검색 (중간 우선순위)
-        List<Posting> content = postRepository.searchByContent(keyword, blockedPostIds, blockedUserIds);
+        List<Posting> content =
+                postRepository.searchByContent(keyword, blockedPostIds, blockedUserIds);
         addUniqueResults(orderedResults, addedIds, content);
 
         // 5. FairView 내용 검색
-        List<Posting> fairViewContent = postRepository.searchByFairViewContent(keyword, blockedPostIds, blockedUserIds);
+        List<Posting> fairViewContent =
+                postRepository.searchByFairViewContent(keyword, blockedPostIds, blockedUserIds);
         addUniqueResults(orderedResults, addedIds, fairViewContent);
 
         // 6. 태그 검색 (낮은 우선순위)
@@ -705,7 +713,8 @@ public class PostingServiceImpl implements PostingService {
     }
 
     // 중복 제거 헬퍼 메서드
-    private void addUniqueResults(List<Posting> orderedResults, Set<Long> addedIds, List<Posting> newResults) {
+    private void addUniqueResults(List<Posting> orderedResults, Set<Long> addedIds,
+            List<Posting> newResults) {
         for (Posting post : newResults) {
             if (!addedIds.contains(post.getId())) {
                 addedIds.add(post.getId());
@@ -716,10 +725,12 @@ public class PostingServiceImpl implements PostingService {
 
     // 키워드 정규화 메서드
     private String normalizeKeyword(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
+        if (keyword == null || keyword.trim()
+                .isEmpty()) {
             return "";
         }
-        return keyword.trim().replaceAll("\\s+", " ");
+        return keyword.trim()
+                .replaceAll("\\s+", " ");
     }
 
     // DTO 변환 메서드
@@ -749,15 +760,10 @@ public class PostingServiceImpl implements PostingService {
         for (Posting post : posts) {
             User user = userMap.get(post.getUserId());
             response.add(
-                    new PostDto.ListItem(
-                            post,
-                            user,
-                            tagMap.getOrDefault(post.getId(), List.of()),
+                    new PostDto.ListItem(post, user, tagMap.getOrDefault(post.getId(), List.of()),
                             likedPostIds.contains(post.getId()),
                             viewedPostIds.contains(post.getId()),
-                            commentedPostIds.contains(post.getId())
-                    )
-            );
+                            commentedPostIds.contains(post.getId())));
         }
 
         return response;
@@ -766,7 +772,8 @@ public class PostingServiceImpl implements PostingService {
     // 5. 추가 개선사항 - 다중 키워드 검색 지원
 
     // 공백으로 구분된 여러 키워드 검색
-    private List<Posting> searchMultipleKeywords(String keyword, List<Long> blockedPostIds, List<Long> blockedUserIds) {
+    private List<Posting> searchMultipleKeywords(String keyword, List<Long> blockedPostIds,
+            List<Long> blockedUserIds) {
         String[] keywords = keyword.split("\\s+");
 
         if (keywords.length == 1) {
@@ -777,14 +784,16 @@ public class PostingServiceImpl implements PostingService {
         Set<Long> intersectionIds = null;
 
         for (String singleKeyword : keywords) {
-            List<Posting> singleResults = searchWithPriority(singleKeyword.trim(), blockedPostIds, blockedUserIds);
+            List<Posting> singleResults =
+                    searchWithPriority(singleKeyword.trim(), blockedPostIds, blockedUserIds);
             Set<Long> currentIds = singleResults.stream()
                     .map(Posting::getId)
                     .collect(Collectors.toSet());
 
             if (intersectionIds == null) {
                 intersectionIds = currentIds;
-            } else {
+            }
+            else {
                 intersectionIds.retainAll(currentIds);
             }
 
@@ -799,7 +808,8 @@ public class PostingServiceImpl implements PostingService {
         }
 
         // 교집합 결과를 다시 우선순위 순으로 정렬
-        return postRepository.findAllById(intersectionIds).stream()
+        return postRepository.findAllById(intersectionIds)
+                .stream()
                 .sorted((p1, p2) -> compareBySearchPriority(p1, p2, keyword))
                 .collect(Collectors.toList());
     }
@@ -807,29 +817,35 @@ public class PostingServiceImpl implements PostingService {
     // 검색 우선순위 비교 메서드
     private int compareBySearchPriority(Posting p1, Posting p2, String keyword) {
         // 제목 정확 일치가 최우선
-        boolean p1TitleExact = p1.getTitle().toLowerCase().equals(keyword.toLowerCase());
-        boolean p2TitleExact = p2.getTitle().toLowerCase().equals(keyword.toLowerCase());
+        boolean p1TitleExact = p1.getTitle()
+                .toLowerCase()
+                .equals(keyword.toLowerCase());
+        boolean p2TitleExact = p2.getTitle()
+                .toLowerCase()
+                .equals(keyword.toLowerCase());
 
         if (p1TitleExact && !p2TitleExact) return -1;
         if (!p1TitleExact && p2TitleExact) return 1;
 
         // 제목 포함 여부
-        boolean p1TitleContains = p1.getTitle().toLowerCase().contains(keyword.toLowerCase());
-        boolean p2TitleContains = p2.getTitle().toLowerCase().contains(keyword.toLowerCase());
+        boolean p1TitleContains = p1.getTitle()
+                .toLowerCase()
+                .contains(keyword.toLowerCase());
+        boolean p2TitleContains = p2.getTitle()
+                .toLowerCase()
+                .contains(keyword.toLowerCase());
 
         if (p1TitleContains && !p2TitleContains) return -1;
         if (!p1TitleContains && p2TitleContains) return 1;
 
         // 생성일 기준 내림차순 (최신순)
-        return p2.getCreatedAt().compareTo(p1.getCreatedAt());
+        return p2.getCreatedAt()
+                .compareTo(p1.getCreatedAt());
     }
 
     @Override
     public void setNickname(Long userId, String nickname) {
         List<Posting> posts = postRepository.findAllByUserId(userId);
-        for (Posting post : posts) {
-            post.setNickname(nickname);
-        }
 
     }
 
@@ -960,6 +976,113 @@ public class PostingServiceImpl implements PostingService {
         });
     }
 
+    @Override
+    public PostDto.ListItem createVirtualPost(AdminDto.VirtualPostRequest request) {
+        Long userId = request.getUserId();
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        PostingType postType = PostingType.valueOf(request.getPostType()
+                .toUpperCase());
+        Posting post = Posting.builder()
+                .title(request.getTitle())
+                .postType(postType)
+                .content(request.getContent())
+                .userId(userId)
+                .build();
+        postRepository.save(post);
+        if (postType == PostingType.POLL) {
+            Poll poll = new Poll(request.getPollTitle(), post, request.isAllowMultipleVotes());
+            pollRepository.save(poll);
+
+            List<PostDto.PollOptionRequest> pollOptionsRequest = request.getPoll()
+                    .getPollOptions();
+            List<PollOption> pollOptions = new ArrayList<>();
+            for (int i = 0; i < pollOptionsRequest.size(); i++) {
+                PostDto.PollOptionRequest pollOptionRequest = pollOptionsRequest.get(i);
+                PollOption pollOption = PollOption.builder()
+                        .name(pollOptionRequest.getName())
+                        .poll(poll)
+                        .index(i)
+                        .build();
+                pollOptions.add(pollOption);
+            }
+            pollOptionRepository.saveAll(pollOptions);
+            poll.setPollOptions(pollOptions);
+            post.setPoll(poll);
+        }
+        else if (postType == PostingType.FAIR_VIEW) {
+            Long partnerId = user.getPartnerId();
+            if (partnerId == null) {
+                throw new BusinessException(ExceptionCode.PARTNER_NOT_FOUND);
+            }
+            User partner = userRepository.findPartnerById(partnerId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.PARTNER_NOT_FOUND));
+            PostDto.FairViewItem fairView = request.getFairViewItem();
+            List<FairView> fairViews = new ArrayList<>();
+            FairView myFairView = FairView.builder()
+                    .title(fairView.getTitle())
+                    .content(fairView.getContent())
+                    .post(post)
+                    .userId(userId)
+                    .nickname(user.getNickname())
+                    .build();
+            myFairView.setConfirmed(true);
+            FairView partnerFairView = new FairView(partner, post);
+            notificationService.sendFairViewRequest(post.getId(), partner);
+            contentUpdateService.fairViewRequestUpdate(post.getId(), partner.getId());
+
+            fairViews.add(partnerFairView);
+            fairViews.add(myFairView);
+            fairViewRepository.saveAll(fairViews);
+            post.addFairView(myFairView);
+            post.addFairView(partnerFairView);
+        }
+        Set<Tag> tags = tagService.createTags(request.getTags());
+        List<TagMapping> tagResponses = tagService.createTagMapping(tags, post);
+        post.setTags(tagResponses);
+        return new PostDto.ListItem(post, user, tagResponses.stream()
+                .map(TagMapping::getTag)
+                .toList(), false, false, false);
+    }
+
+    @Override
+    public PostDto.ListItem updateVirtualPost(Long postId, PostDto.Request request) {
+        Posting post = postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+        if (!userRepository.isVirtualUser(post.getUserId())) {
+            throw new BusinessException(ExceptionCode.FORBIDDEN);
+        }
+        post.update(request);
+        if (post.getPostType() == PostingType.POLL && request.getPollId() != null) {
+            Long pollId = request.getPollId();
+            PostDto.PollRequest pollDto = request.getPoll();
+            String pollTitle = pollDto.getTitle();
+            Boolean allowMultipleVotes = pollDto.isAllowMultipleVotes();
+            Poll poll = pollRepository.findById(pollId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.POLL_NOT_FOUND));
+            if (pollTitle != null && !pollTitle.equals(poll.getTitle())) {
+                poll.setTitle(pollTitle);
+            }
+            if (!allowMultipleVotes.equals(poll.isAllowedMultipleVotes())) {
+                poll.setAllowMultipleVotes(allowMultipleVotes);
+            }
+            List<PostDto.PollOptionRequest> pollOptionsRequest = pollDto.getPollOptions();
+            updatePollOptions(pollOptionsRequest, poll);
+        }
+        Set<Tag> tags = tagService.createTags(request.getTags());
+        List<TagMapping> tagResponses = tagService.updateTags(tags, post);
+        post.getTags()
+                .clear();
+        post.getTags()
+                .addAll(tagResponses);
+        postRepository.save(post);
+        return new PostDto.ListItem(post, userRepository.findById(post.getUserId())
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
+                tagResponses.stream()
+                        .map(TagMapping::getTag)
+                        .toList(), false, false, false);
+    }
+
 
     private void evictTopPostsCache(Long userId) {
         Cache cache = cacheManager.getCache("topPosts");
@@ -972,5 +1095,43 @@ public class PostingServiceImpl implements PostingService {
             String key = type + "_" + userKey;
             cache.evictIfPresent(key);
         }
+    }
+
+    @Override
+    public PostDto.ListItem createFairViewByAdmin(AdminDto.FairViewPostRequest request) {
+
+        PostingType postType = request.getPostType();
+        if (postType != PostingType.FAIR_VIEW) throw new BusinessException(ExceptionCode.FORBIDDEN);
+        Long userId = request.getUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+
+        Posting post = Posting.builder()
+                .title(request.getTitle())
+                .postType(postType)
+                .content(request.getContent())
+                .userId(userId)
+                .build();
+        post.setConfirmed(true);
+        postRepository.save(post);
+
+        List<FairView> fairViews = new ArrayList<>();
+        for (AdminDto.FairViewRequest fairViewRequest : request.getFairViewItem()) {
+            FairView fairView = FairView.builder()
+                    .title(fairViewRequest.getTitle())
+                    .content(fairViewRequest.getContent())
+                    .post(post)
+                    .userId(fairViewRequest.getUserId())
+                    .build();
+            fairView.setConfirmed(true);
+        }
+        fairViewRepository.saveAll(fairViews);
+        post.setFairViews(fairViews);
+        Set<Tag> tags = tagService.createTags(request.getTags());
+        List<TagMapping> tagResponses = tagService.createTagMapping(tags, post);
+        post.setTags(tagResponses);
+        List<Tag> tagList = tags.stream()
+                .toList();
+        return new PostDto.ListItem(post, user, tagList, false, false, false);
     }
 }
