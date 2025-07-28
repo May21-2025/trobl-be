@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum ExceptionCode {
+    //ANNOUNCEMENT A000
+    ANNOUNCEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "A000", "공지사항을 찾을 수 없습니다."),
 
     // COMMENT C000
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "C000", "댓글을 찾을 수 없습니다."),

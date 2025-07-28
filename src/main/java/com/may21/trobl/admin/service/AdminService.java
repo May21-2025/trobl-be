@@ -1,9 +1,14 @@
-package com.may21.trobl.admin;
+package com.may21.trobl.admin.service;
 
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.admin.AdminDto;
+import com.may21.trobl.admin.announcement.Announcement;
+import com.may21.trobl.admin.announcement.AnnouncementLike;
+import com.may21.trobl.admin.announcement.AnnouncementLikeRepository;
+import com.may21.trobl.admin.announcement.AnnouncementRepository;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.domain.CommentRepository;
 import com.may21.trobl.notification.service.NotificationService;
@@ -47,6 +52,8 @@ public class AdminService {
     private final TagService tagService;
     private final PostViewRepository postViewRepository;
     private final NotificationService notificationService;
+    private final AnnouncementRepository announcementRepository;
+    private final AnnouncementLikeRepository announcementLikeRepository;
 
     @Transactional
     public boolean grantAdminRole(Long userId) {
@@ -339,24 +346,40 @@ public class AdminService {
                 PostDto.Notification info = new PostDto.Notification(post);
                 postRepository.delete(post);
                 notificationService.notifyPostDeleted(post.getId(), info);
-            } else {
+            }
+            else {
                 post.setReported(false);
                 postRepository.save(post);
             }
-        } else if (itemType == ItemType.COMMENT) {
+        }
+        else if (itemType == ItemType.COMMENT) {
             Comment comment = commentRepository.findById(itemId)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
             if (delete) {
                 commentRepository.delete(comment);
 
                 notificationService.notifyCommentDeleted(comment);
-            } else {
+            }
+            else {
                 comment.setReported(false);
                 commentRepository.save(comment);
             }
-        } else {
+        }
+        else {
             throw new BusinessException(ExceptionCode.INVALID_REQUEST);
         }
         return true;
+    }
+
+    public AdminDto.AnnouncementDto getAnnouncement(Long announcementId, Long userId) {
+        List<AnnouncementLike> liked =
+                announcementLikeRepository.findByAnnouncementId(announcementId);
+        boolean isLiked = userId != null && liked.stream()
+                .anyMatch(like -> like.getUserId()
+                        .equals(userId));
+        Announcement announcement = announcementRepository.findById(announcementId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.ANNOUNCEMENT_NOT_FOUND));
+        return new AdminDto.AnnouncementDto(announcement, isLiked, liked.size());
+
     }
 }

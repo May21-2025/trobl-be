@@ -3,6 +3,7 @@ package com.may21.trobl.admin;
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.ReportType;
+import com.may21.trobl.admin.announcement.Announcement;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.post.dto.PostDto;
@@ -18,6 +19,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import static com.may21.trobl._global.utility.SecurityUtils.decodeHtml;
 
 public class AdminDto {
 
@@ -302,7 +305,7 @@ public class AdminDto {
         private final String content;
         private final List<ReportedDetails> reportedDetails;
 
-        public ReportedListItem(Posting posting,User user, List<ReportedDetails> reportedDetails) {
+        public ReportedListItem(Posting posting, User user, List<ReportedDetails> reportedDetails) {
             this.userId = user.getId();
             this.nickname = user.getNickname();
             this.itemType = ItemType.POST;
@@ -312,7 +315,7 @@ public class AdminDto {
             this.reportedDetails = reportedDetails;
         }
 
-        public ReportedListItem(User user, List<ReportedDetails> reportedDetails){
+        public ReportedListItem(User user, List<ReportedDetails> reportedDetails) {
             this.userId = user.getId();
             this.nickname = user.getNickname();
             this.itemType = ItemType.USER;
@@ -322,7 +325,7 @@ public class AdminDto {
             this.reportedDetails = reportedDetails;
         }
 
-        public ReportedListItem(Comment comment,User user, List<ReportedDetails> reportedDetails) {
+        public ReportedListItem(Comment comment, User user, List<ReportedDetails> reportedDetails) {
             this.userId = user.getId();
             this.nickname = user.getNickname();
             this.itemType = ItemType.COMMENT;
@@ -335,7 +338,7 @@ public class AdminDto {
     }
 
     @Getter
-    public static class ReportedDetails{
+    public static class ReportedDetails {
 
         private final String nickname;
         private final Long userId;
@@ -348,7 +351,28 @@ public class AdminDto {
             this.reportType = repost.getReason();
             this.reportedAt = repost.getReportedAt();
         }
-
-
     }
+
+
+    @Getter
+    public static class AnnouncementDto {
+        private final Long announcementId;
+        private final String title;
+        private final String content;
+        private final boolean liked;
+        private final long likeCount;
+        private final long viewCount;
+        private final LocalDateTime createdAt;
+
+        public AnnouncementDto(Announcement announcement, boolean liked, int likeCount) {
+            this.announcementId = announcement.getId();
+            this.title = decodeHtml(announcement.getTitle());
+            this.content = decodeHtml(announcement.getContent());
+            this.createdAt = announcement.getCreateAt();
+            this.viewCount = announcement.getViewCount();
+            this.liked = liked;
+            this.likeCount = likeCount;
+        }
+    }
+
 }
