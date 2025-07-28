@@ -13,6 +13,7 @@ public enum ExceptionCode {
 
     // NOTIFICATION N000
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N000", "알림을 찾을 수 없습니다."),
+    NOTIFICATION_TYPE_NOT_BLOCKABLE(HttpStatus.BAD_REQUEST, "N001", "차단할 수 없는 알림 유형입니다."),
 
     // TOKEN T000
     TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "T000", "토큰이 없습니다."),

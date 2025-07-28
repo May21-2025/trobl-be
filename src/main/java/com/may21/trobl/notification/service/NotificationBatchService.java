@@ -72,20 +72,20 @@ public class NotificationBatchService {
     @Async("notificationTaskExecutor")
     @Transactional
     public void addPostLikeToQueue(Long postId, Long actorUserId) {
-        log.debug("Adding post like to queue asynchronously: postId={}, actorUserId={}", postId,
+        log.info("Adding post like to queue asynchronously: postId={}, actorUserId={}", postId,
                 actorUserId);
+
+        User actor = userRepository.findById(actorUserId)
+                .orElse(null);
+        if (actor == null || actor.isNotificationBlocked(NotificationType.LIKE)) {
+            return;
+        }
 
         Posting post = postRepository.findById(postId)
                 .orElse(null);
         if (post == null || post.getUserId()
                 .equals(actorUserId)) {
             return; // 자신의 포스트에는 알림 안 보냄
-        }
-
-        User actor = userRepository.findById(actorUserId)
-                .orElse(null);
-        if (actor == null) {
-            return;
         }
 
         addLikeToQueue(post.getUserId(), actorUserId, actor.getNickname(), ItemType.POST, postId);
@@ -109,7 +109,7 @@ public class NotificationBatchService {
 
         User actor = userRepository.findById(actorUserId)
                 .orElse(null);
-        if (actor == null) {
+        if (actor == null || actor.isNotificationBlocked(NotificationType.LIKE)) {
             return;
         }
 

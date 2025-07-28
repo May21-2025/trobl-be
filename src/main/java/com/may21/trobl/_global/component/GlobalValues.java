@@ -11,8 +11,7 @@ public class GlobalValues {
     private static final int DEV_VERSION = 0;
     private static final int STAGE_VERSION = 2;
 
-
-    public static final String USER_PROFILE_IMAGE_PATH = "/thumbnails/users/";
+    public static final String USER_PROFILE_IMAGE_PATH = "thumbnails/users/";
     public static final String AD_IMAGE_PATH = "/ads/";
 
     public static String getBEVersion() {
@@ -24,6 +23,9 @@ public class GlobalValues {
     @Getter
     private static String cdnUrl;
 
+    @Getter
+    private static String PREFIX ;
+
     private static void initUrl() {
         if (cdnKey != null) {
             cdnUrl = "https://" + cdnKey + "/";
@@ -34,5 +36,10 @@ public class GlobalValues {
     public void setCdUrl(String cdnKey) {
         GlobalValues.cdnKey = cdnKey;
         initUrl();
+    }
+
+    @Value("${STAGE}")
+    public void setPublicPrefix(String stage) {
+        GlobalValues.PREFIX = "public/" + stage + "/";
     }
 }

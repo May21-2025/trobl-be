@@ -105,6 +105,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void queueForBatchNotification(Long userId, NotificationDto.SendRequest request) {
+        log.info("{} notification sent to user: {}", request.getNotificationType(), userId);
         Long notificationId = notificationRepository.save(new Notification(userId, request, null))
                 .getId();
         String key = "batch_notifications:" + notificationId;
@@ -144,7 +145,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void processBatchNotifications() {
         Set<String> userKeys = redisTemplate.keys("batch_notifications:*");
-
+        log.info("{} batch notifications processed", userKeys.size());
         for (String key : userKeys) {
             String userId = key.substring("batch_notifications:".length());
             List<Object> notificationIds = redisTemplate.opsForList()
@@ -272,15 +273,36 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public void sendNewLikeNotification(Long itemId, ItemType itemType) {
+        if (itemType == ItemType.COMMENT) return;
+        Long userId = postRepository.findOwnerIdById(itemId);
+        User receiver = userRepository.findById(userId)
+                .orElse(null);
+        if (receiver == null || receiver.isNotificationBlocked(NotificationType.LIKE)) return;
+        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+                .userId(userId)
+                .title(LIKE_TITLE)
+                .body("")
+                .itemType(itemType)
+                .itemId(itemId)
+                .notificationType(NotificationType.LIKE)
+                .build();
+        createAndSendNotification(userId, request, NotificationStrategy.IMMEDIATE, null);
+    }
+
+
+    @Override
     public void sendNewCommentNotification(Long postId, CommentDto.Response commentDto) {
         Posting post = postRepository.findById(postId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
-
+                .orElse(null);
+        if (post == null) return;
         Long receiverUserId = post.getUserId();
-        if (receiverUserId.equals(commentDto.getUserId())) {
+        User receiver = userRepository.findById(receiverUserId)
+                .orElse(null);
+        if (receiver == null || receiverUserId.equals(commentDto.getUserId()) ||
+                receiver.isNotificationBlocked(NotificationType.COMMENT)) {
             return;
         }
-
         String commentSnippet = getCommentSnippet(commentDto.getContent());
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(receiverUserId)
@@ -349,7 +371,7 @@ public class NotificationServiceImpl implements NotificationService {
         User user = userRepository.findById(message.getUserId())
                 .orElse(null);
         if (user == null || user.getFcmTokenList()
-                .isEmpty()) return false;
+                .isEmpty() || user.isNotificationBlocked(NotificationType.MARKETING)) return false;
 
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(user.getId())
@@ -380,12 +402,9 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public void sendFairViewConfirmedRequest(Long fairViewId, Long userId) {
+    public void sendFairViewConfirmedRequest(Long fairViewId) {
         Long postId = postRepository.findPostIdByFairViewId(fairViewId);
         if (postId == null) return;
-
-        boolean confirmedByPartner = postRepository.isPostIdOwnerIsUser(postId, userId);
-        if (confirmedByPartner) return;
 
         Long targetUserId = postRepository.findOwnerIdById(postId);
         contentUpdateService.fairViewConfirmUpdate(postId, targetUserId);
@@ -408,6 +427,9 @@ public class NotificationServiceImpl implements NotificationService {
         String title = PARTNER_REQUEST_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록 신청이 도착했습니다. 확인해주세요!";
 
+        log.info("targetUser username : {}, sentUser username: {} notificationType : {} ",
+                targetUser.getUsername(), sentUser.getUsername(), NotificationType.PARTNER_REQUEST);
+
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(targetUser.getId())
                 .title(title)
@@ -424,23 +446,41 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendPartnerAccepted(User targetUser, User sentUser) {
         String title = PARTNER_ACCEPTED_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록이 완료되었습니다!";
-
-        NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
+        List<NotificationDto.SendRequest> requests = new ArrayList<>();
+        requests.add(NotificationDto.SendRequest.builder()
                 .userId(targetUser.getId())
                 .title(title)
                 .body(body)
                 .itemType(ItemType.USER)
                 .itemId(sentUser.getId())
                 .notificationType(NotificationType.PARTNER_ACCEPTED)
-                .build();
-        createAndSendNotification(targetUser.getId(), request, NotificationStrategy.IMMEDIATE,
-                null);
+                .build());
+        requests.add(NotificationDto.SendRequest.builder()
+                .userId(sentUser.getId())
+                .title(title)
+                .body(body)
+                .itemType(ItemType.USER)
+                .itemId(targetUser.getId())
+                .notificationType(NotificationType.PARTNER_ACCEPTED)
+                .build());
+        for (NotificationDto.SendRequest request : requests) {
+            log.info(
+                    "Sending notification to user: {}, title: {}, body: {}, itemType: {}, itemId: {}",
+                    request.getUserId(), request.getTitle(), request.getBody(),
+                    request.getItemType(), request.getItemId());
+            createAndSendNotification(request.getUserId(), request, NotificationStrategy.IMMEDIATE,
+                    null);
+        }
+
     }
 
     @Override
     public void sendPartnerDeclined(User targetUser, User sentUser) {
         String title = PARTNER_DECLINED_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록 신청이 거절되었습니다. 다시 시도해주세요!";
+
+        log.info("targetUser username : {}, sentUser username: {} notificationType : {} ",
+                targetUser.getUsername(), sentUser.getUsername(), NotificationType.PARTNER_REQUEST);
 
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(targetUser.getId())

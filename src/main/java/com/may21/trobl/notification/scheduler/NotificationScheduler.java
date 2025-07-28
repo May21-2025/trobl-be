@@ -23,11 +23,10 @@ public class NotificationScheduler {
      */
     @Scheduled(fixedRate = 600000) // 10분 = 600,000ms
     public void processBatchNotifications() {
-        log.debug("Starting batch notification processing...");
+        log.info("Starting batch notification processing...");
         try {
             notificationService.processBatchNotifications();
-
-            log.debug("Batch notification processing completed successfully");
+            log.info("Batch notification processing completed successfully");
         } catch (Exception e) {
             log.error("Failed to process batch notifications", e);
         }
@@ -38,10 +37,10 @@ public class NotificationScheduler {
      */
     @Scheduled(fixedRate = 60000) // 1분 = 60,000ms
     public void processScheduledNotifications() {
-        log.debug("Starting scheduled notification processing...");
+        log.info("Starting scheduled notification processing...");
         try {
             notificationService.processScheduledNotifications();
-            log.debug("Scheduled notification processing completed successfully");
+            log.info("Scheduled notification processing completed successfully");
         } catch (Exception e) {
             log.error("Failed to process scheduled notifications", e);
         }

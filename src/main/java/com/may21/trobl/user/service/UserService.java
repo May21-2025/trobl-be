@@ -1,6 +1,7 @@
 package com.may21.trobl.user.service;
 
 import com.may21.trobl._global.enums.ItemType;
+import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
@@ -8,6 +9,7 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.auth.AuthDto;
+import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
@@ -439,5 +441,20 @@ public class UserService implements UserDetailsService {
         }
         user.setThumbnailKey(imageKey);
         userRepository.save(user);
+    }
+
+    public NotificationDto.UserNotiSetting setNotificationStatus(Long userId,
+            NotificationType notificationType) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        user.toggleNotificationBlock(notificationType);
+        userRepository.save(user);
+        return new NotificationDto.UserNotiSetting(user);
+    }
+
+    public NotificationDto.UserNotiSetting getNotificationSetting(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        return new NotificationDto.UserNotiSetting(user);
     }
 }

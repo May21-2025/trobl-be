@@ -42,7 +42,7 @@ public class FairViewController {
         Long userId = user != null ? user.getId() : null;
         boolean response = postingService.confirmFairView(userId, fairViewId);
         if(response) {
-            notificationService.sendFairViewConfirmedRequest(fairViewId, userId);
+            notificationService.sendFairViewConfirmedRequest(fairViewId);
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }

@@ -85,7 +85,7 @@ public class PostingController {
             @PathVariable Long postId, @AuthenticationPrincipal User user) {
         PostDto.ListItem response = postingService.likePost(postId, user.getId());
         if (response.isLiked()) {
-            notificationService.sendPostLikeNotification(postId, user.getId());
+            notificationService.sendNewLikeNotification(postId, ItemType.POST);
             contentUpdateService.likeUpdate(postId, ItemType.POST);
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);

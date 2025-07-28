@@ -53,7 +53,8 @@ public class Utility {
         if (imageKey == null || imageKey.isEmpty()) {
             return "";
         }
-        return GlobalValues.getCdnUrl() + USER_PROFILE_IMAGE_PATH + imageKey;
+        return GlobalValues.getCdnUrl() + GlobalValues.getPREFIX() + USER_PROFILE_IMAGE_PATH + imageKey;
 
     }
+
 }

@@ -4,9 +4,11 @@ import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.enums.UpdateType;
 import com.may21.trobl.notification.domain.ContentUpdate;
+import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
@@ -116,5 +118,20 @@ public class NotificationDto {
         private final boolean myPost;
         private final boolean myComment;
         private final boolean requestedPost;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class UserNotiSetting {
+        private boolean likeAllowed;
+        private boolean commentAllowed;
+        private boolean marketingAllowed;
+
+        public UserNotiSetting(User user) {
+            this.likeAllowed = user.canReceiveNotification(NotificationType.LIKE);
+            this.commentAllowed = user.canReceiveNotification(NotificationType.COMMENT);
+            this.marketingAllowed = user.canReceiveNotification(NotificationType.MARKETING);
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.may21.trobl.notification.service;
 
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.NotificationStrategy;
 import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl.admin.AdminDto;
@@ -33,6 +34,9 @@ public interface NotificationService {
     void sendCommentLikeNotification(Long commentId, Long userId);
 
     @Transactional
+    void sendNewLikeNotification(Long itemId, ItemType itemType);
+
+    @Transactional
     void sendNewCommentNotification(Long postId, CommentDto.Response commentDto);
 
     @Transactional
@@ -54,7 +58,7 @@ public interface NotificationService {
     void sendFairViewRequest(Long id, User partner);
 
     @Transactional
-    void sendFairViewConfirmedRequest(Long fairViewId, Long userId);
+    void sendFairViewConfirmedRequest(Long fairViewId);
 
     @Transactional
     void sendPartnerRequest(User targetUser, User sentUser);

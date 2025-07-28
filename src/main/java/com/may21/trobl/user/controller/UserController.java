@@ -1,10 +1,12 @@
 package com.may21.trobl.user.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.enums.NotificationType;
 import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.auth.service.AuthorizationService;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.comment.service.CommentService;
+import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.partner.PartnerService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
@@ -113,14 +115,6 @@ public class UserController {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = userService.updateNickname(user.getId(), nickname);
         postingService.setNickname(user.getId(), nickname);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
-    @GetMapping("/notifications")
-    public ResponseEntity<Message> getUsersNotification(
-            @RequestHeader("Authorization") String token) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        UserDto.NotificationSetting response = userService.getUsersNotification(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -233,6 +227,26 @@ public class UserController {
     @DeleteMapping("/delete-all")
     public ResponseEntity<Message> deleteAllOAuth() {
         boolean response = userService.deleteAllOauth();
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+
+    @GetMapping("/notifications")
+    public ResponseEntity<Message> getNotificationSetting(
+            @RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
+        NotificationDto.UserNotiSetting response =
+                userService.getNotificationSetting(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PutMapping("/notifications")
+    public ResponseEntity<Message> setNotificationStatus(
+            @RequestParam NotificationType notificationType,
+            @RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
+        NotificationDto.UserNotiSetting response =
+                userService.setNotificationStatus(user.getId(), notificationType);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }

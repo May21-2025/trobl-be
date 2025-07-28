@@ -6,6 +6,7 @@ import com.google.cloud.storage.Acl;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
+import com.may21.trobl._global.component.GlobalValues;
 import com.may21.trobl._global.enums.ImageSize;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,6 @@ public class GoogleCloudStorageService implements StorageService {
     @Value("${STAGE}")
     private String stage;
 
-    private final String PREFIX = "public/" + stage + "/";
 
 
     public String uploadPublicFile(MultipartFile file, String folder) throws IOException {
@@ -143,7 +143,7 @@ public class GoogleCloudStorageService implements StorageService {
         try {
 
             String imageKey = userId + ".webp";
-            String thumbnailFileName = PREFIX + USER_PROFILE_IMAGE_PATH + imageKey;
+            String thumbnailFileName = GlobalValues.getPREFIX() + USER_PROFILE_IMAGE_PATH + imageKey;
 
             byte[] thumbnailBytes = createThumbnail(file.getBytes(), 150, 150);
 
@@ -269,7 +269,7 @@ public class GoogleCloudStorageService implements StorageService {
     // 사용자 프로필 이미지 삭제
     public boolean deleteUserProfileImage(Long userId) {
         try {
-            String thumbnailFileName = PREFIX + USER_PROFILE_IMAGE_PATH + userId + ".webp";
+            String thumbnailFileName =  GlobalValues.getPREFIX() + USER_PROFILE_IMAGE_PATH + userId + ".webp";
             return true;
         } catch (Exception e) {
             e.printStackTrace();

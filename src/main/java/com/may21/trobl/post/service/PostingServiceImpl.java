@@ -151,7 +151,7 @@ public class PostingServiceImpl implements PostingService {
         PostDto.Detail detailDto =
                 new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked, votedOptionIds,
                         isOwner);
-        if (!post.isConfirmed() && post.getPostType() == PostingType.FAIR_VIEW )
+        if (!post.isConfirmed() && post.getPostType() == PostingType.FAIR_VIEW)
             detailDto.blindPartnerContent(userId);
         return detailDto;
     }
@@ -467,6 +467,8 @@ public class PostingServiceImpl implements PostingService {
     @Override
     public PostDto.FairViewItem setFairView(Long fairViewId, Long userId,
             PostDto.FairViewRequest request) {
+
+        log.info("add confirmRequest");
         FairView fairView = fairViewRepository.findById(fairViewId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.FAIR_VIEW_NOT_FOUND));
         if (!fairView.getUserId()
@@ -474,9 +476,13 @@ public class PostingServiceImpl implements PostingService {
             throw new BusinessException(ExceptionCode.UNAUTHORIZED);
         }
         fairView.update(request);
-        fairView.setConfirmed(true);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        if (!fairView.isConfirmed()) {
+            log.info("send confirmRequest");
+            fairView.setConfirmed(true);
+            notificationService.sendFairViewConfirmedRequest(fairView.getId());
+        }
         return new PostDto.FairViewItem(fairView, user);
     }
 
@@ -511,8 +517,7 @@ public class PostingServiceImpl implements PostingService {
         return posts.stream()
                 .map(post -> {
                     Long ownerId = post.getUserId();
-                    boolean isOwner = ownerId
-                            .equals(userId);
+                    boolean isOwner = ownerId.equals(userId);
                     return new PostDto.QuickPoll(post, userMap.getOrDefault(ownerId, null),
                             votedOptionIds, isOwner);
                 })

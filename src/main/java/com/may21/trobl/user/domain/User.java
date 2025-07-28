@@ -8,7 +8,7 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.Utility;
-import com.may21.trobl.notification.domain.NotificationSetting;
+import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.pushAlarm.DeviceFcmToken;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
@@ -21,12 +21,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_PATH;
+import static com.may21.trobl._global.enums.NotificationType.*;
 
 @Entity
 @NoArgsConstructor
@@ -67,13 +65,16 @@ public class User implements UserDetails, OAuth2User {
     @Enumerated(EnumType.STRING)
     private OAuthProvider provider;
 
-    @OneToOne(cascade = CascadeType.ALL)
-    private NotificationSetting setting;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
     private List<String> roles;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_notification_setting", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "notification_type")
+    private List<NotificationType> blockedNotificationTypes;
 
     private int failedLoginAttempts;
 
@@ -105,6 +106,9 @@ public class User implements UserDetails, OAuth2User {
         this.roles = List.of(role.name());
         this.testUser = isTestUser != null && isTestUser;
         this.address = address;
+        // add default values for blocked notifications
+        this.blockedNotificationTypes = new ArrayList<>();
+        this.blockedNotificationTypes.add(MARKETING);
     }
 
     public User(Long userId, String subject, String s, String role) {
@@ -118,7 +122,8 @@ public class User implements UserDetails, OAuth2User {
 
     public String getThumbnailUrl() {
         return thumbnailKey == null ? null :
-                GlobalValues.getCdnUrl() + USER_PROFILE_IMAGE_PATH + thumbnailKey;
+                GlobalValues.getCdnUrl() + GlobalValues.getPREFIX() + USER_PROFILE_IMAGE_PATH +
+                        thumbnailKey;
     }
 
     public void setPartner(User partner) {
@@ -262,7 +267,6 @@ public class User implements UserDetails, OAuth2User {
         this.partnerId = null;
         this.weddingAnniversaryDate = null;
         this.language = Language.KOR;
-        this.setting = new NotificationSetting();
         this.fcmTokens = new ArrayList<>();
         this.roles = List.of(RoleType.NONE.name());
         this.failedLoginAttempts = 0;
@@ -271,11 +275,97 @@ public class User implements UserDetails, OAuth2User {
         this.credentialsNonExpired = true;
         this.enabled = false;
         this.signUpDate = LocalDate.now();
+        this.lastLoginDate = null;
+        this.blockedNotificationTypes = List.of();
+        this.nicknameUpdatedAt = LocalDate.now();
+        this.reported = false;
+        this.provider = OAuthProvider.NONE;
+        this.testUser = false;
     }
 
     public void setLastLoginDate() {
         if (this.lastLoginDate == null || this.lastLoginDate.isBefore(LocalDate.now())) {
             this.lastLoginDate = LocalDate.now();
         }
+    }
+
+    /**
+     * 특정 알림 타입이 차단되어 있는지 확인
+     *
+     * @param notificationType 확인할 알림 타입
+     * @return 차단되어 있으면 true, 허용되어 있으면 false
+     */
+    public boolean isNotificationBlocked(NotificationType notificationType) {
+        if (blockedNotificationTypes == null) {
+            return false;
+        }
+        return blockedNotificationTypes.contains(notificationType);
+    }
+
+    /**
+     * 특정 알림 타입을 차단
+     *
+     * @param notificationType 차단할 알림 타입 (COMMENT, LIKE, MARKETING만 가능)
+     */
+    public void blockNotification(NotificationType notificationType) {
+        if (!isBlockableNotificationType(notificationType)) {
+            throw new BusinessException(ExceptionCode.NOTIFICATION_TYPE_NOT_BLOCKABLE);
+        }
+
+        if (blockedNotificationTypes == null) {
+            blockedNotificationTypes = new ArrayList<>();
+        }
+
+        if (!blockedNotificationTypes.contains(notificationType)) {
+            blockedNotificationTypes.add(notificationType);
+        }
+    }
+
+    /**
+     * 특정 알림 타입 차단 해제
+     *
+     * @param notificationType 차단 해제할 알림 타입
+     */
+    public void unblockNotification(NotificationType notificationType) {
+        if (blockedNotificationTypes != null) {
+            blockedNotificationTypes.remove(notificationType);
+        }
+    }
+
+    /**
+     * 알림 타입의 차단 상태를 토글 (차단 <-> 허용)
+     *
+     * @param notificationType 토글할 알림 타입
+     */
+    public void toggleNotificationBlock(NotificationType notificationType) {
+        if (isNotificationBlocked(notificationType)) {
+            unblockNotification(notificationType);
+        }
+        else {
+            blockNotification(notificationType);
+        }
+    }
+
+    /**
+     * 차단 가능한 알림 타입인지 확인
+     *
+     * @param notificationType 확인할 알림 타입
+     * @return 차단 가능하면 true
+     */
+    private boolean isBlockableNotificationType(NotificationType notificationType) {
+        return notificationType == COMMENT ||
+                notificationType == LIKE ||
+                notificationType == NotificationType.MARKETING;
+    }
+
+    /**
+     * 알림을 받을 수 있는 상태인지 확인 (특정 타입)
+     *
+     * @param notificationType 확인할 알림 타입
+     * @return 알림을 받을 수 있으면 true
+     */
+    public boolean canReceiveNotification(NotificationType notificationType) {
+        // 계정이 활성화되어 있고, 해당 알림이 차단되지 않은 경우
+        return this.enabled && !isNotificationBlocked(notificationType);
     }
 }
