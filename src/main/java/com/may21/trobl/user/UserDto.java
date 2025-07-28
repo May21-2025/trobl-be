@@ -19,20 +19,24 @@ public class UserDto {
     @Getter
     public static class Info {
         private final Long userId;
+        private final String username;
         private final String nickname;
         @Setter
         private String thumbnailUrl;
 
         @JsonCreator
-        public Info(@JsonProperty("userId") Long userId, @JsonProperty("nickname") String nickname,
+        public Info(@JsonProperty("userId") Long userId, @JsonProperty("username") String username,
+                @JsonProperty("nickname") String nickname,
                 @JsonProperty("thumbnailUrl") String thumbnailUrl) {
             this.userId = userId;
+            this.username = username;
             this.nickname = nickname;
             this.thumbnailUrl = thumbnailUrl;
         }
 
         public Info(User user) {
             this.userId = user.getId();
+            this.username = user.getUsername();
             this.nickname = user.getNickname();
             this.thumbnailUrl = user.getThumbnailUrl();
         }
@@ -47,8 +51,9 @@ public class UserDto {
         private final LocalDate marriageDate;
 
         @JsonCreator
-        public Update(@JsonProperty("nickname") String nickname, @JsonProperty("address") String address,
-                @JsonProperty("married") Boolean married, @JsonProperty("marriageDate") LocalDate marriageDate) {
+        public Update(@JsonProperty("nickname") String nickname,
+                @JsonProperty("address") String address, @JsonProperty("married") Boolean married,
+                @JsonProperty("marriageDate") LocalDate marriageDate) {
             this.nickname = nickname;
             this.address = address;
             this.married = married;

@@ -3,7 +3,8 @@ package com.may21.trobl._global.enums;
 public enum PostingType {
     GENERAL,
     POLL,
-    FAIR_VIEW;
+    FAIR_VIEW,
+    ;
 
     public static PostingType fromString(String type) {
         return switch (type.toUpperCase()) {

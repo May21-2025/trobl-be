@@ -78,7 +78,7 @@ public class PostDto {
 
         public Card(Posting post, int commentCount, User user) {
             this.postId = post.getId();
-            this.user = user == null ?null: new UserDto.Info(user);
+            this.user = user == null ? null : new UserDto.Info(user);
             this.viewCount = post.getAllViewCount();
             this.title = decodeHtml(post.getTitle());
 
@@ -93,6 +93,7 @@ public class PostDto {
         private final PostingType postType;
         private final LocalDateTime createdAt;
         private final boolean newRequest;
+        private final boolean confirmed;
 
         public RequestedListItem(Posting post, User user, List<Tag> tags, boolean newRequest) {
             super(post, user, tags);
@@ -100,6 +101,12 @@ public class PostDto {
             this.postType = post.getPostType();
             this.createdAt = post.getCreatedAt();
             this.newRequest = newRequest;
+            if (post.getPostType() == PostingType.FAIR_VIEW) {
+                this.confirmed = post.isConfirmed();
+            }
+            else {
+                this.confirmed = true;
+            }
         }
     }
 
@@ -202,6 +209,7 @@ public class PostDto {
         private final String postType;
         private final int commentCount;
         private final int likeCount;
+        private final boolean confirmed;
 
         public Detail(Posting post, User user, Map<Long, User> userMap, List<Tag> tags,
                 boolean liked, boolean bookmarked, List<Long> postIds, boolean isOwner) {
@@ -221,6 +229,7 @@ public class PostDto {
                     .size();
             this.likeCount = post.getPostLikes()
                     .size();
+            this.confirmed = post.isConfirmed();
         }
 
         public void blindPartnerContent(Long userId) {

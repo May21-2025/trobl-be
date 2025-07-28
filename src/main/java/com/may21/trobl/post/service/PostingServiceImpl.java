@@ -151,7 +151,7 @@ public class PostingServiceImpl implements PostingService {
         PostDto.Detail detailDto =
                 new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked, votedOptionIds,
                         isOwner);
-        if (post.getPostType() == PostingType.FAIR_VIEW && !post.isConfirmed())
+        if (!post.isConfirmed() && post.getPostType() == PostingType.FAIR_VIEW )
             detailDto.blindPartnerContent(userId);
         return detailDto;
     }
