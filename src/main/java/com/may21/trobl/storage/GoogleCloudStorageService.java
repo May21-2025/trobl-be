@@ -31,13 +31,18 @@ import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_
 @RequiredArgsConstructor
 public class GoogleCloudStorageService implements StorageService {
     private final Storage storage;
-    private final CdnCacheService cdnCacheService;
 
     @Value("${BUCKET_NAME}")
     private String BUCKET_NAME;
 
     @Value("${CDN_LB_DOMAIN}")
     private String cdnLbIp;
+
+    @Value("${STAGE}")
+    private String stage;
+
+    private final String PREFIX = "public/" + stage + "/";
+
 
     public String uploadPublicFile(MultipartFile file, String folder) throws IOException {
         String fileName = folder + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
@@ -127,7 +132,7 @@ public class GoogleCloudStorageService implements StorageService {
     public boolean deleteFileWithCacheInvalidation(String fileName) {
         boolean deleted = storage.delete(BlobId.of(BUCKET_NAME, fileName));
         if (deleted && cdnLbIp != null && !cdnLbIp.isEmpty()) {
-//            cdnCacheService.invalidateCdnCache(fileName);
+            //            cdnCacheService.invalidateCdnCache(fileName);
         }
         return deleted;
     }
@@ -138,7 +143,7 @@ public class GoogleCloudStorageService implements StorageService {
         try {
 
             String imageKey = userId + ".webp";
-            String thumbnailFileName = USER_PROFILE_IMAGE_PATH + imageKey;
+            String thumbnailFileName = PREFIX + USER_PROFILE_IMAGE_PATH + imageKey;
 
             byte[] thumbnailBytes = createThumbnail(file.getBytes(), 150, 150);
 
@@ -154,7 +159,7 @@ public class GoogleCloudStorageService implements StorageService {
             storage.create(blobInfo, thumbnailBytes);
             // CDN CAche 무효화
             if (cdnLbIp != null && !cdnLbIp.isEmpty()) {
-//                cdnCacheService.invalidateCdnCache(thumbnailFileName);
+                //                cdnCacheService.invalidateCdnCache(thumbnailFileName);
             }
 
             return imageKey;
@@ -264,8 +269,8 @@ public class GoogleCloudStorageService implements StorageService {
     // 사용자 프로필 이미지 삭제
     public boolean deleteUserProfileImage(Long userId) {
         try {
-            String thumbnailFileName = "public/thumbnails/" + userId + ".webp";
-            return deleteFileWithCacheInvalidation(thumbnailFileName);
+            String thumbnailFileName = PREFIX + USER_PROFILE_IMAGE_PATH + userId + ".webp";
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;

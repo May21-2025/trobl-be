@@ -12,8 +12,8 @@ public class GlobalValues {
     private static final int STAGE_VERSION = 2;
 
 
-    public static final String USER_PROFILE_IMAGE_PATH = "public/thumbnails/users/";
-    public static final String AD_IMAGE_PATH = "public/ads/";
+    public static final String USER_PROFILE_IMAGE_PATH = "/thumbnails/users/";
+    public static final String AD_IMAGE_PATH = "/ads/";
 
     public static String getBEVersion() {
         return MAIN_VERSION + "." + DEV_VERSION + "." + STAGE_VERSION;
