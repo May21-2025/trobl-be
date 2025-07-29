@@ -104,3 +104,8 @@ dependencyManagement {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// build 태스크가 실행되기 전에 copyProperties 태스크를 실행하도록 설정
+tasks.named('build') {
+	dependsOn 'copyProperties'
+}

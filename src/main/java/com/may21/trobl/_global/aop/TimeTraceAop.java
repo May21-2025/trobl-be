@@ -38,8 +38,6 @@ public class TimeTraceAop {
     @Value("${performance.monitor.simple-threshold:50}")
     private int simpleThreshold;
 
-    private String asciiLogo;
-
     public TimeTraceAop(ApiQueryCounter apiQueryCounter, PerformanceMetrics performanceMetrics) {
         this.apiQueryCounter = apiQueryCounter;
         this.performanceMetrics = performanceMetrics;
@@ -47,8 +45,8 @@ public class TimeTraceAop {
 
     @PostConstruct
     public void init() {
-        asciiLogo = generateAsciiLogo();
-        log.info("\n\n{}\n\n{}\n\n",
+        String asciiLogo = generateAsciiLogo();
+        log.warn("\n\n{}\n\n{}\n\n",
                 color("STAGE : " + stage, BROWN),
                 color(asciiLogo, TROBL_PINK)
         );
@@ -85,11 +83,11 @@ public class TimeTraceAop {
             List<ApiQueryCounter.QueryTrace> queryTraces = apiQueryCounter.getQueryTraces();
             
             // 디버깅: 쿼리 추적 정보 확인
-            log.debug("[DEBUG] " + fullMethodName + " - Queries: " + queryCount + ", Traces: " + queryTraces.size());
+            log.info("[DEBUG] " + fullMethodName + " - Queries: " + queryCount + ", Traces: " + queryTraces.size());
             if (!queryTraces.isEmpty()) {
-                log.debug("[DEBUG] Sample traces:");
+                log.info("[DEBUG] Sample traces:");
                 queryTraces.stream().limit(3).forEach(trace ->
-                        log.debug("[DEBUG]   " + trace.toString()));
+                        log.info("[DEBUG]   " + trace.toString()));
             }
             
             apiQueryCounter.reset();
@@ -111,7 +109,7 @@ public class TimeTraceAop {
 
             // 심각한 성능 이슈 별도 경고
             if (isCritical(queryThreshold, timeThreshold)) {
-                log.error("🚨 CRITICAL PERFORMANCE ISSUE: [{}] Request ID: {} | " +
+                log.info("🚨 CRITICAL PERFORMANCE ISSUE: [{}] Request ID: {} | " +
                                 "Time: {}ms | Queries: {} | URI: {}",
                         fullMethodName, requestId, execTimeMillis, queryCount, requestURI);
             }

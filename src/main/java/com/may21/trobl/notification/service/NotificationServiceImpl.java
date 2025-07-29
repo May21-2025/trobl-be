@@ -105,7 +105,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void queueForBatchNotification(Long userId, NotificationDto.SendRequest request) {
-        log.info("{} notification sent to user: {}", request.getNotificationType(), userId);
+        log.debug("{} notification sent to user: {}", request.getNotificationType(), userId);
         Long notificationId = notificationRepository.save(new Notification(userId, request, null))
                 .getId();
         String key = "batch_notifications:" + notificationId;
@@ -145,7 +145,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void processBatchNotifications() {
         Set<String> userKeys = redisTemplate.keys("batch_notifications:*");
-        log.info("{} batch notifications processed", userKeys.size());
+        log.debug("{} batch notifications processed", userKeys.size());
         for (String key : userKeys) {
             String userId = key.substring("batch_notifications:".length());
             List<Object> notificationIds = redisTemplate.opsForList()
@@ -426,10 +426,6 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendPartnerRequest(User targetUser, User sentUser) {
         String title = PARTNER_REQUEST_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록 신청이 도착했습니다. 확인해주세요!";
-
-        log.info("targetUser username : {}, sentUser username: {} notificationType : {} ",
-                targetUser.getUsername(), sentUser.getUsername(), NotificationType.PARTNER_REQUEST);
-
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(targetUser.getId())
                 .title(title)
@@ -464,10 +460,6 @@ public class NotificationServiceImpl implements NotificationService {
                 .notificationType(NotificationType.PARTNER_ACCEPTED)
                 .build());
         for (NotificationDto.SendRequest request : requests) {
-            log.info(
-                    "Sending notification to user: {}, title: {}, body: {}, itemType: {}, itemId: {}",
-                    request.getUserId(), request.getTitle(), request.getBody(),
-                    request.getItemType(), request.getItemId());
             createAndSendNotification(request.getUserId(), request, NotificationStrategy.IMMEDIATE,
                     null);
         }
@@ -478,9 +470,6 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendPartnerDeclined(User targetUser, User sentUser) {
         String title = PARTNER_DECLINED_TITLE.replace("${partnerName}", sentUser.getNickname());
         String body = "배우자 등록 신청이 거절되었습니다. 다시 시도해주세요!";
-
-        log.info("targetUser username : {}, sentUser username: {} notificationType : {} ",
-                targetUser.getUsername(), sentUser.getUsername(), NotificationType.PARTNER_REQUEST);
 
         NotificationDto.SendRequest request = NotificationDto.SendRequest.builder()
                 .userId(targetUser.getId())
@@ -530,7 +519,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .build();
         createAndSendNotification(testUserId, itemData, notificationStrategy, LocalDateTime.now()
                 .plusMinutes(1));
-        log.info("Test notification sent to user: {}, type: {}, title: {}, body: {}, itemData: {}",
+        log.debug("Test notification sent to user: {}, type: {}, title: {}, body: {}, itemData: {}",
                 testUserId, notificationType, s, s1, itemData);
 
     }

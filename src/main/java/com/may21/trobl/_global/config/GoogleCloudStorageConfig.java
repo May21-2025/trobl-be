@@ -4,7 +4,6 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import com.may21.trobl.storage.CdnCacheService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +36,6 @@ public class GoogleCloudStorageConfig {
         info.put("email", saCreds.getClientEmail());
         info.put("projectId", saCreds.getProjectId());
         info.put("type", "Service Account");
-        log.info(info.toString());
         return StorageOptions.newBuilder()
                 .setProjectId(projectId)
                 .setCredentials(credentials)

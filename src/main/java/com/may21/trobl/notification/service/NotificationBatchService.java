@@ -72,7 +72,7 @@ public class NotificationBatchService {
     @Async("notificationTaskExecutor")
     @Transactional
     public void addPostLikeToQueue(Long postId, Long actorUserId) {
-        log.info("Adding post like to queue asynchronously: postId={}, actorUserId={}", postId,
+        log.debug("Adding post like to queue asynchronously: postId={}, actorUserId={}", postId,
                 actorUserId);
 
         User actor = userRepository.findById(actorUserId)
@@ -268,7 +268,7 @@ public class NotificationBatchService {
             return;
         }
 
-        log.info("Processing {} batch like notification groups", likeKeys.size());
+        log.debug("Processing {} batch like notification groups", likeKeys.size());
 
         Map<Long, List<String>> userLikeKeys = new HashMap<>();
 
@@ -297,7 +297,7 @@ public class NotificationBatchService {
             processedUsers++;
         }
 
-        log.info("Started processing batch like notifications for {} users", processedUsers);
+        log.debug("Started processing batch like notifications for {} users", processedUsers);
     }
 
     /**
@@ -393,7 +393,7 @@ public class NotificationBatchService {
 
         try {
             pushNotificationService.sendNotificationTo(user.getFcmTokenList(), request);
-            log.info("Sent batch like notification to user {}: {} likes on {} {}", user.getId(),
+            log.debug("Sent batch like notification to user {}: {} likes on {} {}", user.getId(),
                     likes.size(), itemTypeStr, itemId);
         } catch (Exception e) {
             log.error("Failed to send batch like notification to user {}", user.getId(), e);

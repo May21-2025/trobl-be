@@ -467,8 +467,6 @@ public class PostingServiceImpl implements PostingService {
     @Override
     public PostDto.FairViewItem setFairView(Long fairViewId, Long userId,
             PostDto.FairViewRequest request) {
-
-        log.info("add confirmRequest");
         FairView fairView = fairViewRepository.findById(fairViewId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.FAIR_VIEW_NOT_FOUND));
         if (!fairView.getUserId()
@@ -479,7 +477,6 @@ public class PostingServiceImpl implements PostingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         if (!fairView.isConfirmed()) {
-            log.info("send confirmRequest");
             fairView.setConfirmed(true);
             notificationService.sendFairViewConfirmedRequest(fairView.getId());
         }

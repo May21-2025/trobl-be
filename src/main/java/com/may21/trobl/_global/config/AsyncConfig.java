@@ -50,7 +50,7 @@ public class AsyncConfig {
         // 초기화
         executor.initialize();
         
-        log.info("Notification TaskExecutor initialized with corePoolSize={}, maxPoolSize={}, queueCapacity={}", 
+        log.debug("Notification TaskExecutor initialized with corePoolSize={}, maxPoolSize={}, queueCapacity={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;
@@ -70,7 +70,7 @@ public class AsyncConfig {
         
         scheduler.initialize();
         
-        log.info("TaskScheduler initialized with poolSize={}", scheduler.getPoolSize());
+        log.debug("TaskScheduler initialized with poolSize={}", scheduler.getPoolSize());
         
         return scheduler;
     }
@@ -93,7 +93,7 @@ public class AsyncConfig {
         
         executor.initialize();
         
-        log.info("Async TaskExecutor initialized with corePoolSize={}, maxPoolSize={}, queueCapacity={}", 
+        log.debug("Async TaskExecutor initialized with corePoolSize={}, maxPoolSize={}, queueCapacity={}",
                 executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
         
         return executor;

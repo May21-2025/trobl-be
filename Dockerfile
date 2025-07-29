@@ -13,4 +13,4 @@ COPY build/libs/${JAR_FILE}.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java -Duser.timezone=Asia/Seoul -jar /app/app.jar --spring.profiles.active=${PROFILE} --server.env=${ENV}"]
+ENTRYPOINT ["sh", "-c", "-Dspring.profiles.active=${PROFILE}","-Dserver.env=${ENV}", "java -Duser.timezone=Asia/Seoul -jar /app/app.jar"]
