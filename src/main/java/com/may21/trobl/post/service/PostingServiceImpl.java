@@ -522,6 +522,149 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
+    public List<PostDto.QuickPoll> getQuickPolls(Long userId) {
+        List<Long> blockedPostIds =
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.POST) :
+                        List.of();
+        List<Long> blockedUserIds = 
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.USER) :
+                        List.of();
+
+        // Fetch more posts than needed to have enough after prioritization
+        List<Posting> allRecentPolls = postRepository.findRecentPollsByType(
+                15, PostingType.POLL, blockedPostIds, blockedUserIds);
+
+        if (allRecentPolls.isEmpty()) {
+            return List.of();
+        }
+
+        // Get posts that user has already viewed
+        List<Long> viewedPostIds = userId != null ? 
+                postRepository.getAllIdsInListViewedByUserId(userId, allRecentPolls) : 
+                List.of();
+
+        // Separate viewed and unviewed posts
+        List<Posting> unviewedPosts = allRecentPolls.stream()
+                .filter(post -> !viewedPostIds.contains(post.getId()))
+                .toList();
+        
+        List<Posting> viewedPosts = allRecentPolls.stream()
+                .filter(post -> viewedPostIds.contains(post.getId()))
+                .toList();
+
+        // Prioritize unviewed posts first, then viewed posts
+        List<Posting> prioritizedPosts = new ArrayList<>();
+        prioritizedPosts.addAll(unviewedPosts);
+        prioritizedPosts.addAll(viewedPosts);
+
+        // Take only the first 5 posts after prioritization
+        List<Posting> finalPosts = prioritizedPosts.stream()
+                .limit(5)
+                .toList();
+
+        if (finalPosts.isEmpty()) {
+            return List.of();
+        }
+
+        // Build QuickPoll list using cached data when available
+        List<PostDto.QuickPoll> quickPolls = new ArrayList<>();
+        List<Posting> uncachedPosts = new ArrayList<>();
+        
+        for (Posting post : finalPosts) {
+            Optional<RedisDto.CachedPostDto> cachedPostOpt = cachedPostService.getCachedPost(post.getId());
+            
+            if (cachedPostOpt.isPresent()) {
+                // Use cached data
+                RedisDto.CachedPostDto cachedPost = cachedPostOpt.get();
+                
+                // Get user-specific voting data
+                List<Long> userVotedOptions = userId != null ? 
+                        voteRepository.findVotedPostByUserId(post, userId) : List.of();
+                boolean isOwner = post.getUserId().equals(userId);
+                
+                // Build QuickPoll from cached data
+                PostDto.QuickPoll quickPoll = buildQuickPollFromCache(cachedPost, userVotedOptions, isOwner);
+                if (quickPoll != null) {
+                    quickPolls.add(quickPoll);
+                    log.debug("Using cached data for QuickPoll: {}", post.getId());
+                } else {
+                    uncachedPosts.add(post);
+                }
+            } else {
+                uncachedPosts.add(post);
+            }
+        }
+
+        // Process uncached posts if any
+        if (!uncachedPosts.isEmpty()) {
+            // Fetch poll data for uncached posts
+            List<Long> uncachedPostIds = uncachedPosts.stream()
+                    .map(Posting::getId)
+                    .toList();
+            postRepository.findPostsWithPollByIds(uncachedPostIds);
+
+            // Get voted option IDs for uncached posts
+            List<Long> votedOptionIds = userId != null ? 
+                    voteRepository.findVotedOptionIdsByUserId(uncachedPosts, userId) : List.of();
+
+            // Get user data for post owners
+            List<User> users = userRepository.findAllById(uncachedPosts.stream()
+                    .map(Posting::getUserId)
+                    .collect(Collectors.toSet()));
+            Map<Long, User> userMap = users.stream()
+                    .collect(Collectors.toMap(User::getId, Function.identity()));
+
+            // Convert uncached posts to QuickPoll DTOs
+            for (Posting post : uncachedPosts) {
+                Long ownerId = post.getUserId();
+                boolean isOwner = ownerId.equals(userId);
+                User owner = userMap.getOrDefault(ownerId, null);
+                
+                PostDto.QuickPoll quickPoll = new PostDto.QuickPoll(post, owner, votedOptionIds, isOwner);
+                quickPolls.add(quickPoll);
+                
+                // Cache the post data for future requests
+                List<Tag> tags = tagService.getPostTags(post);
+                PostDto.PollDto pollDto = post.getPoll() != null ? 
+                        new PostDto.PollDto(post.getPoll(), votedOptionIds, isOwner) : null;
+                cachedPostService.cachePost(post, owner, tags, pollDto, null);
+                
+                log.debug("Cached post data for QuickPoll: {}", post.getId());
+            }
+        }
+
+        // Maintain the original order based on prioritization
+        return quickPolls.stream()
+                .sorted((a, b) -> {
+                    int aIndex = finalPosts.stream()
+                            .mapToInt(p -> p.getId().equals(a.getPostId()) ? finalPosts.indexOf(p) : -1)
+                            .filter(i -> i >= 0)
+                            .findFirst()
+                            .orElse(Integer.MAX_VALUE);
+                    int bIndex = finalPosts.stream()
+                            .mapToInt(p -> p.getId().equals(b.getPostId()) ? finalPosts.indexOf(p) : -1)
+                            .filter(i -> i >= 0)
+                            .findFirst()
+                            .orElse(Integer.MAX_VALUE);
+                    return Integer.compare(aIndex, bIndex);
+                })
+                .toList();
+    }
+    
+    /**
+     * Build QuickPoll DTO from cached post data
+     */
+    private PostDto.QuickPoll buildQuickPollFromCache(RedisDto.CachedPostDto cachedPost, 
+                                                     List<Long> votedOptionIds, boolean isOwner) {
+        if (cachedPost.getPoll() == null) {
+            return null; // Not a poll post
+        }
+        
+        // Create QuickPoll directly from cached data without additional DB queries
+        return new PostDto.QuickPoll(cachedPost, votedOptionIds, isOwner);
+    }
+
+    @Override
     public boolean bookmarkPost(Long postId, Long userId) {
         boolean marked = true;
         PostBookmark bookmark = bookmarkRepository.findByPostingIdAndUserId(postId, userId)

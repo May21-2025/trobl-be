@@ -131,7 +131,7 @@ public class PostingController {
     @GetMapping("/quick-poll")
     public ResponseEntity<Message> getRandomQuickPoll(@AuthenticationPrincipal User user) {
         Long userId = user != null ? user.getId() : null;
-        List<PostDto.QuickPoll> response = postingService.getRandomQuickPoll(userId);
+        List<PostDto.QuickPoll> response = postingService.getQuickPolls(userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

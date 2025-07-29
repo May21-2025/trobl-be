@@ -90,6 +90,16 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             """, nativeQuery = true)
     List<Posting> findRandomPostsByType(@Param("count") int count, @Param("postingType") PostingType postingType, List<Long> blockedPostIds);
 
+    @Query("SELECT p FROM Posting p " +
+            "WHERE p.reported != true AND p.postType = :postingType AND p.confirmed = true " +
+            "AND p.id NOT IN :blockedPostIds AND p.userId NOT IN :blockedUserIds " +
+            "ORDER BY p.createdAt DESC " +
+            "LIMIT :count")
+    List<Posting> findRecentPollsByType(@Param("count") int count, 
+                                       @Param("postingType") PostingType postingType, 
+                                       List<Long> blockedPostIds, 
+                                       List<Long> blockedUserIds);
+
 
     @Query("SELECT p FROM Posting p LEFT JOIN FETCH p.poll WHERE p.id IN :postIds")
     List<Posting> findPostsWithPollByIds(@Param("postIds") List<Long> postIds);

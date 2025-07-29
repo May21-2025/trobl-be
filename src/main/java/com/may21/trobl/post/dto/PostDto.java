@@ -194,6 +194,40 @@ public class PostDto {
             }
             this.voteCount = voteCount;
         }
+
+        // Constructor from cached data
+        public QuickPoll(RedisDto.CachedPostDto cachedPost, List<Long> votedOptionIds, boolean isOwner) {
+            super(cachedPost);
+            this.userId = cachedPost.getUserId();
+            this.createdAt = cachedPost.getCreatedAt();
+            this.voteCount = cachedPost.getVoteCount();
+            
+            // Update poll with user-specific voting data
+            if (cachedPost.getPoll() != null) {
+                PollDto basePoll = cachedPost.getPoll();
+                // Create new poll options with updated voting status
+                List<PollItem> updatedOptions = basePoll.getPollOptions().stream()
+                        .map(option -> new PollItem(
+                                option.getPollOptionId(),
+                                option.getName(),
+                                option.getVoteCount(),
+                                option.getIndex(),
+                                votedOptionIds.contains(option.getPollOptionId())
+                        ))
+                        .toList();
+                
+                // Create updated poll DTO
+                this.poll = new PollDto(
+                        basePoll.getPollId(),
+                        basePoll.getTitle(),
+                        basePoll.isAllowMultipleVotes(),
+                        isOwner || !votedOptionIds.isEmpty(), // showPollResult
+                        updatedOptions
+                );
+            } else {
+                this.poll = null;
+            }
+        }
     }
 
     @Getter
@@ -266,6 +300,16 @@ public class PostDto {
 
             }
             this.showPollResult = isOwner || hasVoted;
+        }
+
+        // Constructor for cached data
+        public PollDto(Long pollId, String title, boolean allowMultipleVotes, 
+                      boolean showPollResult, List<PollItem> pollOptions) {
+            this.pollId = pollId;
+            this.title = title;
+            this.allowMultipleVotes = allowMultipleVotes;
+            this.showPollResult = showPollResult;
+            this.pollOptions = pollOptions;
         }
     }
 
