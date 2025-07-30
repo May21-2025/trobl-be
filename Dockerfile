@@ -5,9 +5,12 @@ WORKDIR /app
 ENV TZ=Asia/Seoul
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+ARG PROFILE
+ARG ENV
+
 ENV JAR_FILE=trobl-0.0.1-SNAPSHOT
-ENV PROFILE=dev
-ENV ENV=dev
+ENV PROFILE=${PROFILE}
+ENV ENV=${ENV}
 
 COPY build/libs/${JAR_FILE}.jar app.jar
 

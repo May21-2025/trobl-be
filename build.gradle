@@ -59,37 +59,44 @@ dependencies {
 
 }
 
+
+// Register the copyProperties task
 tasks.register('copyProperties') {
+	// Determine the 'env' property during the configuration phase.
+	// This makes the task compatible with the configuration cache.
+	// Using project.hasProperty and project.property is preferred over findProperty.
+	def env = project.hasProperty('env') ? project.property('env') : 'local'
+
+	// Declare 'env' as an input property for the task.
+	// This tells Gradle that the task's output depends on this value,
+	// allowing for better caching and up-to-date checks.
+	inputs.property('environment', env)
+
+	// Determine the source properties file based on the 'env' value.
+	// Use layout.projectDirectory for robust path resolution.
+	def propertiesFileName = "application-${env}.properties"
+	def sourcePropertiesFile = layout.projectDirectory.file("src/main/resources/${propertiesFileName}")
+
+	// Define the task's action using doLast.
+	// The 'env' and 'sourcePropertiesFile' variables are already resolved
+	// during the configuration phase, so they are safe to use here.
 	doLast {
-		def env = project.findProperty('env') ?: 'local'
-		def propertiesFile
 		println "Environment: $env"
-		switch (env) {
-			case 'prod':
-				propertiesFile = file('src/main/resources/application-prod.properties')
-				break
-			case 'dev':
-				propertiesFile = file('src/main/resources/application-dev.properties')
-				break
-			case 'local':
-				propertiesFile = file('src/main/resources/application-local.properties')
-				break
-			default:
-				propertiesFile = file('src/main/resources/application-local.properties')
-				break
-		}
+		println "Using properties file: ${sourcePropertiesFile.asFile}"
 
-		println "Using properties file: $propertiesFile"
-
-		if (propertiesFile.exists()) {
-			println "Properties file exists: $propertiesFile"
+		if (sourcePropertiesFile.asFile.exists()) {
+			println "Properties file exists: ${sourcePropertiesFile.asFile}"
+			// Use the copy action to move the selected properties file
+			// to the build directory, renaming it to application.properties.
+			// Use layout.buildDirectory for robust output path resolution.
 			copy {
-				from propertiesFile
-				into 'build/resources/main'
+				from sourcePropertiesFile
+				into layout.buildDirectory.dir('resources/main')
 				rename { 'application.properties' }
 			}
 		} else {
-			throw new GradleException("Properties file not found: $propertiesFile")
+			// Throw an error if the specified properties file does not exist.
+			throw new GradleException("Properties file not found: ${sourcePropertiesFile.asFile}")
 		}
 	}
 }

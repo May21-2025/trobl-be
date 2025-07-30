@@ -30,4 +30,9 @@ public interface VoteRepository extends JpaRepository<PollVote, Long> {
 
     @Query("SELECT p.pollOption.id FROM PollVote p WHERE p.pollOption.poll.posting = :post AND p.userId = :userId")
     List<Long> findVotedPostByUserId(Posting post, Long userId);
+
+    @Query("SELECT p.pollOption.id FROM PollVote p WHERE p.pollOption.poll.posting.id IN :postIds" +
+            " AND p" +
+            ".userId = :userId")
+    List<Long> findVotedPostIdsByUserId(List<Long> postIds, Long userId);
 }

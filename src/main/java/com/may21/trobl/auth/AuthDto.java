@@ -110,4 +110,15 @@ public class AuthDto {
         }
     }
 
+    @Getter
+    public static class OAuthLoginRequest {
+        private final String provider;
+        private final String code;
+
+        public OAuthLoginRequest(String provider, String code) {
+            this.provider = provider;
+            this.code = code;
+        }
+    }
+
 }
