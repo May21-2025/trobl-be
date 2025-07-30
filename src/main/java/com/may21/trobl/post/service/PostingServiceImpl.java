@@ -380,6 +380,7 @@ public class PostingServiceImpl implements PostingService {
             throw new BusinessException(ExceptionCode.POST_NOT_AUTHORIZED);
         }
         postRepository.delete(post);
+        evictAllTopPosts();
         return true;
     }
 
