@@ -46,7 +46,7 @@ public class GoogleCloudStorageService implements StorageService {
             BlobId blobId = BlobId.of(BUCKET_NAME, thumbnailFileName);
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                     .setContentType("image/webp")
-                    .setCacheControl("public, max-age=2592000")
+                    .setCacheControl("no-cache, max-age=0")
                     .setMetadata(Map.of("userId", String.valueOf(userId), "type", "thumbnail",
                             "originalFileName", Objects.requireNonNull(file.getOriginalFilename()),
                             "uploadTime", String.valueOf(System.currentTimeMillis())))
