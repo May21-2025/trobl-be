@@ -8,6 +8,7 @@ import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
+import com.may21.trobl.pushAlarm.DeviceFcmTokenRepository;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -27,6 +28,7 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private final UserRepository userRepository;
     private final GoogleOAuthService googleOAuthService;
     private final AppleOAuthService appleOAuthService;
+    private final DeviceFcmTokenRepository deviceFcmTokenRepository;
     @Lazy
     private final PasswordEncoder passwordEncoder;
     private final KakaoOAuthService kakaoOAuthService;
@@ -141,15 +143,15 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         OAuthProvider type = user.getAttribute("OAuth") != null ?
                 OAuthProvider.valueOf(user.getAttribute("OAuth")) : OAuthProvider.NONE;
         unlinkOAuth(type, user);
-        setUnregisteredInfo(user);
+        int unregisteredUserCount = userRepository.countByUnregistered(true);
+        user.setUnregistered(unregisteredUserCount);
+        deviceFcmTokenRepository.deleteByUser(user);
+        userRepository.save(user);
+        userRepository.findPartnerById(id)
+                .ifPresent(partner -> partner.setPartnerId(null));
         return true;
     }
 
-    private void setUnregisteredInfo(User user) {
-        int unregisteredUserCount = userRepository.countByUnregistered(true);
-        user.setUnregistered(unregisteredUserCount);
-        userRepository.save(user);
-    }
 
     @Override
     public boolean isUsernameTaken(String username) {
@@ -164,10 +166,12 @@ public class AuthorizationServiceImpl implements AuthorizationService {
             throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
         }
         switch (type) {
-            case GOOGLE -> user.setPartner(null);
-            case APPLE -> user.setPartner(null);
-            case NONE -> throw new BusinessException(ExceptionCode.INVALID_INPUT_VALUE);
+            case GOOGLE -> user.setPartnerId(null);
+            case APPLE -> user.setPartnerId(null);
+            case NONE -> {
+                return;
+            }
         }
-        user.setPartner(null);
+        user.setPartnerId(null);
     }
 }

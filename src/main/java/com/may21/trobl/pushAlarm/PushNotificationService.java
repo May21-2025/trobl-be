@@ -72,10 +72,11 @@ public class PushNotificationService {
             } catch (FirebaseMessagingException e) {
                 String errorCode = e.getMessagingErrorCode()
                         .name();
-                log.error("=======================================\n" +
-                                "Failed to send FCM notification to token: {} - errorCode: {}\n" +
-                                "Detail : {}" + "=======================================\n", fcmToken,
-                        errorCode, e.toString());
+                log.error("""
+                        =======================================
+                        Failed to send FCM notification to token: {} - errorCode: {}
+                        Detail : {}=======================================
+                        """, fcmToken, errorCode, e.toString());
 
                 if (isInvalidTokenError(errorCode)) {
                     deleteFcmTokenFromDatabase(fcmToken);
@@ -104,62 +105,6 @@ public class PushNotificationService {
                 );
     }
 
-    /**
-     * 배치 알림 전송 - 여러 사용자에게 동일한 메시지
-     */
-    public void sendBatchNotification(NotificationDto.BatchSendRequest request) {
-        try {
-            // FCM Token들 수집
-            List<String> tokens =
-                    deviceFcmTokenRepository.findFcmTokensByUserIds(request.getUserIds())
-                            .stream()
-                            .filter(token -> token != null && !token.trim()
-                                    .isEmpty())
-                            .toList();
-
-            if (tokens.isEmpty()) {
-                log.warn("No valid FCM tokens found for batch notification");
-                return;
-            }
-
-            Map<String, String> data = createBatchNotificationData(request);
-
-            MulticastMessage message = MulticastMessage.builder()
-                    .addAllTokens(tokens)
-                    .putAllData(data)
-                    .setAndroidConfig(AndroidConfig.builder()
-                            .setPriority(AndroidConfig.Priority.HIGH)
-                            .setNotification(AndroidNotification.builder()
-                                    .setTitle(request.getTitle())
-                                    .setBody(request.getBody())
-                                    .setSound("default")
-                                    .setChannelId("trobl_notifications")
-                                    .build())
-                            .build())
-                    .setApnsConfig(ApnsConfig.builder()
-                            .setAps(Aps.builder()
-                                    .setAlert(ApsAlert.builder()
-                                            .setTitle(request.getTitle())
-                                            .setBody(request.getBody())
-                                            .build())
-                                    .setSound("default")
-                                    .build())
-                            .build())
-                    .build();
-
-            BatchResponse response = firebaseMessaging.sendMulticast(message);
-            log.debug("Batch FCM notification sent: success={}, failure={}",
-                    response.getSuccessCount(), response.getFailureCount());
-
-            // 실패한 토큰들 처리
-            handleBatchErrors(response, tokens);
-
-        } catch (FirebaseMessagingException e) {
-            log.error("Failed to send batch FCM notification: {}", e.getMessage());
-        } catch (Exception e) {
-            log.error("Unexpected error while sending batch FCM notification", e);
-        }
-    }
 
     private Map<String, String> createNotificationData(NotificationDto.SendRequest request) {
         Map<String, String> data = new HashMap<>();
@@ -172,52 +117,11 @@ public class PushNotificationService {
         data.put("timestamp", String.valueOf(System.currentTimeMillis()));
         data.put("itemId", request.getItemId() != null ? request.getItemId()
                 .toString() : "");
-        data.put("itemType", request.getItemType() != null ? request.getItemType().toString().toLowerCase() :
-                "");
+        data.put("itemType", request.getItemType() != null ? request.getItemType()
+                .toString()
+                .toLowerCase() : "");
 
         return data;
-    }
-
-    private Map<String, String> createBatchNotificationData(
-            NotificationDto.BatchSendRequest request) {
-        Map<String, String> data = new HashMap<>();
-
-        data.put("type", "batch_notification");
-        data.put("title", request.getTitle());
-        data.put("body", request.getBody());
-        data.put("timestamp", String.valueOf(System.currentTimeMillis()));
-        data.put("itemId", request.getData() != null ? request.getData()
-                .get("itemId") : "");
-        data.put("itemType", request.getData() != null ? request.getData()
-                .get("itemType") : "");
-
-        if (request.getData() != null) {
-            data.putAll(request.getData());
-        }
-
-        return data;
-    }
-
-    private String getActionType(String notificationType) {
-        return switch (notificationType) {
-            case "COMMENT", "LIKE" -> "NAVIGATE";
-            case "MARKETING", "ANNOUNCEMENT" -> "OPEN_URL";
-            default -> "NONE";
-        };
-    }
-
-    private String getActionData(Map<String, String> data) {
-        String postId = data.get("postId");
-        String commentId = data.get("commentId");
-
-        if (postId != null) {
-            return "/post/" + postId;
-        }
-        else if (commentId != null) {
-            return "/comment/" + commentId;
-        }
-
-        return "";
     }
 
     private void handleFCMError(FirebaseMessagingException e, Long userId) {
@@ -241,31 +145,6 @@ public class PushNotificationService {
 
             default:
                 log.error("FCM error for user {}: {}", userId, e.getMessage());
-        }
-    }
-
-    private void handleBatchErrors(BatchResponse response, List<String> tokens) {
-        if (response.getFailureCount() > 0) {
-            List<SendResponse> responses = response.getResponses();
-
-            for (int i = 0; i < responses.size(); i++) {
-                SendResponse sendResponse = responses.get(i);
-                if (!sendResponse.isSuccessful()) {
-                    String token = tokens.get(i);
-                    FirebaseMessagingException exception = sendResponse.getException();
-
-                    if (exception != null) {
-                        String errorCode = exception.getMessagingErrorCode()
-                                .name();
-                        if ("UNREGISTERED".equals(errorCode) ||
-                                "INVALID_REGISTRATION_TOKEN".equals(errorCode)) {
-                            // 유효하지 않은 토큰 처리
-                            deviceFcmTokenRepository.deleteByFcmToken(token);
-                            log.warn("Removed invalid FCM token: {}", token);
-                        }
-                    }
-                }
-            }
         }
     }
 

@@ -16,7 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -36,8 +35,8 @@ public class AuthController {
     private final UserService userService;
 
     @PostMapping("/sign-up")
-    public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto, HttpServletRequest request,
-                                              HttpServletResponse httpResponse) {
+    public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto,
+            HttpServletRequest request, HttpServletResponse httpResponse) {
         AuthDto.SignUpResponse response = authorizationService.registerUser(signUpDto);
         User user = new User(response.getUserId(), null, "", List.of());
         String ipAddress = HeaderExtractor.extractIpAddress(request);
@@ -59,7 +58,8 @@ public class AuthController {
     @PostMapping("/confirm")
     public ResponseEntity<Message> confirmEmailVerificationCode(
             @RequestBody AuthDto.EmailConfirm request) {
-        boolean response = authorizationService.confirmSignUp(request.getCode(), request.getEmail());
+        boolean response =
+                authorizationService.confirmSignUp(request.getCode(), request.getEmail());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -73,10 +73,8 @@ public class AuthController {
 
     // 로그인
     @PostMapping("/sign-in")
-    public ResponseEntity<Message> signIn(
-            @RequestBody AuthDto.LoginRequest signRequestDto,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<Message> signIn(@RequestBody AuthDto.LoginRequest signRequestDto,
+            HttpServletRequest request, HttpServletResponse response) {
         try {
             UserDto.InfoDetail infoDto = authorizationService.signIn(signRequestDto);
 
@@ -84,24 +82,25 @@ public class AuthController {
             String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
             String deviceId = HeaderExtractor.extractDeviceId(request);
 
-            User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", infoDto.getRoles());
-            TokenInfo token =
-                    jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
+            User user =
+                    new User(infoDto.getUserId(), infoDto.getUsername(), "", infoDto.getRoles());
+            TokenInfo token = jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo,
+                    deviceId);
             token.tokenToHeaders(response);
             return new ResponseEntity<>(Message.success(infoDto), HttpStatus.OK);
         } catch (BusinessException e) {
             if (e.getErrorCode() == ExceptionCode.USER_NOT_FOUND) {
-                return new ResponseEntity<>(Message.fail(null, ExceptionCode.USER_NOT_FOUND), HttpStatus.OK);
+                return new ResponseEntity<>(Message.fail(null, ExceptionCode.USER_NOT_FOUND),
+                        HttpStatus.OK);
             }
             throw e;
         }
     }
+
     // 로그인
     @PostMapping("/admin/sign-in")
-    public ResponseEntity<Message> signInForAdmin(
-            @RequestBody AuthDto.LoginRequest signRequestDto,
-            HttpServletRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<Message> signInForAdmin(@RequestBody AuthDto.LoginRequest signRequestDto,
+            HttpServletRequest request, HttpServletResponse response) {
         try {
             UserDto.InfoDetail infoDto = authorizationService.signIn(signRequestDto);
 
@@ -109,18 +108,21 @@ public class AuthController {
             String deviceIfo = HeaderExtractor.extractDeviceInfo(request);
             String deviceId = HeaderExtractor.extractDeviceId(request);
 
-            User user = new User(infoDto.getUserId(), infoDto.getUsername(), "", infoDto.getRoles());
-            if(!user.getRoles().contains("ADMIN")) {
+            User user =
+                    new User(infoDto.getUserId(), infoDto.getUsername(), "", infoDto.getRoles());
+            if (!user.getRoles()
+                    .contains("ADMIN")) {
                 return new ResponseEntity<>(Message.fail(null, ExceptionCode.UNAUTHORIZED),
                         HttpStatus.FORBIDDEN);
             }
-            TokenInfo token =
-                    jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo, deviceId);
+            TokenInfo token = jwtTokenUtil.generateAccessAndRefreshToken(user, ipAddress, deviceIfo,
+                    deviceId);
             token.tokenToHeaders(response);
             return new ResponseEntity<>(Message.success(infoDto), HttpStatus.OK);
         } catch (BusinessException e) {
             if (e.getErrorCode() == ExceptionCode.USER_NOT_FOUND) {
-                return new ResponseEntity<>(Message.fail(null, ExceptionCode.USER_NOT_FOUND), HttpStatus.OK);
+                return new ResponseEntity<>(Message.fail(null, ExceptionCode.USER_NOT_FOUND),
+                        HttpStatus.OK);
             }
             throw e;
         }
@@ -150,32 +152,23 @@ public class AuthController {
 
     @GetMapping("/payload/sub")
     public ResponseEntity<String> message() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Authentication auth = SecurityContextHolder.getContext()
+                .getAuthentication();
         return new ResponseEntity<>(auth.getName(), HttpStatus.OK);
     }
 
     @GetMapping("/reissue")
-    public ResponseEntity<Message> reissue(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<Message> reissue(HttpServletRequest request,
+            HttpServletResponse response) {
         TokenInfo token = jwtTokenUtil.reissueAccessToken(request);
         token.tokenToHeaders(response);
         return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
     }
 
     @GetMapping("/logout")
-    public ResponseEntity<Message> logout(
-            @RequestHeader("Authorization") String token) {
+    public ResponseEntity<Message> logout(@RequestHeader("Authorization") String token) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = authorizationService.logout(user.getId());
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
-    @DeleteMapping("/unregister")
-    public ResponseEntity<Message> unregisterUser(
-            @Param("reason") Integer reason,
-            @Param("detail") String detail,
-            @RequestHeader("Authorization") String token) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        boolean response = authorizationService.unregister(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -189,5 +182,12 @@ public class AuthController {
     public ResponseEntity<Message> checkNickname(@RequestParam String nickname) {
         boolean isAvailable = userService.checkNicknameValid(nickname);
         return new ResponseEntity<>(Message.success(isAvailable), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/unregister")
+    public ResponseEntity<Message> unregister(@RequestHeader("Authorization") String token) {
+        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
+        boolean response = authorizationService.unregister(user.getId());
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }

@@ -99,8 +99,8 @@ public class PartnerService {
             if (user.getPartnerId() != null || partner.getPartnerId() != null) {
                 throw new BusinessException(ExceptionCode.RESTRICTED, "이미 배우자가 존재합니다.");
             }
-            user.setPartner(partner);
-            partner.setPartner(user);
+            user.setPartner(partner,request);
+            partner.setPartner(user,request);
             partnerRequest.accept();
             notificationService.sendPartnerAccepted(user, partner);
         }

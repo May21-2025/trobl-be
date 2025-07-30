@@ -284,7 +284,10 @@ public class UserService implements UserDetailsService {
     public UserDto.Info updateUserProfileImage(Long userId, String imageKey) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        
+        // Update user with new image key
         user.setThumbnailKey(imageKey);
+        
         return new UserDto.Info(user);
     }
 
@@ -376,13 +379,12 @@ public class UserService implements UserDetailsService {
             throw new BusinessException(ExceptionCode.USER_ALREADY_HAS_PARTNER);
         }
 
-        user.setPartner(partner);
-        partner.setPartner(user);
+        user.setPartner(partner, request);
+        partner.setPartner(user, request);
         UserDto.MarriedInfo marriedInfo =
                 new UserDto.MarriedInfo(request.getMarriageDate(), partner.getUsername());
         user.updateInformation(marriedInfo);
         partner.updateInformation(marriedInfo);
-
         userRepository.saveAll(List.of(user, partner));
 
         return true;

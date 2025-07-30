@@ -7,9 +7,9 @@ import org.springframework.stereotype.Component;
 @Component
 @Getter
 public class GlobalValues {
-    private static final int MAIN_VERSION = 0;
-    private static final int DEV_VERSION = 0;
-    private static final int STAGE_VERSION = 2;
+    private static final int MAIN_VERSION = 1;
+    private static final int DEV_VERSION = 1;
+    private static final int STAGE_VERSION = 0;
 
     public static final String USER_PROFILE_IMAGE_PATH = "thumbnails/users/";
     public static final String AD_IMAGE_PATH = "/ads/";

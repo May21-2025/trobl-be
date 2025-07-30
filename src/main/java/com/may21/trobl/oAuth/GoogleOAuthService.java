@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -24,7 +26,11 @@ public class GoogleOAuthService {
     @Value("${GOOGLE_SECRET}")
     String googleClientSecret;
 
+    @Value("${GOOGLE_REDIRECT_URI}")
+    String googleRedirectUri;
+
     String revokeUri = "https://oauth2.googleapis.com/revoke";
+    ObjectMapper objectMapper = new ObjectMapper();
 
 
     public String getEmailFromGoogleIdToken(String idToken) {
@@ -37,7 +43,8 @@ public class GoogleOAuthService {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
             if (response.getStatusCode() != HttpStatus.OK) {
-                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, response.getBody());
+                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID,
+                        response.getBody());
             }
 
             // JSON 파싱하여 사용자 정보 추출
@@ -46,12 +53,15 @@ public class GoogleOAuthService {
 
             // 에러 체크
             if (root.has("error")) {
-                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, root.get("error").asText());
+                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, root.get("error")
+                        .asText());
             }
 
-            String email = root.get("email").asText();
+            String email = root.get("email")
+                    .asText();
             if (email == null || email.isEmpty()) {
-                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, "Google ID Token에서 이메일을 찾을 수 없습니다.");
+                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID,
+                        "Google ID Token에서 이메일을 찾을 수 없습니다.");
             }
 
             return email;
@@ -76,9 +86,10 @@ public class GoogleOAuthService {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode root = objectMapper.readTree(userInfoResponse.getBody());
-            String email = root.get("email").asText();
-            if (email == null)
-                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, "Google UserInfo API에서 이메일을 찾을 수 없습니다.");
+            String email = root.get("email")
+                    .asText();
+            if (email == null) throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID,
+                    "Google UserInfo API에서 이메일을 찾을 수 없습니다.");
             return email;
         } catch (Exception e) {
             throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, e);
@@ -97,85 +108,102 @@ public class GoogleOAuthService {
      * Authorization Code로 토큰 교환 후 ID Token에서 이메일 추출
      */
     public String getEmailFromAuthCode(String serverAuthCode) {
+        if (serverAuthCode == null || serverAuthCode.trim()
+                .isEmpty()) {
+            throw new IllegalArgumentException("Server auth code cannot be null or empty");
+        }
+
         RestTemplate restTemplate = new RestTemplate();
+
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Content-Type", "application/x-www-form-urlencoded");
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        String body = "code=" + serverAuthCode +
-                "&client_id=" + googleClientId +
-                "&client_secret=" + googleClientSecret +
-                "&grant_type=authorization_code";
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("code", serverAuthCode);
+        params.add("client_id", googleClientId);
+        params.add("client_secret", googleClientSecret);
+        params.add("redirect_uri", googleRedirectUri);
+        params.add("grant_type", "authorization_code");
 
-        HttpEntity<String> request = new HttpEntity<>(body, headers);
-        ResponseEntity<String> response =
-                restTemplate.exchange("https://oauth2.googleapis.com/token", HttpMethod.POST, request, String.class);
+        // Log parameters (excluding sensitive data)
+        log.info("OAuth token exchange - client_id: {}, redirect_uri: {}, grant_type: {}",
+                googleClientId, googleRedirectUri, "authorization_code");
+        log.debug("Authorization code length: {}", serverAuthCode.length());
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
+            ResponseEntity<String> response =
+                    restTemplate.exchange("https://oauth2.googleapis.com/token", HttpMethod.POST,
+                            request, String.class);
+
+            log.info("Successfully exchanged auth code for token");
             JsonNode root = objectMapper.readTree(response.getBody());
-
-            // ID Token 사용 (권장)
-            String idToken = root.get("id_token").asText();
-            if (idToken != null && !idToken.isEmpty()) {
-                return getEmailFromGoogleIdToken(idToken);
-            }
-
-            // Fallback: Access Token 사용
-            String accessToken = root.get("access_token").asText();
+            String accessToken = root.get("access_token")
+                    .asText();
             if (accessToken != null && !accessToken.isEmpty()) {
                 return getEmailFromGoogleAccessToken(accessToken);
             }
-
-            throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, "ID Token 또는 Access Token이 없습니다.");
+            String idToken = root.get("id_token")
+                    .asText();
+            if (idToken != null && !idToken.isEmpty()) {
+                return getEmailFromGoogleIdToken(idToken);
+            }
         } catch (Exception e) {
-            throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, e);
+            log.error("Unexpected error during OAuth token exchange", e);
+            throw new RuntimeException("OAuth token exchange failed due to unexpected error", e);
         }
+        return null;
     }
 
-    /**
-     * Google OAuth 토큰 해제
-     */
-    public String revokeGoogleOAuth(String token) {
-        RestTemplate rt = new RestTemplate();
-        String revokeTokenUrl = revokeUri + "?token=" + token;
-        ResponseEntity<String> response =
-                rt.exchange(revokeTokenUrl, HttpMethod.POST, null, String.class);
-        return response.getBody();
-    }
 
-    public String getEmailFromIdentityToken(String idToken) {
-        try {
-            // Google의 tokeninfo endpoint로 ID Token 검증 및 사용자 정보 조회
-            String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+/**
+ * Google OAuth 토큰 해제
+ */
+public String revokeGoogleOAuth(String token) {
+    RestTemplate rt = new RestTemplate();
+    String revokeTokenUrl = revokeUri + "?token=" + token;
+    ResponseEntity<String> response =
+            rt.exchange(revokeTokenUrl, HttpMethod.POST, null, String.class);
+    return response.getBody();
+}
 
-            log.debug("Google ID Token 검증 URL: {}", idToken);
-            RestTemplate restTemplate = new RestTemplate();
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+public String getEmailFromIdentityToken(String idToken) {
+    try {
+        // Google의 tokeninfo endpoint로 ID Token 검증 및 사용자 정보 조회
+        String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
 
-            if (response.getStatusCode() != HttpStatus.OK) {
-                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, response.getBody());
-            }
+        log.debug("Google ID Token 검증 URL: {}", idToken);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            // JSON 파싱하여 사용자 정보 추출
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode root = objectMapper.readTree(response.getBody());
-
-            // 에러 체크
-            if (root.has("error")) {
-                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, root.get("error").asText());
-            }
-
-            String email = root.get("email").asText();
-            if (email == null || email.isEmpty()) {
-                throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, "Google ID Token에서 이메일을 찾을 수 없습니다.");
-            }
-
-            return email;
-
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, e);
+        if (response.getStatusCode() != HttpStatus.OK) {
+            throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, response.getBody());
         }
+
+        // JSON 파싱하여 사용자 정보 추출
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode root = objectMapper.readTree(response.getBody());
+
+        // 에러 체크
+        if (root.has("error")) {
+            throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, root.get("error")
+                    .asText());
+        }
+
+        String email = root.get("email")
+                .asText();
+        if (email == null || email.isEmpty()) {
+            throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID,
+                    "Google ID Token에서 이메일을 찾을 수 없습니다.");
+        }
+
+        return email;
+
+    } catch (BusinessException e) {
+        throw e;
+    } catch (Exception e) {
+        throw new BusinessException(ExceptionCode.GOOGLE_USERINFO_INVALID, e);
     }
 }
+    }

@@ -71,15 +71,6 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
 
     Page<Posting> findByUserId(Long userId, Pageable pageRequest);
 
-    @Query("""
-                SELECT p
-                FROM Posting p
-                LEFT JOIN p.fairViews pv
-                WHERE p.id = :postId
-                GROUP BY p
-                HAVING COUNT(pv) = 1
-            """)
-    Optional<Posting> getPostWithOnePairView(@Param("postId") Long postId);
 
     @Query(value = """
             SELECT * FROM posting p
@@ -221,4 +212,5 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
 
     @Query("SELECT p FROM Posting p WHERE p.userId IN :testUserIds")
     Page<Posting> findByUserIdIn(List<Long> testUserIds, Pageable pageable);
+
 }

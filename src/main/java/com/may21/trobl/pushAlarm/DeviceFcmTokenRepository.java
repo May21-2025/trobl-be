@@ -1,5 +1,6 @@
 package com.may21.trobl.pushAlarm;
 
+import com.may21.trobl.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,4 +20,8 @@ public interface DeviceFcmTokenRepository extends JpaRepository<DeviceFcmToken, 
     void deleteByFcmToken(String fcmToken);
 
     boolean existsByUserIdAndFcmToken(Long userId, String fcmToken);
+
+    @Modifying
+    @Transactional
+    void deleteByUser(User user);
 }

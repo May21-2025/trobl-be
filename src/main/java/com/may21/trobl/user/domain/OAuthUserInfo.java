@@ -13,54 +13,70 @@ public class OAuthUserInfo {
     private final Map<String, String> data;
 
     @Builder
-    public OAuthUserInfo(String provider, String providerId, String email, Map<String, String> data) {
+    public OAuthUserInfo(String provider, String providerId, String email,
+            Map<String, String> data) {
         this.provider = provider;
         this.providerId = providerId;
         this.email = email;
         this.data = data;
     }
 
-    public static OAuthUserInfo of(
-            String registrationId, String userNameAttributeName, Map<String, Object> attributes) {
+    public static OAuthUserInfo of(String registrationId, String userNameAttributeName,
+            Map<String, Object> attributes) {
         if ("kakao".equals(registrationId)) {
             return ofKakao(userNameAttributeName, attributes);
-        } else if ("apple".equals(registrationId)) {
+        }
+        else if ("apple".equals(registrationId)) {
             return ofApple(userNameAttributeName, attributes);
         }
 
         return ofGoogle(userNameAttributeName, attributes);
     }
 
-    private static OAuthUserInfo ofGoogle(
-            String userNameAttributeName, Map<String, Object> attributes) {
+    private static OAuthUserInfo ofGoogle(String userNameAttributeName,
+            Map<String, Object> attributes) {
         return OAuthUserInfo.builder()
                 .provider("google")
-                .providerId(attributes.get(userNameAttributeName).toString())
+                .providerId(attributes.get(userNameAttributeName)
+                        .toString())
                 .email((String) attributes.get("email"))
                 .build();
     }
 
-    private static OAuthUserInfo ofKakao(
-            String userNameAttributeName, Map<String, Object> attributes) {
-        Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
-        Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+    private static OAuthUserInfo ofKakao(String userNameAttributeName,
+            Map<String, Object> attributes) {
+
+        Object kakaoAccountObj = attributes.get("kakao_account");
+        if (!(kakaoAccountObj instanceof Map)) {
+            throw new IllegalArgumentException("Invalid kakao_account format");
+        }
+        @SuppressWarnings("unchecked") Map<String, Object> kakaoAccount =
+                (Map<String, Object>) kakaoAccountObj;
+
+        Object profileObj = kakaoAccount.get("profile");
+        if (!(profileObj instanceof Map)) {
+            throw new IllegalArgumentException("Invalid profile format");
+        }
 
         return OAuthUserInfo.builder()
                 .provider("kakao")
-                .providerId(attributes.get(userNameAttributeName).toString())
+                .providerId(attributes.get(userNameAttributeName)
+                        .toString())
                 .email((String) kakaoAccount.get("email"))
                 .build();
     }
 
-    private static OAuthUserInfo ofApple(
-            String userNameAttributeName, Map<String, Object> attributes) {
+
+    private static OAuthUserInfo ofApple(String userNameAttributeName,
+            Map<String, Object> attributes) {
         // Apple은 name을 제공하지 않을 수 있으므로, 이메일 앞부분을 닉네임으로 사용
         String email = (String) attributes.get("email");
         String name = email != null ? email.split("@")[0] : "Apple User";
 
         return OAuthUserInfo.builder()
                 .provider("apple")
-                .providerId(attributes.get(userNameAttributeName).toString())
+                .providerId(attributes.get(userNameAttributeName)
+                        .toString())
                 .email(email)
                 .build();
     }

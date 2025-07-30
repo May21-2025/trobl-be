@@ -110,4 +110,7 @@ public interface PostingService {
 
     @Transactional
     PostDto.ListItem  createFairViewByAdmin(AdminDto.FairViewPostRequest request);
+
+    @Transactional(readOnly = true)
+    List<PostDto.QuickPoll> getQuickPolls(Long userId);
 }

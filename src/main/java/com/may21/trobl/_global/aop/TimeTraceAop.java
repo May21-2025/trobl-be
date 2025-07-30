@@ -1,5 +1,6 @@
 package com.may21.trobl._global.aop;
 
+import com.may21.trobl._global.component.GlobalValues;
 import com.may21.trobl._global.component.PerformanceMetrics;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -17,8 +18,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.List;
 import java.util.UUID;
 
-import static com.may21.trobl._global.component.AnsiColorCode.BROWN;
-import static com.may21.trobl._global.component.AnsiColorCode.TROBL_PINK;
+import static com.may21.trobl._global.component.AnsiColorCode.*;
 import static com.may21.trobl._global.utility.LogUtil.*;
 
 @Aspect
@@ -47,7 +47,7 @@ public class TimeTraceAop {
     public void init() {
         String asciiLogo = generateAsciiLogo();
         log.warn("\n\n{}\n\n{}\n\n",
-                color("STAGE : " + stage, BROWN),
+                color("STAGE : " + stage +"  Version : " + GlobalValues.getBEVersion(), CYAN),
                 color(asciiLogo, TROBL_PINK)
         );
     }

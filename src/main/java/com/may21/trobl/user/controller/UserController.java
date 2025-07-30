@@ -208,12 +208,6 @@ public class UserController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @GetMapping("/unregister")
-    public ResponseEntity<Message> unregister(@RequestHeader("Authorization") String token) {
-        User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
-        boolean response = authorizationService.unregister(user.getId());
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
 
     @PutMapping("/{userId}/report")
     public ResponseEntity<Message> reportPost(@PathVariable Long userId,

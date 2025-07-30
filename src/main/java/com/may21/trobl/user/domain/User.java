@@ -8,7 +8,7 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.Utility;
-import com.may21.trobl.notification.dto.NotificationDto;
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.pushAlarm.DeviceFcmToken;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
@@ -21,7 +21,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_PATH;
 import static com.may21.trobl._global.enums.NotificationType.*;
@@ -48,6 +52,7 @@ public class User implements UserDetails, OAuth2User {
     private Language language;
 
     private boolean married;
+    @Setter
     private Long partnerId;
     @Setter
     private LocalDate weddingAnniversaryDate;
@@ -59,8 +64,9 @@ public class User implements UserDetails, OAuth2User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeviceFcmToken> fcmTokens;
 
-    @Setter
     private String thumbnailKey;
+    @Setter
+    private LocalDateTime thumbnailUpdatedAt;
 
     @Enumerated(EnumType.STRING)
     private OAuthProvider provider;
@@ -120,14 +126,28 @@ public class User implements UserDetails, OAuth2User {
         this.roles = roles;
     }
 
+    public User(UserDto.Info info) {
+        this.id = info.getUserId();
+        this.username = info.getUsername();
+        this.nickname = info.getNickname();
+    }
+
     public String getThumbnailUrl() {
         return thumbnailKey == null ? null :
                 GlobalValues.getCdnUrl() + GlobalValues.getPREFIX() + USER_PROFILE_IMAGE_PATH +
                         thumbnailKey;
     }
 
-    public void setPartner(User partner) {
+    public void setPartner(User partner, UserDto.AcceptPartnerRequest request) {
         this.partnerId = partner.getId();
+        this.married = true;
+        this.weddingAnniversaryDate = request.marriageDate();
+    }
+
+    public void setPartner(User partner, AdminDto.ConnectPartners request) {
+        this.partnerId = partner.getId();
+        this.married = true;
+        this.weddingAnniversaryDate = request.getMarriageDate();
     }
 
     @Override
@@ -353,8 +373,7 @@ public class User implements UserDetails, OAuth2User {
      * @return 차단 가능하면 true
      */
     private boolean isBlockableNotificationType(NotificationType notificationType) {
-        return notificationType == COMMENT ||
-                notificationType == LIKE ||
+        return notificationType == COMMENT || notificationType == LIKE ||
                 notificationType == NotificationType.MARKETING;
     }
 
@@ -368,4 +387,10 @@ public class User implements UserDetails, OAuth2User {
         // 계정이 활성화되어 있고, 해당 알림이 차단되지 않은 경우
         return this.enabled && !isNotificationBlocked(notificationType);
     }
+
+    public void setThumbnailKey(String thumbnailKey) {
+        this.thumbnailKey = thumbnailKey;
+        this.thumbnailUpdatedAt = LocalDateTime.now();
+    }
+
 }

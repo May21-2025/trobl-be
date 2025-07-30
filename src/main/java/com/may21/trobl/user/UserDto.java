@@ -109,11 +109,21 @@ public class UserDto {
     @Getter
     public static class MarriedInfo {
         private final LocalDate marriageDate;
+        private final LocalDate marriedDate;
         private final String partnerEmail;
 
-        public MarriedInfo(LocalDate marriageDate, String partnerEmail) {
+        public MarriedInfo(LocalDate marriageDate,  String partnerEmail) {
             this.marriageDate = marriageDate;
+            this.marriedDate = marriageDate;
             this.partnerEmail = partnerEmail;
+        }
+        public MarriedInfo(LocalDate marriageDate, LocalDate marriedDate,String partnerEmail) {
+            this.marriageDate = marriageDate;
+            this.marriedDate = marriedDate;
+            this.partnerEmail = partnerEmail;
+        }
+        public LocalDate getMarriageDate() {
+            return marriageDate ==null? marriedDate:marriageDate;
         }
     }
 

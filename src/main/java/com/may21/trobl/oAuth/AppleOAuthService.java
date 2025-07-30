@@ -6,13 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.util.Value;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
-import com.may21.trobl._global.security.JwtTokenUtil;
-import com.may21.trobl.auth.AuthDto;
-import com.may21.trobl.auth.jwt.TokenInfo;
-import com.may21.trobl.user.domain.RefreshToken;
-import com.may21.trobl.user.domain.RefreshTokenRepository;
-import com.may21.trobl.user.domain.User;
-import com.may21.trobl.user.domain.UserRepository;
 import com.nimbusds.jose.Algorithm;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -29,20 +22,11 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.KeyFactory;
-import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
-import java.util.Date;
-import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -62,18 +46,20 @@ public class AppleOAuthService {
     @Value("${APPLE_KEY_PATH}")
     private String APPLE_KEY_PATH;
 
+    @Value("${APPLE_REDIRECT_URI}")
+    private String APPLE_REDIRECT_URI;
+
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final JwtTokenUtil jwtTokenUtil;
-    private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
 
     private PublicKey getApplePublicKey(String keyId) throws Exception {
         String response = restTemplate.getForObject(APPLE_KEYS_URL, String.class);
         JsonNode keysJson = objectMapper.readTree(response);
 
         for (JsonNode key : keysJson.get("keys")) {
-            if (keyId.equals(key.get("kid").asText())) {
+            if (keyId.equals(key.get("kid")
+                    .asText())) {
                 return buildPublicKey(key);
             }
         }
@@ -82,11 +68,15 @@ public class AppleOAuthService {
     }
 
     private PublicKey buildPublicKey(JsonNode key) throws Exception {
-        String n = key.get("n").asText();
-        String e = key.get("e").asText();
+        String n = key.get("n")
+                .asText();
+        String e = key.get("e")
+                .asText();
 
-        byte[] nBytes = Base64.getUrlDecoder().decode(n);
-        byte[] eBytes = Base64.getUrlDecoder().decode(e);
+        byte[] nBytes = Base64.getUrlDecoder()
+                .decode(n);
+        byte[] eBytes = Base64.getUrlDecoder()
+                .decode(e);
 
         BigInteger modulus = new BigInteger(1, nBytes);
         BigInteger exponent = new BigInteger(1, eBytes);
@@ -101,37 +91,15 @@ public class AppleOAuthService {
         return claims.get("email", String.class);
     }
 
-    private void saveRefreshToken(Long userId, String refreshToken, String deviceId,
-                                  String ipAddress, String deviceInfo) {
-        try {
-            // 기존 토큰들 무효화
-            List<RefreshToken> existingTokens = refreshTokenRepository.findValidTokenByUserIdAndDeviceId(userId, deviceId);
-            existingTokens.forEach(token -> token.setRevoked(true));
-
-            // 새 refresh token 저장
-            String hashedToken = JwtTokenUtil.hashToken(refreshToken);
-            RefreshToken newRefreshToken = RefreshToken.builder()
-                    .userId(userId)
-                    .token(hashedToken)
-                    .deviceId(deviceId)
-                    .ipAddress(ipAddress)
-                    .expiryDate(Instant.now().plus(30, ChronoUnit.DAYS))
-                    .build();
-
-            refreshTokenRepository.save(newRefreshToken);
-
-        } catch (Exception e) {
-            log.error("Failed to save refresh token", e);
-            throw new BusinessException(ExceptionCode.MALFORMED_TOKEN);
-        }
-    }
 
     public String getEmailFromAppleToken(String identityToken) {
         try {
             String[] chunks = identityToken.split("\\.");
-            String header = new String(Base64.getUrlDecoder().decode(chunks[0]), StandardCharsets.UTF_8);
+            String header = new String(Base64.getUrlDecoder()
+                    .decode(chunks[0]), StandardCharsets.UTF_8);
             JsonNode headerJson = objectMapper.readTree(header);
-            String keyId = headerJson.get("kid").asText();
+            String keyId = headerJson.get("kid")
+                    .asText();
 
             PublicKey publicKey = getApplePublicKey(keyId);
 
@@ -150,4 +118,7 @@ public class AppleOAuthService {
             throw new BusinessException(ExceptionCode.MALFORMED_TOKEN);
         }
     }
+
+
+
 }

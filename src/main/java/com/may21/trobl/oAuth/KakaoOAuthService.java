@@ -37,8 +37,7 @@ public class KakaoOAuthService {
     @Transactional
     public String signIn(String code) {
         AuthDto.Token tokenDto = getAccessTokenByCode(code);
-        String email = getUserEmailFromAccessToken(tokenDto.getAccessToken());
-        return email;
+        return getUserEmailFromAccessToken(tokenDto.getAccessToken());
     }
 
     public AuthDto.Token getAccessTokenByCode(String code) {
@@ -68,11 +67,12 @@ public class KakaoOAuthService {
         headers.add("Content-type", "application/x-www-form-urlencoded;charset=utf-8");
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         String kakaoRedirectUri = KAKAO_REDIRECT_URI;
+        log.info("kakaoRedirectUri {}" ,kakaoRedirectUri);
+        log.info("code {}" ,code);
         body.add("grant_type", "authorization_code");
         body.add("client_id", KAKAO_CLIENT_ID);
         body.add("redirect_uri", kakaoRedirectUri);
         body.add("code", code);
-        // HTTP 요청 보내기
         return new HttpEntity<>(body, headers);
     }
 
