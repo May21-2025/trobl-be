@@ -49,6 +49,7 @@ public class PostingController {
             @PathVariable Long postId,
             @AuthenticationPrincipal User user) {
         PostDto.Detail response = postingService.updatePost(request, user.getId(), postId);
+        postingService.evictAllTopPosts();
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
