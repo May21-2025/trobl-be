@@ -86,12 +86,9 @@ public class PartnerService {
             throw new BusinessException(ExceptionCode.INVALID_REQUEST);
         }
         //check if the request's partnerId matches the given userId
-        if (request.accepted()) {
-            if (partnerRequest.getMarriageDate() == null || !partnerRequest.getMarriageDate()
-                    .isEqual(request.marriageDate())) {
-                //marriageDate example: 2023-10-21
-                throw new BusinessException(ExceptionCode.MARRIAGE_DATE_IS_NOT_SAME);
-            }
+        if (request.accepted() && partnerRequest.getMarriageDate() != null &&
+                partnerRequest.getMarriageDate()
+                        .isEqual(request.marriageDate())) {
             User user = userRepository.findById(partnerRequest.getUserId())
                     .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
             User partner = userRepository.findById(partnerRequest.getPartnerId())
@@ -99,8 +96,8 @@ public class PartnerService {
             if (user.getPartnerId() != null || partner.getPartnerId() != null) {
                 throw new BusinessException(ExceptionCode.RESTRICTED, "이미 배우자가 존재합니다.");
             }
-            user.setPartner(partner,request);
-            partner.setPartner(user,request);
+            user.setPartner(partner, request);
+            partner.setPartner(user, request);
             partnerRequest.accept();
             notificationService.sendPartnerAccepted(user, partner);
         }

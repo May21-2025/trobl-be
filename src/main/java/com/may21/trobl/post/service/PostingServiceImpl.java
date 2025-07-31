@@ -136,6 +136,17 @@ public class PostingServiceImpl implements PostingService {
         boolean isOwner = post.getUserId()
                 .equals(userId);
         Map<Long, User> userMap = new HashMap<>();
+        userMap.put(post.getUserId(), owner);
+        if (post.getPostType() == PostingType.FAIR_VIEW) {
+            List<FairView> fairViews = post.getFairViews();
+            for (FairView fairView : fairViews) {
+                if (!Objects.equals(fairView.getUserId(), Objects.requireNonNull(owner)
+                        .getId())) {
+                    userRepository.findById(owner.getPartnerId())
+                            .ifPresent(partner -> userMap.put(fairView.getUserId(), partner));
+                }
+            }
+        }
         boolean liked = false;
         boolean bookmarked = false;
         if (userId != null) {
