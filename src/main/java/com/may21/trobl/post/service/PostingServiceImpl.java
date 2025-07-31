@@ -606,6 +606,34 @@ public class PostingServiceImpl implements PostingService {
                 .toList();
     }
 
+    @Override
+    public PostDto.FairViewItem updateVirtualFairView(Long fairViewId,
+            PostDto.FairViewRequest request) {
+        FairView fairView = fairViewRepository.findById(fairViewId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.FAIR_VIEW_NOT_FOUND));
+        fairView.update(request);
+        User user = userRepository.findById(fairView.getUserId())
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        return new PostDto.FairViewItem(fairView, user);
+    }
+
+    @Override
+    public PostDto.PollDto updatePoll(Long pollId, PostDto.PollRequest request) {
+        Poll poll = pollRepository.findById(pollId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.POLL_NOT_FOUND));
+        String pollTitle = request.getTitle();
+        if (pollTitle != null && !pollTitle.equals(poll.getTitle())) {
+            poll.setTitle(pollTitle);
+        }
+        Boolean allowMultipleVotes = request.isAllowMultipleVotes();
+        if (!allowMultipleVotes.equals(poll.isAllowedMultipleVotes())) {
+            poll.setAllowMultipleVotes(allowMultipleVotes);
+        }
+        List<PostDto.PollOptionRequest> pollOptionsRequest = request.getPollOptions();
+        updatePollOptions(pollOptionsRequest, poll);
+        return new PostDto.PollDto(poll, List.of(), true);
+    }
+
 
     @Override
     public boolean bookmarkPost(Long postId, Long userId) {
@@ -1229,6 +1257,7 @@ public class PostingServiceImpl implements PostingService {
                     .userId(fairViewRequest.getUserId())
                     .build();
             fairView.setConfirmed(true);
+            fairViews.add(fairView);
         }
         fairViewRepository.saveAll(fairViews);
         post.setFairViews(fairViews);

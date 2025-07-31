@@ -36,7 +36,6 @@ public class GoogleCloudStorageService implements StorageService {
     @Override
     public String uploadUserProfileImage(Long userId, MultipartFile file) {
         try {
-
             String imageKey = userId + ".webp";
             String thumbnailFileName =
                     GlobalValues.getPREFIX() + USER_PROFILE_IMAGE_PATH + imageKey;

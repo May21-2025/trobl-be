@@ -212,6 +212,20 @@ public class AdminController {
         PostDto.ListItem response = postingService.updateVirtualPost(postId, updateRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+    @PutMapping("/content-simulator/fair-view/{fairViewId}")
+    public ResponseEntity<Message> updateVirtualFairView(@RequestHeader("Authorization") String token,
+            @PathVariable Long fairViewId, @RequestBody PostDto.FairViewRequest request) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        PostDto.FairViewItem response = postingService.updateVirtualFairView(fairViewId, request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @PutMapping("/content-simulator/poll/{pollId}")
+    public ResponseEntity<Message> updateVirtualPoll(@RequestHeader("Authorization") String token,
+            @PathVariable Long pollId, @RequestBody PostDto.PollRequest request) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        PostDto.PollDto response = postingService.updatePoll(pollId, request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 
 
     // ========== 42번 유저 알림 테스트 기능 ==========

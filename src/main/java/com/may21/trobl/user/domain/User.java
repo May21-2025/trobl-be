@@ -133,9 +133,10 @@ public class User implements UserDetails, OAuth2User {
     }
 
     public String getThumbnailUrl() {
+        String ts = thumbnailUpdatedAt == null ? "" : "?ts=" +thumbnailUpdatedAt ;
         return thumbnailKey == null ? null :
                 GlobalValues.getCdnUrl() + GlobalValues.getPREFIX() + USER_PROFILE_IMAGE_PATH +
-                        thumbnailKey;
+                        thumbnailKey+ts;
     }
 
     public void setPartner(User partner, UserDto.AcceptPartnerRequest request) {

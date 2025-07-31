@@ -299,7 +299,7 @@ public class NotificationServiceImpl implements NotificationService {
         Long receiverUserId = post.getUserId();
         User receiver = userRepository.findById(receiverUserId)
                 .orElse(null);
-        if (receiver == null || receiverUserId.equals(commentDto.getUserId()) ||
+        if (receiver == null || receiverUserId.equals(commentDto.getUser().getUserId()) ||
                 receiver.isNotificationBlocked(NotificationType.COMMENT)) {
             return;
         }

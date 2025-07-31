@@ -27,15 +27,11 @@ public class CommentDto {
         private final LocalDateTime createdAt;
         private final int likeCount;
         private final boolean liked;
-        private final Long userId;
-        private final String nickname;
 
         public Response(Comment comment, User user, boolean liked) {
             this.commentId = comment.getId();
             this.content = comment.getContent();
             this.user = user != null ? new UserDto.Info(user) : null;
-            this.nickname = "null";
-            this.userId = comment.getUserId();
             this.postId = comment.getPosting().getId();
             this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
             this.createdAt = comment.getCreatedAt();

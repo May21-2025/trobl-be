@@ -234,12 +234,14 @@ public class AdminDto {
     public static class UserDetails extends UserDto.Info {
         private final boolean partnerConnected;
         private final boolean married;
+        private final String role;
 
         public UserDetails(User user) {
             super(user);
 
             this.partnerConnected = user.getPartnerId() != null;
             this.married = user.isMarried();
+            this.role = user.getRole();
         }
     }
 

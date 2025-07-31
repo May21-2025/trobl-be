@@ -113,4 +113,10 @@ public interface PostingService {
 
     @Transactional(readOnly = true)
     List<PostDto.QuickPoll> getQuickPolls(Long userId);
+
+    @Transactional
+    PostDto.FairViewItem updateVirtualFairView(Long fairViewId, PostDto.FairViewRequest request);
+
+    @Transactional
+    PostDto.PollDto updatePoll(Long pollId, PostDto.PollRequest request);
 }
