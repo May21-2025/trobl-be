@@ -11,6 +11,7 @@ import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.service.AdminService;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
+import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
@@ -48,6 +49,7 @@ public class AdminController {
     private final StorageService storageService;
 
     private static final Long TEST_USER_ID = 42L;
+    private final ContentUpdateService contentUpdateService;
 
     // ========== 대시보드 API ==========
 
@@ -82,6 +84,7 @@ public class AdminController {
             @PathVariable Long userId) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = adminService.deleteUser(userId);
+        contentUpdateService.deleteItem(userId,ItemType.USER);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -93,6 +96,7 @@ public class AdminController {
             @PathVariable Long postId) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = adminService.deletePost(postId);
+        contentUpdateService.deleteItem(postId,ItemType.POST);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -339,6 +343,12 @@ public class AdminController {
                         scheduledTime.toString()), NotificationStrategy.SCHEDULED);
         return new ResponseEntity<>(Message.success("예약 전송 테스트 완료 (1분 후 전송 예정)"), HttpStatus.OK);
     }
+    @GetMapping("/organize")
+    public ResponseEntity<Message> deletedeletedNoti(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        return new ResponseEntity<>(Message.success(""), HttpStatus.OK);
+    }
 
     /**
      * 알림 유형별 테스트 메시지 생성
@@ -441,4 +451,6 @@ public class AdminController {
 
         return data;
     }
+
+
 }

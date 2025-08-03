@@ -69,6 +69,7 @@ public class PostingController {
             @PathVariable Long postId,
             @AuthenticationPrincipal User user) {
         boolean response = postingService.deletePost(user.getId(), postId);
+        contentUpdateService.deleteItem(postId, ItemType.POST);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

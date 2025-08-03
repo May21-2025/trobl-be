@@ -174,4 +174,9 @@ public class ContentUpdateService {
 
         return contentUpdateStatuses;
     }
+
+    @Transactional
+    public void deleteItem(Long itemId, ItemType itemType) {
+        contentUpdateRepository.deleteAllByTargetIdAndTargetType(itemId, itemType);
+    }
 }

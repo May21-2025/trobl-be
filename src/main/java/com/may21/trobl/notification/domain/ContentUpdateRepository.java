@@ -24,4 +24,7 @@ public interface ContentUpdateRepository extends JpaRepository<ContentUpdate, Lo
     boolean existsByUserId(Long userId);
 
     List<ContentUpdate> findByUserId(Long userId);
+    @Modifying
+    @Transactional
+    void deleteAllByTargetIdAndTargetType(Long itemId, ItemType itemType);
 }

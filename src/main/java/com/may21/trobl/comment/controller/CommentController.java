@@ -63,6 +63,7 @@ public class CommentController {
             @PathVariable Long commentId,
             @AuthenticationPrincipal User user) {
         boolean response = commentService.deleteComment(user.getId(), commentId);
+        contentUpdateService.deleteItem(commentId, ItemType.COMMENT);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

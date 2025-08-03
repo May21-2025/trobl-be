@@ -1,6 +1,7 @@
 package com.may21.trobl.auth.controller;
 
 import com.may21.trobl._global.Message;
+import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
@@ -8,6 +9,7 @@ import com.may21.trobl._global.utility.HeaderExtractor;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
 import com.may21.trobl.auth.service.AuthorizationService;
+import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.service.UserService;
@@ -33,6 +35,7 @@ public class AuthController {
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthorizationService authorizationService;
     private final UserService userService;
+    private final ContentUpdateService contentUpdateService;
 
     @PostMapping("/sign-up")
     public ResponseEntity<Message> createUser(@RequestBody AuthDto.SignUpRequest signUpDto,
@@ -188,6 +191,7 @@ public class AuthController {
     public ResponseEntity<Message> unregister(@RequestHeader("Authorization") String token) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = authorizationService.unregister(user.getId());
+        contentUpdateService.deleteItem(user.getId(), ItemType.USER);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }
