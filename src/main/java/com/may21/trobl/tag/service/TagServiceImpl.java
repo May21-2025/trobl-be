@@ -82,9 +82,9 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
-    public List<Tag> getPostTags(Posting post) {
+    public List<Tag> getPostTags(Long postId) {
 
-        return tagMappingRepository.getTagsByPost(post);
+        return tagMappingRepository.getTagsByPostId(postId);
     }
 
     @Override

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PollRepository extends JpaRepository<Poll, Long> {
 
@@ -13,4 +14,6 @@ public interface PollRepository extends JpaRepository<Poll, Long> {
     List<Poll> findAllByPostIn(List<Posting> postList);
 
     List<Poll> findAllByPostingIn(List<Posting> posts);
+    
+    Optional<Poll> findByPostingId(Long postingId);
 }

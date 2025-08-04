@@ -259,7 +259,7 @@ public class AdminDto {
     }
 
     @Getter
-    public static class PostItem extends PostDto.BasicPostWithTitle {
+    public static class PostItem extends PostDto.BasePostDto {
         private final String nickname;
         private final PostingType postType;
         private final LocalDateTime createdAt;

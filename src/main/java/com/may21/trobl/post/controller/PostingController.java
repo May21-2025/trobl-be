@@ -9,6 +9,7 @@ import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
+import com.may21.trobl.redis.CacheService;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.user.domain.User;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +34,7 @@ public class PostingController {
     private final NotificationService notificationService;
     private final JwtTokenUtil jwtTokenUtil;
     private final ContentUpdateService contentUpdateService;
+    private final CacheService cacheService;
 
 
     @PostMapping("")
@@ -50,6 +52,7 @@ public class PostingController {
             @AuthenticationPrincipal User user) {
         PostDto.Detail response = postingService.updatePost(request, user.getId(), postId);
         postingService.evictAllTopPosts();
+        cacheService.invalidatePostRelatedCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -70,6 +73,7 @@ public class PostingController {
             @AuthenticationPrincipal User user) {
         boolean response = postingService.deletePost(user.getId(), postId);
         contentUpdateService.deleteItem(postId, ItemType.POST);
+        cacheService.invalidatePostRelatedCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -90,6 +94,7 @@ public class PostingController {
             notificationService.sendNewLikeNotification(postId, ItemType.POST);
             contentUpdateService.likeUpdate(postId, ItemType.POST);
         }
+        cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -104,6 +109,7 @@ public class PostingController {
     public ResponseEntity<Message> sharePost(
             @PathVariable Long postId, @AuthenticationPrincipal User user) {
         boolean response = postingService.sharePost(postId, user.getId());
+        cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -111,6 +117,7 @@ public class PostingController {
     public ResponseEntity<Message> viewPost(
             @PathVariable Long postId, @AuthenticationPrincipal User user) {
         boolean response = postingService.viewPost(postId, user.getId());
+        cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
     @PatchMapping("/{postId}/confirm")
@@ -118,6 +125,7 @@ public class PostingController {
             @RequestHeader("Authorization") String token, @PathVariable Long postId) {
         Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
         boolean response = postingService.confirmFairViewPost(userId, postId);
+        cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
     @GetMapping("/all")

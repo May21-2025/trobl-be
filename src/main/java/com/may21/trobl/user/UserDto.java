@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.may21.trobl._global.enums.RequestStatus;
 import com.may21.trobl.partner.PartnerRequest;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -36,6 +37,14 @@ public class UserDto {
 
         public Info(User user) {
             this.userId = user.getId();
+            this.username = user.getUsername();
+            this.nickname = user.getNickname();
+            this.thumbnailUrl = user.getThumbnailUrl();
+        }
+
+        public Info(RedisDto.UserDto user) {
+
+            this.userId = user.getUserId();
             this.username = user.getUsername();
             this.nickname = user.getNickname();
             this.thumbnailUrl = user.getThumbnailUrl();

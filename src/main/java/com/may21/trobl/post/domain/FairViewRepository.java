@@ -21,4 +21,9 @@ public interface FairViewRepository extends JpaRepository<FairView, Long> {
     boolean existsByPostingAndConfirmedIsFalse(Posting post);
 
     List<FairView> findAllByPostingIdIn(List<Long> list);
+    
+    List<FairView> findByPostingId(Long postingId);
+
+    @Query("SELECT f FROM FairView f WHERE f.posting.id = :postId")
+    List<FairView> findByPostId(Long postId);
 }

@@ -18,7 +18,7 @@ public interface TagService {
 
     List<TagMapping> updateTags(Set<Tag> tags, Posting post);
 
-    List<Tag> getPostTags(Posting post);
+    List<Tag> getPostTags(Long postId);
 
     List<TagDto.Response> searchTags(String keyword);
 

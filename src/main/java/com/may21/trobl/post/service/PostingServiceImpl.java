@@ -19,6 +19,8 @@ import com.may21.trobl.poll.repository.PollRepository;
 import com.may21.trobl.poll.repository.VoteRepository;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.redis.CacheService;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.tag.domain.Tag;
@@ -26,6 +28,7 @@ import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.service.TagService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
@@ -59,6 +62,8 @@ public class PostingServiceImpl implements PostingService {
     private final CacheManager cacheManager;
     private final NotificationService notificationService;
     private final ContentUpdateService contentUpdateService;
+    private final CacheService cacheService;
+    private final PostViewRepository postViewRepository;
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
@@ -129,40 +134,49 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public PostDto.Detail getPostDetail(Long postId, Long userId) {
-        Posting post = postRepository.findById(postId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
-        User owner = userRepository.findById(post.getUserId())
-                .orElse(null);
-        boolean isOwner = post.getUserId()
-                .equals(userId);
-        Map<Long, User> userMap = new HashMap<>();
-        userMap.put(post.getUserId(), owner);
-        if (post.getPostType() == PostingType.FAIR_VIEW) {
-            List<FairView> fairViews = post.getFairViews();
-            for (FairView fairView : fairViews) {
-                if (!Objects.equals(fairView.getUserId(), Objects.requireNonNull(owner)
-                        .getId())) {
-                    userRepository.findById(owner.getPartnerId())
-                            .ifPresent(partner -> userMap.put(fairView.getUserId(), partner));
+        RedisDto.PostDto postDto = cacheService.getPostFromCache(postId);
+        Long ownerId = postDto.getUserId();
+        RedisDto.UserDto owner = cacheService.getUserFromCache(ownerId);
+        boolean isOwner = ownerId.equals(userId);
+        Map<Long, RedisDto.UserDto> userMap = new HashMap<>();
+        userMap.put(postDto.getUserId(), owner);
+        List<RedisDto.FairViewDto> fairViews = null;
+        RedisDto.PollDto pollDto = null;
+        List<RedisDto.PollOptionDto> optionDtoList = null;
+        if (postDto.getPostType() == PostingType.FAIR_VIEW) {
+            fairViews = cacheService.getFairViewFromCache(postId);
+            for (RedisDto.FairViewDto fairView : fairViews) {
+                Long fairviewId = fairView.getUserId();
+                if (!Objects.equals(fairviewId, ownerId)) {
+                    RedisDto.UserDto partner = cacheService.getUserFromCache(fairviewId);
+                    userMap.put(partner.getUserId(), partner);
                 }
             }
+        }else if (postDto.getPostType() == PostingType.POLL) {
+            pollDto = cacheService.getPollFromCache(postId);
+            optionDtoList =
+                    cacheService.getPollOptionFromCache(postId);
         }
         boolean liked = false;
         boolean bookmarked = false;
         if (userId != null) {
             liked = likeRepository.existsByPostingIdAndUserId(postId, userId);
             bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, userId);
+            Posting post =
+                    postRepository.findById(postId).orElseThrow(()->new BusinessException(ExceptionCode.POST_NOT_FOUND));
             if (!viewRepository.existsByPostIdAndUserId(postId, userId)) {
                 viewRepository.save(new PostView(post, userId));
             }
         }
-        List<Tag> tags = tagService.getPostTags(post);
+        List<Tag> tags = tagService.getPostTags(postId);
         List<Long> votedOptionIds =
-                userId == null ? List.of() : voteRepository.findVotedPostByUserId(post, userId);
+                userId == null ? List.of() : voteRepository.findVotedPostIdByUserId(postId, userId);
         PostDto.Detail detailDto =
-                new PostDto.Detail(post, owner, userMap, tags, liked, bookmarked, votedOptionIds,
+                new PostDto.Detail(postDto, fairViews, pollDto,optionDtoList, userMap, tags, liked,
+                        bookmarked,
+                        votedOptionIds,
                         isOwner);
-        if (!post.isConfirmed() && post.getPostType() == PostingType.FAIR_VIEW)
+        if (!postDto.isConfirmed() && postDto.getPostType() == PostingType.FAIR_VIEW)
             detailDto.blindPartnerContent(userId);
         return detailDto;
     }
@@ -269,7 +283,7 @@ public class PostingServiceImpl implements PostingService {
         post.getTags()
                 .addAll(tagResponses);
         postRepository.save(post);
-        List<Long> votedOptionIds = voteRepository.findVotedPostByUserId(post, userId);
+        List<Long> votedOptionIds = voteRepository.findVotedPostIdByUserId(postId, userId);
         List<Tag> tagList = tags.stream()
                 .toList();
         Map<Long, User> userMap = new HashMap<>();
@@ -283,7 +297,7 @@ public class PostingServiceImpl implements PostingService {
         List<PollOption> pollOptions = poll.getPollOptions();
         List<PollOption> updatedOptions = new ArrayList<>();
         List<Long> pollOptionIds = pollOptionsRequest.stream()
-                .map(PostDto.PollOptionRequest::getPollOptionId)
+                .map(com.may21.trobl.post.dto.PostDto.PollOptionRequest::getPollOptionId)
                 .toList();
 
         // Process poll options from the request
@@ -378,7 +392,7 @@ public class PostingServiceImpl implements PostingService {
             likeRepository.deleteByEntity(postLike);
         }
         boolean commented = commentService.existsByPostIdAndUserId(postId, userId);
-        List<Tag> tags = tagService.getPostTags(post);
+        List<Tag> tags = tagService.getPostTags(postId);
         return new PostDto.ListItem(post, null, tags, liked, true, commented);
     }
 
@@ -508,27 +522,28 @@ public class PostingServiceImpl implements PostingService {
             return List.of();
         }
 
-        List<Long> postIds = posts.stream()
-                .map(Posting::getId)
-                .toList();
         List<Long> votedOptionIds =
                 userId != null ? voteRepository.findVotedOptionIdsByUserId(posts, userId) :
                         List.of();
 
-        List<User> users = userRepository.findAllById(posts.stream()
-                .map(Posting::getUserId)
-                .collect(Collectors.toSet()));
-        Map<Long, User> userMap = users.stream()
-                .collect(Collectors.toMap(User::getId, Function.identity()));
+        List<PostView> views = postViewRepository.findAllByPosts(posts);
+        Map<Long, Integer> postViewCOuntMap = getViewMaps(views, posts);
+        return cacheService.getQuickPollDtoByCached(userId, posts, votedOptionIds, postViewCOuntMap);
+    }
 
-        return posts.stream()
-                .map(post -> {
-                    Long ownerId = post.getUserId();
-                    boolean isOwner = ownerId.equals(userId);
-                    return new PostDto.QuickPoll(post, userMap.getOrDefault(ownerId, null),
-                            votedOptionIds, isOwner);
-                })
-                .toList();
+    private Map<Long, Integer> getViewMaps(List<PostView> views, List<Posting> posts) {
+        Map<Long, Integer> postViewCountMap = new HashMap<>();
+        for (PostView view : views) {
+            postViewCountMap.put(view.getPosting()
+                    .getId(), postViewCountMap.getOrDefault(view.getPosting()
+                            .getId(), 0) + 1);
+        }
+        for (Posting post : posts) {
+            if (!postViewCountMap.containsKey(post.getId())) {
+                postViewCountMap.put(post.getId(), 0);
+            }
+        }
+        return postViewCountMap;
     }
 
     @Override

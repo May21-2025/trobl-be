@@ -5,6 +5,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
+
 public interface PostViewRepository extends JpaRepository<PostView, Long> {
 
     @Query("""
@@ -20,4 +22,12 @@ public interface PostViewRepository extends JpaRepository<PostView, Long> {
             WHERE p.posting.id = :postId AND p.userId = :userId
             """)
     boolean existsByPostIdAndUserId(Long postId, Long userId);
+
+
+    @Query("""
+            SELECT p
+            FROM PostView p
+            WHERE p.posting IN :posts
+            """)
+    List<PostView> findAllByPosts(List<Posting> posts);
 }

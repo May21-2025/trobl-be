@@ -7,6 +7,7 @@ import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
+import com.may21.trobl.redis.CacheService;
 import com.may21.trobl.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ public class FairViewController {
     private final PostingService postingService;
     private final JwtTokenUtil jwtTokenUtil;
     private final NotificationService notificationService;
+    private final CacheService cacheService;
 
     @PutMapping("/{fairViewId}")
     public ResponseEntity<Message> addFairView(
@@ -32,6 +34,7 @@ public class FairViewController {
             @RequestBody PostDto.FairViewRequest request, @RequestHeader("Authorization") String token) {
         Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
         PostDto.FairViewItem response = postingService.setFairView(fairViewId, userId, request);
+        cacheService.evictFairViewFromCache(fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -44,6 +47,7 @@ public class FairViewController {
         if(response) {
             notificationService.sendFairViewConfirmedRequest(fairViewId);
         }
+        cacheService.evictFairViewFromCache(fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

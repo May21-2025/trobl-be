@@ -9,6 +9,7 @@ import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
 import com.may21.trobl.post.domain.FairView;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.dto.TagDto;
 import com.may21.trobl.user.UserDto;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.may21.trobl._global.utility.SecurityUtils.decodeHtml;
 import static com.may21.trobl._global.utility.SecurityUtils.escapeHtml;
@@ -32,23 +34,24 @@ public class PostDto {
     public static class BasePostDto {
         private final Long postId;
         private final UserDto.Info user;
+        private final String title;
+        private final List<TagDto.Response> tags;
         private final int viewCount;
 
-        public BasePostDto(Posting post, User user) {
+        public BasePostDto(Posting post, User user, List<Tag> tags) {
             this.postId = post.getId();
             this.user = user == null ? null : new UserDto.Info(user);
             this.viewCount = post.getAllViewCount();
-        }
-    }
-
-    @Getter
-    public static class BasicPostWithTitle extends BasePostDto {
-        private final String title;
-        private final List<TagDto.Response> tags;
-
-        public BasicPostWithTitle(Posting post, User user, List<Tag> tags) {
-            super(post, user);
             this.title = decodeHtml(post.getTitle());
+            this.tags = TagDto.Response.fromTagList(tags);
+        }
+
+        public BasePostDto(RedisDto.PostDto postDto, RedisDto.UserDto userDto, List<Tag> tags,
+                int view) {
+            this.postId = postDto.getPostId();
+            this.user = userDto == null ? null : new UserDto.Info(userDto);
+            this.viewCount = postDto.getViewCount() + view;
+            this.title = decodeHtml(postDto.getTitle());
             this.tags = TagDto.Response.fromTagList(tags);
         }
     }
@@ -88,7 +91,7 @@ public class PostDto {
     }
 
     @Getter
-    public static class RequestedListItem extends BasicPostWithTitle {
+    public static class RequestedListItem extends BasePostDto {
         private final String content;
         private final PostingType postType;
         private final LocalDateTime createdAt;
@@ -111,7 +114,7 @@ public class PostDto {
     }
 
     @Getter
-    public static class ListItem extends BasicPostWithTitle {
+    public static class ListItem extends BasePostDto {
         private final String content;
         private final LocalDateTime createdAt;
         private final int commentCount;
@@ -154,7 +157,7 @@ public class PostDto {
     }
 
     @Getter
-    public static class RequestedItem extends BasicPostWithTitle {
+    public static class RequestedItem extends BasePostDto {
         private final boolean unread;
         private final boolean confirmed;
         private final String content;
@@ -175,15 +178,21 @@ public class PostDto {
     }
 
     @Getter
-    public static class QuickPoll extends BasePostDto {
+    public static class QuickPoll {
+        private final Long postId;
+        private final UserDto.Info user;
+        private final String title;
         private final Long userId;
-        private final LocalDateTime createdAt;
         private final int voteCount;
         private final PollDto poll;
+        private final LocalDateTime createdAt;
+
 
         public QuickPoll(Posting post, User user, List<Long> votedOptionIds, boolean isOwner) {
-            super(post, user);
             Poll poll = post.getPoll();
+            this.postId = post.getId();
+            this.user = user == null ? null : new UserDto.Info(user);
+            this.title = decodeHtml(poll.getTitle());
             this.userId = post.getUserId();
             this.createdAt = post.getCreatedAt();
             PollDto pollDto = new PollDto(poll, votedOptionIds, isOwner);
@@ -194,10 +203,23 @@ public class PostDto {
             }
             this.voteCount = voteCount;
         }
+
+        public QuickPoll(Posting posting, RedisDto.PollDto pollDto, RedisDto.UserDto userDto,
+                List<RedisDto.PollOptionDto> pollOptionDtos, List<Long> votedOptionIds,
+                int voteCount, Long userId) {
+            this.postId = posting.getId();
+            this.user = userDto == null ? null : new UserDto.Info(userDto);
+            this.title = decodeHtml(pollDto.getTitle());
+            this.userId = posting.getUserId();
+            this.createdAt = posting.getCreatedAt();
+            this.poll = new PollDto(pollDto, Objects.equals(userId, posting.getUserId()),
+                    pollOptionDtos, votedOptionIds);
+            this.voteCount = posting.getViewCount() + voteCount;
+        }
     }
 
     @Getter
-    public static class Detail extends BasicPostWithTitle {
+    public static class Detail extends BasePostDto {
         private final Long userId;
         private final LocalDateTime createdAt;
         private final PollDto poll;
@@ -231,6 +253,52 @@ public class PostDto {
                     .size();
             this.confirmed = post.isConfirmed();
         }
+
+        public Detail(RedisDto.PostDto postDto, List<RedisDto.FairViewDto> fairViews,
+                RedisDto.PollDto pollDto, List<RedisDto.PollOptionDto> optionDtoList,
+                Map<Long, RedisDto.UserDto> userMap, List<Tag> tags, boolean liked,
+                boolean bookmarked, List<Long> votedOptionIds, boolean isOwner) {
+            super(postDto, userMap.get(postDto.getUserId()), tags, 0);
+            this.userId = postDto.getUserId();
+            this.createdAt = postDto.getCreatedAtAsLocalDateTime(); // String을 LocalDateTime으로 변환
+
+            // PollDto 생성
+            if (pollDto != null && optionDtoList != null) {
+                List<PollItem> pollItems = new ArrayList<>();
+                for (RedisDto.PollOptionDto optionDto : optionDtoList) {
+                    boolean voted = votedOptionIds != null &&
+                            votedOptionIds.contains(optionDto.getPollOptionId());
+                    pollItems.add(new PollItem(optionDto.getPollOptionId(), optionDto.getName(),
+                            optionDto.getVoteCount(), optionDto.getIndex(), voted));
+                }
+
+                boolean hasVoted = pollItems.stream()
+                        .anyMatch(PollItem::isVoted);
+                this.poll = new PollDto(pollDto.getPollId(), pollDto.getTitle(),
+                        pollDto.isAllowMultipleVotes(), isOwner || hasVoted, pollItems);
+            }
+            else {
+                this.poll = null;
+            }
+
+            // FairViewItems 생성
+            this.fairViewItems = fairViews == null ? null : fairViews.stream()
+                    .map(fairView -> new FairViewItem(fairView.getFairViewId(),
+                            fairView.getUserId(), fairView.getTitle(), fairView.getNickname(),
+                            fairView.getContent()))
+                    .toList();
+
+            this.shareCount = postDto.getShareCount();
+            this.postType = postDto.getPostType()
+                    .name();
+            this.content = decodeHtml(postDto.getContent());
+            this.liked = liked;
+            this.bookmarked = bookmarked;
+            this.commentCount = 0; // RedisDto에는 comment 정보가 없으므로 0으로 설정
+            this.likeCount = 0; // RedisDto에는 like 정보가 없으므로 0으로 설정
+            this.confirmed = postDto.isConfirmed();
+        }
+
 
         public void blindPartnerContent(Long userId) {
             for (FairViewItem fairViewItem : fairViewItems) {
@@ -269,13 +337,30 @@ public class PostDto {
         }
 
         // Constructor for cached data
-        public PollDto(Long pollId, String title, boolean allowMultipleVotes, 
-                      boolean showPollResult, List<PollItem> pollOptions) {
+        public PollDto(Long pollId, String title, boolean allowMultipleVotes,
+                boolean showPollResult, List<PollItem> pollOptions) {
             this.pollId = pollId;
             this.title = title;
             this.allowMultipleVotes = allowMultipleVotes;
             this.showPollResult = showPollResult;
             this.pollOptions = pollOptions;
+        }
+
+        public PollDto(RedisDto.PollDto pollDto, boolean isOwner,
+                List<RedisDto.PollOptionDto> pollOptionDtos, List<Long> votedOptionIds) {
+            this.pollId = pollDto.getPollId();
+            this.title = pollDto.getTitle();
+            this.allowMultipleVotes = pollDto.isAllowMultipleVotes();
+            this.pollOptions = PollItem.fromPollOptionDto(pollOptionDtos, votedOptionIds);
+            boolean hasVoted = false;
+            for (PollItem pollItem : pollOptions) {
+                if (pollItem.isVoted()) {
+                    hasVoted = true;
+                    break;
+                }
+
+            }
+            this.showPollResult = isOwner || hasVoted;
         }
     }
 
@@ -416,6 +501,14 @@ public class PostDto {
             this.voted = voted;
         }
 
+        public PollItem(RedisDto.PollOptionDto pollOption, boolean voted) {
+            this.pollOptionId = pollOption.getPollOptionId();
+            this.name = decodeHtml(pollOption.getName());
+            this.voteCount = pollOption.getVoteCount();
+            this.index = pollOption.getIndex();
+            this.voted = voted;
+        }
+
         public static List<PollItem> fromPollOption(List<PollOption> pollOptions,
                 List<Long> votedOptionIds) {
             List<PollItem> pollList = new ArrayList<>();
@@ -423,6 +516,17 @@ public class PostDto {
                 boolean voted =
                         votedOptionIds != null && votedOptionIds.contains(polloption.getId());
                 pollList.add(new PollItem(polloption, voted));
+            }
+            return pollList;
+        }
+
+        public static List<PollItem> fromPollOptionDto(List<RedisDto.PollOptionDto> pollOptionDtos,
+                List<Long> votedOptionIds) {
+            List<PollItem> pollList = new ArrayList<>();
+            for (RedisDto.PollOptionDto pollOptionDto : pollOptionDtos) {
+                boolean voted = votedOptionIds != null &&
+                        votedOptionIds.contains(pollOptionDto.getPollOptionId());
+                pollList.add(new PollItem(pollOptionDto, voted));
             }
             return pollList;
         }

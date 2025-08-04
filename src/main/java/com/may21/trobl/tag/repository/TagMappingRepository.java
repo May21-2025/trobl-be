@@ -16,4 +16,7 @@ public interface TagMappingRepository extends JpaRepository<TagMapping, Long> {
     List<TagMapping> findByTag(Tag tagToDelete);
 
     List<TagMapping> findByPostingIn(List<Posting> postList);
+
+    @Query("SELECT tm.tag FROM TagMapping tm WHERE tm.posting.id = :postId")
+    List<Tag> getTagsByPostId(Long postId);
 }

@@ -15,6 +15,7 @@ import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.post.service.PostingService;
+import com.may21.trobl.redis.CacheService;
 import com.may21.trobl.storage.StorageService;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
@@ -50,6 +51,7 @@ public class AdminController {
 
     private static final Long TEST_USER_ID = 42L;
     private final ContentUpdateService contentUpdateService;
+    private final CacheService cacheService;
 
     // ========== 대시보드 API ==========
 
@@ -221,6 +223,7 @@ public class AdminController {
             @PathVariable Long fairViewId, @RequestBody PostDto.FairViewRequest request) {
         jwtTokenUtil.getAdminUserByToken(token);
         PostDto.FairViewItem response = postingService.updateVirtualFairView(fairViewId, request);
+        cacheService.evictFairViewFromCache(fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
     @PutMapping("/content-simulator/poll/{pollId}")
