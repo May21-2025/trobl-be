@@ -69,13 +69,14 @@ public class CommentController {
 
     @PutMapping("/{commentId}/like")
     public ResponseEntity<Message> likeComment(
+            @PathVariable Long postId,
             @PathVariable Long commentId,
             @RequestHeader("Authorization") String token){
         Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
         CommentDto.Response response = commentService.likeComment(commentId, userId);
         if (response.isLiked()) {
             notificationService.sendCommentLikeNotification(commentId, userId);
-            contentUpdateService.likeUpdate(commentId, ItemType.COMMENT);
+            contentUpdateService.likeUpdate(postId, commentId, ItemType.COMMENT);
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }

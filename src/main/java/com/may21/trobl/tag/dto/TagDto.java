@@ -3,6 +3,7 @@ package com.may21.trobl.tag.dto;
 import com.may21.trobl.tag.domain.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -12,6 +13,7 @@ public class TagDto {
     @AllArgsConstructor
     public static class Request {
         private Long tagId;
+        @Setter
         private String name;
         private String color;
     }

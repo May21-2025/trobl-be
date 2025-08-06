@@ -37,8 +37,9 @@ public enum ExceptionCode {
     REQUESTED_PARTNER_ALREADY_HAS_PARTNER(HttpStatus.BAD_REQUEST, "U009", "요청한 파트너는 이미 파트너가 있습니다."),
     CANNOT_REQUEST_SELF(HttpStatus.BAD_REQUEST, "U010", "자기 자신에게 파트너 요청을 할 수 없습니다."),
     MARRIAGE_DATE_IS_NOT_SAME(HttpStatus.BAD_REQUEST, "U011", "결혼 날짜가 서로 다릅니다."),
+    NICKNAME_CANNOT_CONTAIN_PROFANITY(HttpStatus.BAD_REQUEST,"U012", "닉네임에 욕설/비방어를 포함 할 수 없습니다"),
 
-    // OAUTH O000
+            // OAUTH O000
     OAUTH2_AUTHORIZATION_NOT_FOUND(HttpStatus.NOT_FOUND, "O000", "OAuth2 인증 정보를 찾을 수 없습니다."),
     OAUTH2_AUTHORIZATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "O001", "이미 존재하는 OAuth2 인증 정보입니다."),
     OAUTH2_AUTHORIZATION_INVALID(HttpStatus.BAD_REQUEST, "O002", "유효하지 않은 OAuth2 인증 정보입니다."),

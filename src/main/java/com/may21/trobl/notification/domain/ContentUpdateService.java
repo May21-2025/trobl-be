@@ -55,7 +55,7 @@ public class ContentUpdateService {
             ) && commentUserId != null && userRepository.findById(commentUserId)
                     .isPresent()) {
                 ContentUpdate contentUpdate =
-                        new ContentUpdate(commentUserId, commentId, ItemType.COMMENT,
+                        new ContentUpdate(commentUserId, postId,commentId, ItemType.COMMENT,
                                 UpdateType.COMMENT);
                 contentUpdates.add(contentUpdate);
             }
@@ -67,7 +67,7 @@ public class ContentUpdateService {
         ) && postOwnerId != null && userRepository.findById(postOwnerId)
                 .isPresent()) {
             ContentUpdate contentUpdate =
-                    new ContentUpdate(postOwnerId, postId, ItemType.POST, UpdateType.COMMENT);
+                    new ContentUpdate(postOwnerId,  postId,postId, ItemType.POST, UpdateType.COMMENT);
             contentUpdates.add(contentUpdate);
         }
         if (!contentUpdates.isEmpty()) {
@@ -76,7 +76,7 @@ public class ContentUpdateService {
     }
 
     @Transactional
-    public void likeUpdate(Long targetId, ItemType itemType) {
+    public void likeUpdate(Long postId,Long targetId, ItemType itemType) {
         Long targetUserId = switch (itemType) {
             case POST -> postRepository.getPostOwnerIdByPostId(targetId);
             case COMMENT -> commentRepository.getOwnerIdByCommentId(targetId);
@@ -89,7 +89,7 @@ public class ContentUpdateService {
                 itemType) && userRepository.findById(targetUserId)
                 .isPresent()) {
             ContentUpdate contentUpdate =
-                    new ContentUpdate(targetUserId, targetId, itemType, UpdateType.LIKE);
+                    new ContentUpdate(targetUserId,  postId,targetId, itemType, UpdateType.LIKE);
             contentUpdateRepository.save(contentUpdate);
 
         }
@@ -103,7 +103,7 @@ public class ContentUpdateService {
                 !contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, postId,
                         ItemType.POST)) {
             ContentUpdate contentUpdate =
-                    new ContentUpdate(targetUserId, postId, ItemType.POST, UpdateType.CONFIRMED);
+                    new ContentUpdate(targetUserId,  postId,postId, ItemType.POST, UpdateType.CONFIRMED);
             contentUpdateRepository.save(contentUpdate);
         }
     }
@@ -115,7 +115,7 @@ public class ContentUpdateService {
                 !contentUpdateRepository.existByUserIdAndTargetIdAndTargetType(targetUserId, postId,
                         ItemType.POST)) {
             ContentUpdate contentUpdate =
-                    new ContentUpdate(targetUserId, postId, ItemType.POST, UpdateType.REQUESTED);
+                    new ContentUpdate(targetUserId,  postId,postId, ItemType.POST, UpdateType.REQUESTED);
             contentUpdateRepository.save(contentUpdate);
         }
     }

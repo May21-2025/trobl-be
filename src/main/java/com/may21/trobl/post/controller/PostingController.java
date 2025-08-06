@@ -92,7 +92,7 @@ public class PostingController {
         PostDto.ListItem response = postingService.likePost(postId, user.getId());
         if (response.isLiked()) {
             notificationService.sendNewLikeNotification(postId, ItemType.POST);
-            contentUpdateService.likeUpdate(postId, ItemType.POST);
+            contentUpdateService.likeUpdate(postId, postId, ItemType.POST);
         }
         cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
