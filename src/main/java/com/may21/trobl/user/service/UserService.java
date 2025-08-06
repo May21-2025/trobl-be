@@ -6,6 +6,7 @@ import com.may21.trobl._global.enums.OAuthProvider;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.auth.AuthDto;
@@ -50,6 +51,7 @@ public class UserService implements UserDetailsService {
     private final AppleOAuthService appleOAuthService;
     private final ReportService reportService;
     private final KakaoOAuthService kakaoOAuthService;
+    private final ProfanityFilter profanityFilter;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -215,6 +217,8 @@ public class UserService implements UserDetailsService {
         if (nickname == null || nickname.isEmpty()) {
             throw new BusinessException(ExceptionCode.NICKNAME_CANNOT_BE_BLANK);
         }
+        if (profanityFilter.containsProfanity(nickname))
+            throw new BusinessException(ExceptionCode.NICKNAME_CANNOT_CONTAIN_PROFANITY);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         if (user.getNicknameUpdatedAt()
@@ -284,10 +288,10 @@ public class UserService implements UserDetailsService {
     public UserDto.Info updateUserProfileImage(Long userId, String imageKey) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-        
+
         // Update user with new image key
         user.setThumbnailKey(imageKey);
-        
+
         return new UserDto.Info(user);
     }
 

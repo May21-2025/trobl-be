@@ -23,6 +23,7 @@ public class ContentUpdate {
     private Long id;
 
     private Long userId;
+    private Long postId;
     private Long targetId;
     @Enumerated(EnumType.STRING)
     private ItemType targetType;
@@ -31,8 +32,9 @@ public class ContentUpdate {
     @CreatedDate
     private LocalDateTime createdAt;
 
-    public ContentUpdate(Long userId, Long targetId, ItemType targetType, UpdateType changeType) {
+    public ContentUpdate(Long userId, Long postId,Long targetId, ItemType targetType, UpdateType changeType) {
         this.userId = userId;
+        this.postId = postId;
         this.targetId = targetId;
         this.targetType = targetType;
         this.changeType = changeType;

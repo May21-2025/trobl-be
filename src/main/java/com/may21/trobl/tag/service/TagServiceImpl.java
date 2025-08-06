@@ -1,5 +1,6 @@
 package com.may21.trobl.tag.service;
 
+import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
@@ -17,6 +18,7 @@ public class TagServiceImpl implements TagService {
 
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
+    private final ProfanityFilter profanityFilter;
 
     @Override
     public Set<Tag> createTags(List<TagDto.Request> tagRequests) {
@@ -30,7 +32,8 @@ public class TagServiceImpl implements TagService {
             Long tagId = tagRequest.getTagId();
             if (tagId != null) {
                 existingTagIds.add(tagId);
-            } else {
+            }
+            else if (!profanityFilter.containsProfanity(tagRequest.getName())) {
                 newTagRequests.add(tagRequest);
             }
         }
@@ -75,8 +78,10 @@ public class TagServiceImpl implements TagService {
             tagMappings.add(tagMapping);
         }
         // 기존 태그 매핑을 삭제하고 새로 추가
-        post.getTags().clear();
-        post.getTags().addAll(tagMappings);
+        post.getTags()
+                .clear();
+        post.getTags()
+                .addAll(tagMappings);
         // 따라서 여기서는 단순히 매핑 리스트를 반환
         return tagMappingRepository.saveAll(tagMappings);
     }
@@ -106,7 +111,8 @@ public class TagServiceImpl implements TagService {
         for (Tag tag : tags) {
             if (uniqueTagNames.containsKey(tag.getName())) {
                 tagsToDelete.add(tag);
-            } else {
+            }
+            else {
                 uniqueTagNames.put(tag.getName(), tag);
             }
         }
@@ -131,14 +137,16 @@ public class TagServiceImpl implements TagService {
 
     @Override
     public Map<Long, List<Tag>> getPostTagsMap(List<Posting> postList) {
-    if (postList == null || postList.isEmpty()) {
-        return Map.of();
-    }
+        if (postList == null || postList.isEmpty()) {
+            return Map.of();
+        }
         Map<Long, List<Tag>> postTagsMap = new HashMap<>();
         List<TagMapping> tagMappings = tagMappingRepository.findByPostingIn(postList);
         for (TagMapping tagMapping : tagMappings) {
-            Long postId = tagMapping.getPosting().getId();
-            postTagsMap.computeIfAbsent(postId, k -> new ArrayList<>()).add(tagMapping.getTag());
+            Long postId = tagMapping.getPosting()
+                    .getId();
+            postTagsMap.computeIfAbsent(postId, k -> new ArrayList<>())
+                    .add(tagMapping.getTag());
         }
         return postTagsMap;
     }

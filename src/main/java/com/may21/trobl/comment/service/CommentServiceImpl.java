@@ -3,6 +3,7 @@ package com.may21.trobl.comment.service;
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.domain.CommentLike;
 import com.may21.trobl.comment.domain.CommentLikeRepository;
@@ -36,6 +37,7 @@ public class CommentServiceImpl implements CommentService {
     private final CommentLikeRepository likeRepository;
     private final ReportService reportService;
     private final ContentUpdateService contentUpdateService;
+    private final ProfanityFilter profanityFilter;
 
     @Override
     public List<CommentDto.Response> getComments(Long postId, Long userId) {
@@ -69,8 +71,7 @@ public class CommentServiceImpl implements CommentService {
                 commentRepository
                         .findById(request.getCommentId())
                         .orElseThrow(() -> new BusinessException(ExceptionCode.COMMENT_NOT_FOUND));
-
-        Comment comment = new Comment(user, post, parentComment, request.getContent());
+        Comment comment = new Comment(user, post, parentComment, profanityFilter.filterProfanity(request.getContent()));
         commentRepository.save(comment);
         return new CommentDto.Response(comment, user, false);
     }
@@ -85,7 +86,7 @@ public class CommentServiceImpl implements CommentService {
         if (!comment.getUserId().equals(userId)) {
             throw new BusinessException(ExceptionCode.UNAUTHORIZED);
         }
-        comment.setContent(request.getContent());
+        comment.setContent(profanityFilter.filterProfanity(request.getContent()));
         User user =
                 userRepository
                         .findById(userId)

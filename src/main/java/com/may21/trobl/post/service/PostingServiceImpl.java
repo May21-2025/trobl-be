@@ -4,6 +4,7 @@ import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.bookmark.PostBookmark;
 import com.may21.trobl.bookmark.PostBookmarkRepository;
@@ -59,6 +60,7 @@ public class PostingServiceImpl implements PostingService {
     private final CacheManager cacheManager;
     private final NotificationService notificationService;
     private final ContentUpdateService contentUpdateService;
+    private final ProfanityFilter profanityFilter;
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
@@ -174,14 +176,15 @@ public class PostingServiceImpl implements PostingService {
         PostingType postType = PostingType.valueOf(request.getPostType()
                 .toUpperCase());
         Posting post = Posting.builder()
-                .title(request.getTitle())
+                .title(profanityFilter.filterProfanity(request.getTitle()))
                 .postType(postType)
-                .content(request.getContent())
+                .content(profanityFilter.filterProfanity(request.getContent()))
                 .userId(userId)
                 .build();
         postRepository.save(post);
         if (postType == PostingType.POLL) {
-            Poll poll = new Poll(request.getPollTitle(), post, request.isAllowMultipleVotes());
+            Poll poll = new Poll(profanityFilter.filterProfanity(request.getPollTitle()), post,
+                    request.isAllowMultipleVotes());
             pollRepository.save(poll);
 
             List<PostDto.PollOptionRequest> pollOptionsRequest = request.getPoll()
@@ -190,7 +193,7 @@ public class PostingServiceImpl implements PostingService {
             for (int i = 0; i < pollOptionsRequest.size(); i++) {
                 PostDto.PollOptionRequest pollOptionRequest = pollOptionsRequest.get(i);
                 PollOption pollOption = PollOption.builder()
-                        .name(pollOptionRequest.getName())
+                        .name(profanityFilter.filterProfanity(pollOptionRequest.getName()))
                         .poll(poll)
                         .index(i)
                         .build();
@@ -211,7 +214,7 @@ public class PostingServiceImpl implements PostingService {
             List<FairView> fairViews = new ArrayList<>();
             FairView myFairView = FairView.builder()
                     .title(fairView.getTitle())
-                    .content(fairView.getContent())
+                    .content(profanityFilter.filterProfanity(fairView.getContent()))
                     .post(post)
                     .userId(userId)
                     .nickname(user.getNickname())
@@ -249,7 +252,7 @@ public class PostingServiceImpl implements PostingService {
         if (post.getPostType() == PostingType.POLL && request.getPollId() != null) {
             Long pollId = request.getPollId();
             PostDto.PollRequest pollDto = request.getPoll();
-            String pollTitle = pollDto.getTitle();
+            String pollTitle = profanityFilter.filterProfanity(pollDto.getTitle());
             Boolean allowMultipleVotes = pollDto.isAllowMultipleVotes();
             Poll poll = pollRepository.findById(pollId)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.POLL_NOT_FOUND));
@@ -291,8 +294,9 @@ public class PostingServiceImpl implements PostingService {
             PostDto.PollOptionRequest pollOptionRequest = pollOptionsRequest.get(i);
             if (pollOptionRequest.getPollOptionId() == null) {
                 // Create new poll option
+                String filteredName = profanityFilter.filterProfanity(pollOptionRequest.getName());
                 PollOption pollOption = PollOption.builder()
-                        .name(pollOptionRequest.getName())
+                        .name(filteredName)
                         .index(i)
                         .poll(poll)
                         .build();
@@ -306,8 +310,11 @@ public class PostingServiceImpl implements PostingService {
                         .findFirst()
                         .orElse(new PollOption(pollOptionRequest.getName(), i, poll));
                 if (pollOptionRequest.getName() != null && !pollOptionRequest.getName()
-                        .equals(existingOption.getName()))
-                    existingOption.setName(pollOptionRequest.getName());
+                        .equals(existingOption.getName())) {
+                    String filteredName =
+                            profanityFilter.filterProfanity(pollOptionRequest.getName());
+                    existingOption.setName(filteredName);
+                }
                 existingOption.setIndex(i);
                 updatedOptions.add(existingOption);
             }
@@ -485,7 +492,13 @@ public class PostingServiceImpl implements PostingService {
                 .equals(userId)) {
             throw new BusinessException(ExceptionCode.UNAUTHORIZED);
         }
-        fairView.update(request);
+        String title =
+                fairView.getTitle() != null ? profanityFilter.filterProfanity(fairView.getTitle()) :
+                        "";
+        String content = fairView.getContent() != null ?
+                profanityFilter.filterProfanity(fairView.getContent()) : "";
+        fairView.setTitle(title);
+        fairView.setContent(content);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         if (!fairView.isConfirmed()) {
@@ -632,7 +645,7 @@ public class PostingServiceImpl implements PostingService {
     public PostDto.PollDto updatePoll(Long pollId, PostDto.PollRequest request) {
         Poll poll = pollRepository.findById(pollId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.POLL_NOT_FOUND));
-        String pollTitle = request.getTitle();
+        String pollTitle = profanityFilter.filterProfanity(request.getTitle());
         if (pollTitle != null && !pollTitle.equals(poll.getTitle())) {
             poll.setTitle(pollTitle);
         }
