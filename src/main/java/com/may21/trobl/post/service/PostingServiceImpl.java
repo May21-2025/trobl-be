@@ -1256,7 +1256,8 @@ public class PostingServiceImpl implements PostingService {
     }
 
 
-    private void evictTopPostsCache(Long userId) {
+    @Override
+    public void evictTopPostsCache(Long userId) {
         Cache cache = cacheManager.getCache("topPosts");
         if (cache == null || userId == null) return;
 

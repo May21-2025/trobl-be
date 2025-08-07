@@ -83,6 +83,7 @@ public class PostingController {
             @RequestBody ReportDto.Request reportRequest,
             @AuthenticationPrincipal User user) {
         boolean response = postingService.reportPost(user.getId(), postId, reportRequest);
+        postingService.evictAllTopPosts();
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

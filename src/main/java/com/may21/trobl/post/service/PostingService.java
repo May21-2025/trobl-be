@@ -108,6 +108,8 @@ public interface PostingService {
     @Transactional
     PostDto.ListItem updateVirtualPost(Long postId, PostDto.Request updateRequest);
 
+    void evictTopPostsCache(Long userId);
+
     @Transactional
     PostDto.ListItem  createFairViewByAdmin(AdminDto.FairViewPostRequest request);
 
