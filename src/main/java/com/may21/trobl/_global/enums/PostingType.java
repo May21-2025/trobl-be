@@ -4,6 +4,7 @@ public enum PostingType {
     GENERAL,
     POLL,
     FAIR_VIEW,
+    ANNOUNCEMENT
     ;
 
     public static PostingType fromString(String type) {
@@ -11,6 +12,7 @@ public enum PostingType {
             case "GENERAL" -> GENERAL;
             case "POLL" -> POLL;
             case "FAIR_VIEW" -> FAIR_VIEW;
+            case "ANNOUNCEMENT" -> ANNOUNCEMENT;
             default -> throw new IllegalArgumentException("Unknown PostingType: " + type);
         };
     }

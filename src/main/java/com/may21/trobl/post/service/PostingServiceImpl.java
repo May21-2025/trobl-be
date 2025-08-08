@@ -72,7 +72,7 @@ public class PostingServiceImpl implements PostingService {
         List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, ItemType.POST);
         List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, ItemType.USER);
         Page<Posting> posts =
-                postRepository.findAllExceptBlocked(pageable, blockedPostIds, blockedUserIds);
+                postRepository.findAllExceptBlocked(pageable, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
         Set<Long> userIds = posts.stream()
                 .map(Posting::getUserId)
                 .collect(Collectors.toSet());
@@ -105,27 +105,32 @@ public class PostingServiceImpl implements PostingService {
         List<Long> blockedPostIds =
                 userId != null ? reportService.getBlockedTargetIds(userId, ItemType.POST) :
                         List.of();
+        List<Long> blockedUserIds =
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.USER) :
+                        List.of();
         List<Posting> posts = switch (type.toLowerCase()) {
-            case "like" -> postRepository.findTopPostsByLikes(10, PostingType.POLL, blockedPostIds);
-            case "view" -> postRepository.findTopPostsByViews(10, PostingType.POLL, blockedPostIds);
+            case "like" -> postRepository.findTopPostsByLikes(10, PostingType.POLL, blockedPostIds,
+                    blockedUserIds);
+            case "view" -> postRepository.findTopPostsByViews(10, PostingType.POLL, blockedPostIds,
+                    blockedUserIds);
             case "share" ->
-                    postRepository.findTopPostsByShares(10, PostingType.POLL, blockedPostIds);
+                    postRepository.findTopPostsByShares(10, PostingType.POLL, blockedPostIds,
+                            blockedUserIds);
             case "comment" ->
-                    postRepository.findTopPostsByComments(10, PostingType.POLL, blockedPostIds);
-            case "vote" -> postRepository.findTopPostsByVotes(10, blockedPostIds);
+                    postRepository.findTopPostsByComments(10, PostingType.POLL, blockedPostIds,
+                            blockedUserIds);
+            case "vote" -> postRepository.findTopPostsByVotes(10, blockedPostIds, blockedUserIds);
             default ->
                     postRepository.findTopPostsByLikesAndViews(10, threeMonthsAgo, PostingType.POLL,
-                            blockedPostIds);
+                            blockedPostIds, blockedUserIds);
         };
         Map<Long, Integer> commentMaps = commentService.getPostCommentMap(posts);
-        Map<Long, User> userMap = new HashMap<>();
-        if (userId != null) {
-            userMap = userRepository.findAllById(posts.stream()
+        Map<Long, User> userMap = userRepository.findAllById(posts.stream()
                             .map(Posting::getUserId)
                             .collect(Collectors.toSet()))
                     .stream()
                     .collect(Collectors.toMap(User::getId, Function.identity()));
-        }
+
         List<PostDto.Card> response = new ArrayList<>();
         for (Posting post : posts) {
             response.add(new PostDto.Card(post, commentMaps.get(post.getId()),
@@ -262,7 +267,8 @@ public class PostingServiceImpl implements PostingService {
                 .equals(userId)) {
             throw new BusinessException(ExceptionCode.POST_NOT_AUTHORIZED);
         }
-        post.update(request);
+        post.setTitle(profanityFilter.filterProfanity(request.getTitle()));
+        post.setContent(profanityFilter.filterProfanity(request.getContent()));
         if (post.getPostType() == PostingType.POLL && request.getPollId() != null) {
             Long pollId = request.getPollId();
             PostDto.PollRequest pollDto = request.getPoll();
@@ -527,9 +533,13 @@ public class PostingServiceImpl implements PostingService {
         List<Long> blockedPostIds =
                 userId != null ? reportService.getBlockedTargetIds(userId, ItemType.POST) :
                         List.of();
+        List<Long> blockedUserIds =
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.USER) :
+                        List.of();
 
         List<Posting> posts =
-                postRepository.findRandomPostsByType(5, PostingType.POLL, blockedPostIds);
+                postRepository.findRandomPostsByType(5, PostingType.POLL, blockedPostIds,
+                        blockedUserIds);
 
         if (posts.isEmpty()) {
             return List.of();
@@ -840,12 +850,12 @@ public class PostingServiceImpl implements PostingService {
 
         // 1. 제목 정확 일치 (최고 우선순위)
         List<Posting> titleExact =
-                postRepository.searchByTitleExact(keyword, blockedPostIds, blockedUserIds);
+                postRepository.searchByTitleExact(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, titleExact);
 
         // 2. 제목 부분 일치 (높은 우선순위)
         List<Posting> titlePartial =
-                postRepository.searchByTitlePartial(keyword, blockedPostIds, blockedUserIds);
+                postRepository.searchByTitlePartial(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, titlePartial);
 
         // 3. Poll 제목 검색
@@ -855,7 +865,7 @@ public class PostingServiceImpl implements PostingService {
 
         // 4. 내용 검색 (중간 우선순위)
         List<Posting> content =
-                postRepository.searchByContent(keyword, blockedPostIds, blockedUserIds);
+                postRepository.searchByContent(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, content);
 
         // 5. FairView 내용 검색
@@ -864,7 +874,7 @@ public class PostingServiceImpl implements PostingService {
         addUniqueResults(orderedResults, addedIds, fairViewContent);
 
         // 6. 태그 검색 (낮은 우선순위)
-        List<Posting> tags = postRepository.searchByTags(keyword, blockedPostIds, blockedUserIds);
+        List<Posting> tags = postRepository.searchByTags(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, tags);
 
         return orderedResults;
