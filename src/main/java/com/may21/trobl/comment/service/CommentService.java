@@ -1,5 +1,6 @@
 package com.may21.trobl.comment.service;
 
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.report.ReportDto;
@@ -37,4 +38,15 @@ public interface CommentService {
 
     @Transactional
     boolean reportComment(Long id, Long commentId, ReportDto.Request reportRequest);
+
+    @Transactional
+    CommentDto.Response createVirtualComment(AdminDto.VirtualCommentRequest createRequest);
+
+    @Transactional
+    boolean deleteVirtualComments(Long commentId);
+
+    @Transactional(readOnly = true)
+    List<AdminDto.CommentInfo> getAdminCommentInfo(Long postId);
+    @Transactional
+    CommentDto.Response updateVirtualComments(Long commentId, AdminDto.VirtualCommentRequest createRequest);
 }

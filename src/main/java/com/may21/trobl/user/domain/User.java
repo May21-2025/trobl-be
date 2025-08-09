@@ -10,6 +10,7 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.pushAlarm.DeviceFcmToken;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.user.UserDto;
 import jakarta.persistence.*;
 import lombok.*;

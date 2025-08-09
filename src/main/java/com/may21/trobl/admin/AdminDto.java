@@ -7,6 +7,7 @@ import com.may21.trobl.admin.announcement.Announcement;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.Report;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.dto.TagDto;
@@ -17,6 +18,7 @@ import lombok.Getter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -86,24 +88,49 @@ public class AdminDto {
 
     // ========== 게시글 관리 관련 DTO ==========
 
-    @Getter
-    @AllArgsConstructor
-    public static class PostListResponse {
-
-    }
 
     @Getter
     @AllArgsConstructor
     public static class PostInfo {
-        private Long id;
+        private Long postId;
+        private UserDto.Info user;
         private String title;
         private String content;
-        private String author;
-        private String status; // published, draft, deleted
+        private boolean confirmed;
         private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
-        private Long likes;
-        private Long views;
+        private final PostDto.PollDto poll;
+        private final List<PostDto.FairViewItem> fairViewItems;
+        public PostInfo(RedisDto.PostDto postDto,List<RedisDto.FairViewDto> fairViews,
+                RedisDto.PollDto pollDto, List<RedisDto.PollOptionDto> optionDtoList, RedisDto.UserDto userDto) {
+            this.postId = postDto.getPostId();
+            this.user = new UserDto.Info(userDto);
+            this.title = postDto.getTitle();
+            this.content = postDto.getContent();
+            String createdAt = postDto.getCreatedAt();
+            this.createdAt = LocalDateTime.parse(createdAt);
+            this.confirmed = postDto.isConfirmed();
+            // PollDto 생성
+            if (pollDto != null && optionDtoList != null) {
+                List<PostDto.PollItem> pollItems = new ArrayList<>();
+                for (RedisDto.PollOptionDto optionDto : optionDtoList) {
+                    boolean voted = false;
+                    pollItems.add(new PostDto.PollItem(optionDto.getPollOptionId(), optionDto.getName(),
+                            optionDto.getVoteCount(), optionDto.getIndex(), voted));
+                }
+                this.poll = new PostDto.PollDto(pollDto.getPollId(), pollDto.getTitle(),
+                        pollDto.isAllowMultipleVotes(), true, pollItems);
+            }
+            else {
+                this.poll = null;
+            }
+
+            // FairViewItems 생성
+            this.fairViewItems = fairViews == null ? null : fairViews.stream()
+                    .map(fairView -> new PostDto.FairViewItem(fairView.getFairViewId(),
+                            fairView.getUserId(), fairView.getTitle(), fairView.getNickname(),
+                            fairView.getContent()))
+                    .toList();
+        }
     }
 
     @Getter
@@ -374,6 +401,64 @@ public class AdminDto {
             this.viewCount = announcement.getViewCount();
             this.liked = liked;
             this.likeCount = likeCount;
+        }
+    }
+
+    @Getter
+    public static class VirtualCommentRequest {
+        private String content;
+        private Long commentId;
+        private Long postId;
+        private Long userId;
+    }
+    @Getter
+    public static class CommentInfo {
+        private final Long commentId;
+        private final UserDto.Info user;
+        private final String content;
+        private final LocalDateTime createdAt;
+        private final Long parentCommentId;
+
+        public CommentInfo(Comment comment, User user) {
+            this.commentId = comment.getId();
+            this.content = decodeHtml(comment.getContent());
+            this.createdAt = comment.getCreatedAt();
+            this.user = new UserDto.Info(user);
+            this.parentCommentId = getParentCommentId();
+
+        }
+
+    }
+    @Getter
+    public static class CommentItems {
+        private final PostParent postInfo;
+        private final Long commentId;
+        private final UserDto.Info user;
+        private final String content;
+        private final LocalDateTime createdAt;
+        private final boolean hasParentComment;
+
+        public CommentItems(Posting post, Comment comment, User user) {
+            this.postInfo = new PostParent(post);
+            this.commentId = comment.getId();
+            this.content = decodeHtml(comment.getContent());
+            this.createdAt = comment.getCreatedAt();
+            this.user = new UserDto.Info(user);
+            this.hasParentComment = comment.getParentComment() != null;
+
+        }
+
+    }
+
+    @Getter
+    public static class PostParent {
+        private final Long postId;
+        private final String title;
+
+        public PostParent(Posting post) {
+
+            this.postId = post.getId();
+            this.title = decodeHtml(post.getTitle());
         }
     }
 

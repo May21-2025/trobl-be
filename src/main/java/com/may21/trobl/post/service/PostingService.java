@@ -121,4 +121,11 @@ public interface PostingService {
 
     @Transactional
     PostDto.PollDto updatePoll(Long pollId, PostDto.PollRequest request);
+
+    @Transactional(readOnly = true)
+    Page<PostDto.AdminListItem> getAdminAllPosts(int size, int page, String sortType, boolean asc,
+            List<String> postType);
+
+    @Transactional(readOnly = true)
+    AdminDto.PostInfo getAdminPostInfo(Long postId);
 }

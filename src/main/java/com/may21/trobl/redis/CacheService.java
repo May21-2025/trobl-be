@@ -35,7 +35,6 @@ public class CacheService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
-    private final TagMappingRepository tagMappingRepository;
     private final PollRepository pollRepository;
     private final PollOptionRepository pollOptionRepository;
     private final FairViewRepository fairViewRepository;
@@ -157,7 +156,7 @@ public class CacheService {
         try {
             // postId -> pollId 매핑을 통해 pollId 찾기
             String mappingKey = POST_POLL_MAPPING_KEY + postId;
-            Long pollId = (Long) redisTemplate.opsForValue()
+            Long pollId = (Long)redisTemplate.opsForValue()
                     .get(mappingKey);
 
             if (pollId != null) {
@@ -185,9 +184,8 @@ public class CacheService {
                     .set(pollKey, pollDto, DEFAULT_TTL);
 
             // postId -> pollId 매핑 저장
-            String mappingKey2 = POST_POLL_MAPPING_KEY + postId;
             redisTemplate.opsForValue()
-                    .set(mappingKey2, poll.getId(), DEFAULT_TTL);
+                    .set(mappingKey, poll.getId(), DEFAULT_TTL);
 
             log.info("Poll for post {} loaded from DB and cached", postId);
 
@@ -761,19 +759,7 @@ public class CacheService {
         }
     }
 
-    /**
-     * 포스트 ID로 Poll ID 찾기
-     */
-    public Long getPollIdByPostId(Long postId) {
-        try {
-            String mappingKey = POST_POLL_MAPPING_KEY + postId;
-            return (Long) redisTemplate.opsForValue()
-                    .get(mappingKey);
-        } catch (Exception e) {
-            log.error("Error getting poll ID for postId {}: {}", postId, e.getMessage());
-            return null;
-        }
-    }
+
 
     public void invalidatePostRelatedCache(Long postId) {
         try {

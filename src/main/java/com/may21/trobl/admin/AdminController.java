@@ -11,6 +11,8 @@ import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.service.AdminService;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
+import com.may21.trobl.comment.dto.CommentDto;
+import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.service.NotificationService;
 import com.may21.trobl.post.dto.PostDto;
@@ -52,6 +54,7 @@ public class AdminController {
     private static final Long TEST_USER_ID = 42L;
     private final ContentUpdateService contentUpdateService;
     private final CacheService cacheService;
+    private final CommentService commentService;
 
     // ========== 대시보드 API ==========
 
@@ -92,7 +95,24 @@ public class AdminController {
 
     // ========== 게시글 관리 API ==========
 
-
+    @GetMapping("/posts")
+    public ResponseEntity<Message> getAllPosts(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "createdAt") String sortType,
+            @RequestParam(defaultValue = "postTypes") List<String> postTypes,
+            @RequestParam(defaultValue = "true") boolean asc) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        Page<PostDto.AdminListItem> response = postingService.getAdminAllPosts(size, page,
+                sortType,asc, postTypes);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @GetMapping("/posts/{postId}")
+    public ResponseEntity<Message> getPosts(@RequestHeader("Authorization") String token,
+            @PathVariable Long postId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        AdminDto.PostInfo response = postingService.getAdminPostInfo(postId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     @DeleteMapping("/posts/{postId}")
     public ResponseEntity<Message> deletePost(@RequestHeader("Authorization") String token,
             @PathVariable Long postId) {
@@ -101,7 +121,13 @@ public class AdminController {
         contentUpdateService.deleteItem(postId,ItemType.POST);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-
+    @GetMapping("/posts/{postId}/comments")
+    public ResponseEntity<Message> getPostComments(@RequestHeader("Authorization") String token,
+            @PathVariable Long postId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        List<AdminDto.CommentInfo> response = commentService.getAdminCommentInfo(postId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     @GetMapping("/reported-items")
     public ResponseEntity<Message> getReportedPosts(@RequestHeader("Authorization") String token) {
         jwtTokenUtil.getAdminUserByToken(token);
@@ -160,7 +186,13 @@ public class AdminController {
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-
+    @GetMapping("/content-simulator/users/{userId}/check")
+    public ResponseEntity<Message> isVirtualUsers(@PathVariable Long userId,
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = userService.isVirtualUsers(userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     @PutMapping("/content-simulator/users/{userId}")
     public ResponseEntity<Message> updateVirtualUsers(@PathVariable Long userId,
             @RequestHeader("Authorization") String token, @RequestPart UserDto.Update request,
@@ -234,7 +266,36 @@ public class AdminController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
+    @GetMapping("/content-simulator/comments")
+    public ResponseEntity<Message> getComments(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        Pageable pageable = Utility.getPageable(page, size, sortBy, sortDirection);
+        Page<AdminDto.CommentItems> response = adminService.getVirtualComments(pageable);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 
+    @PostMapping("/content-simulator/comments")
+    public ResponseEntity<Message> createVirtualComments(@RequestHeader("Authorization") String token,
+            @RequestBody AdminDto.VirtualCommentRequest createRequest) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        CommentDto.Response response = commentService.createVirtualComment(createRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @PutMapping("/content-simulator/comments/{commentId}")
+    public ResponseEntity<Message> updateVirtualComments(@RequestHeader("Authorization") String token, @PathVariable Long commentId, @RequestBody AdminDto.VirtualCommentRequest createRequest) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        CommentDto.Response  response = commentService.updateVirtualComments(commentId, createRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @DeleteMapping("/content-simulator/comments/{commentId}")
+    public ResponseEntity<Message> deleteVirtualComments(@RequestHeader("Authorization") String token, @PathVariable Long commentId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = commentService.deleteVirtualComments(commentId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     // ========== 42번 유저 알림 테스트 기능 ==========
 
     /**

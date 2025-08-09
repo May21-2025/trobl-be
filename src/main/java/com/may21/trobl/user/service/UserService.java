@@ -463,4 +463,8 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         return new NotificationDto.UserNotiSetting(user);
     }
+
+    public boolean isVirtualUsers(Long userId) {
+        return userRepository.isVirtualUser(userId);
+    }
 }

@@ -5,6 +5,7 @@ import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.ProfanityFilter;
+import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.bookmark.PostBookmark;
 import com.may21.trobl.bookmark.PostBookmarkRepository;
@@ -29,7 +30,6 @@ import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.service.TagService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
-import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
@@ -72,7 +72,8 @@ public class PostingServiceImpl implements PostingService {
         List<Long> blockedPostIds = reportService.getBlockedTargetIds(userId, ItemType.POST);
         List<Long> blockedUserIds = reportService.getBlockedTargetIds(userId, ItemType.USER);
         Page<Posting> posts =
-                postRepository.findAllExceptBlocked(pageable, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
+                postRepository.findAllExceptBlocked(pageable, blockedPostIds, blockedUserIds,
+                        PostingType.ANNOUNCEMENT);
         Set<Long> userIds = posts.stream()
                 .map(Posting::getUserId)
                 .collect(Collectors.toSet());
@@ -126,10 +127,10 @@ public class PostingServiceImpl implements PostingService {
         };
         Map<Long, Integer> commentMaps = commentService.getPostCommentMap(posts);
         Map<Long, User> userMap = userRepository.findAllById(posts.stream()
-                            .map(Posting::getUserId)
-                            .collect(Collectors.toSet()))
-                    .stream()
-                    .collect(Collectors.toMap(User::getId, Function.identity()));
+                        .map(Posting::getUserId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
 
         List<PostDto.Card> response = new ArrayList<>();
         for (Posting post : posts) {
@@ -683,6 +684,67 @@ public class PostingServiceImpl implements PostingService {
         return new PostDto.PollDto(poll, List.of(), true);
     }
 
+    @Override
+    public Page<PostDto.AdminListItem> getAdminAllPosts(int size, int page, String sortType,
+            boolean asc, List<String> postTypes) {
+        Pageable pageable = Utility.getPageable(size, page, sortType, asc);
+
+        List<PostingType> postingTypes = getFilteredPostTypeList(postTypes);
+
+        Page<Posting> postings = postRepository.findAllByPostTypeIn(postingTypes,pageable);
+        Set<Long> userId = postings.stream()
+                .map(Posting::getUserId)
+                .collect(Collectors.toSet());
+
+        List<User> users = userRepository.findByIdIn(new ArrayList<>(userId));
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        return postings.map(post -> {
+            return new PostDto.AdminListItem(post, userMap.get(post.getUserId()));
+        });
+    }
+
+    private List<PostingType> getFilteredPostTypeList(List<String> postTypes) {
+        if(postTypes.isEmpty()) return List.of(PostingType.POLL,PostingType.GENERAL,
+                PostingType.FAIR_VIEW);
+        List<PostingType> postingTypes = new ArrayList<>();
+        for(String string : postTypes) {
+            PostingType postingType = PostingType.fromString(string);
+            if(postingType==null) continue;
+            postingTypes.add(postingType);
+        }
+        return postingTypes;
+    }
+
+    @Override
+    public AdminDto.PostInfo getAdminPostInfo(Long postId) {
+        RedisDto.PostDto postDto =
+                cacheService.getPostFromCache(postId);
+        Long ownerId = postDto.getUserId();
+        RedisDto.UserDto userDto = cacheService.getUserFromCache(ownerId);
+        List<RedisDto.FairViewDto> fairViews = null;
+        RedisDto.PollDto pollDto = null;
+        List<RedisDto.PollOptionDto> optionDtoList = null;
+        Map<Long, RedisDto.UserDto> userMap = new HashMap<>();
+        userMap.put(postDto.getUserId(), userDto);
+        if (postDto.getPostType() == PostingType.FAIR_VIEW) {
+            fairViews = cacheService.getFairViewFromCache(postId);
+            for (RedisDto.FairViewDto fairView : fairViews) {
+                Long fairviewId = fairView.getUserId();
+                if (!Objects.equals(fairviewId, ownerId)) {
+                    RedisDto.UserDto partner = cacheService.getUserFromCache(fairviewId);
+                    userMap.put(partner.getUserId(), partner);
+                }
+            }
+        }else if (postDto.getPostType() == PostingType.POLL) {
+            pollDto = cacheService.getPollFromCache(postId);
+            optionDtoList =
+                    cacheService.getPollOptionFromCache(postId);
+        }
+        return new AdminDto.PostInfo(postDto, fairViews, pollDto, optionDtoList, userDto);
+    }
+
 
     @Override
     public boolean bookmarkPost(Long postId, Long userId) {
@@ -850,12 +912,14 @@ public class PostingServiceImpl implements PostingService {
 
         // 1. 제목 정확 일치 (최고 우선순위)
         List<Posting> titleExact =
-                postRepository.searchByTitleExact(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
+                postRepository.searchByTitleExact(keyword, blockedPostIds, blockedUserIds,
+                        PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, titleExact);
 
         // 2. 제목 부분 일치 (높은 우선순위)
         List<Posting> titlePartial =
-                postRepository.searchByTitlePartial(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
+                postRepository.searchByTitlePartial(keyword, blockedPostIds, blockedUserIds,
+                        PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, titlePartial);
 
         // 3. Poll 제목 검색
@@ -865,7 +929,8 @@ public class PostingServiceImpl implements PostingService {
 
         // 4. 내용 검색 (중간 우선순위)
         List<Posting> content =
-                postRepository.searchByContent(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
+                postRepository.searchByContent(keyword, blockedPostIds, blockedUserIds,
+                        PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, content);
 
         // 5. FairView 내용 검색
@@ -874,7 +939,8 @@ public class PostingServiceImpl implements PostingService {
         addUniqueResults(orderedResults, addedIds, fairViewContent);
 
         // 6. 태그 검색 (낮은 우선순위)
-        List<Posting> tags = postRepository.searchByTags(keyword, blockedPostIds, blockedUserIds, PostingType.ANNOUNCEMENT);
+        List<Posting> tags = postRepository.searchByTags(keyword, blockedPostIds, blockedUserIds,
+                PostingType.ANNOUNCEMENT);
         addUniqueResults(orderedResults, addedIds, tags);
 
         return orderedResults;

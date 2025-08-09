@@ -260,7 +260,9 @@ public class PostDto {
                 boolean bookmarked, List<Long> votedOptionIds, boolean isOwner) {
             super(postDto, userMap.get(postDto.getUserId()), tags, 0);
             this.userId = postDto.getUserId();
-            this.createdAt = postDto.getCreatedAtAsLocalDateTime(); // String을 LocalDateTime으로 변환
+            String createdAtStr = postDto.getCreatedAt();
+            LocalDateTime createdAt = LocalDateTime.parse(createdAtStr);
+            this.createdAt = createdAt; // String을 LocalDateTime으로 변환
 
             // PollDto 생성
             if (pollDto != null && optionDtoList != null) {
@@ -575,6 +577,29 @@ public class PostDto {
             this.fairViewItems = fairViewItems;
             this.createdAt = post.getCreatedAt();
             this.liked = liked;
+        }
+    }
+
+    @Getter
+    public static class AdminListItem {
+        private final Long postId;
+        private final PostingType postType;
+        private final String title;
+        private final LocalDateTime createdAt;
+        private final long viewCount;
+        private final long commentCount;
+        private final long likeCount;
+        private final UserDto.Info user;
+
+        public AdminListItem(Posting post, User user) {
+            this.postId = post.getId();
+            this.postType = post.getPostType();
+            this.title = decodeHtml(post.getTitle());
+            this.viewCount = post.getAllViewCount();
+            this.commentCount = post.getCommentCount();
+            this.likeCount = post.getLikeCount();
+            this.createdAt = post.getCreatedAt();
+            this.user = user == null ? null : new UserDto.Info(user);
         }
     }
 }

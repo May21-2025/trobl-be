@@ -13,7 +13,7 @@ public enum PostingType {
             case "POLL" -> POLL;
             case "FAIR_VIEW" -> FAIR_VIEW;
             case "ANNOUNCEMENT" -> ANNOUNCEMENT;
-            default -> throw new IllegalArgumentException("Unknown PostingType: " + type);
+            default -> null;
         };
     }
 }

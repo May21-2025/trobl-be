@@ -1,6 +1,7 @@
 package com.may21.trobl.admin.service;
 
 import com.may21.trobl._global.enums.ItemType;
+import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
@@ -149,7 +150,8 @@ public class AdminService {
                 .minusWeeks(1);
         LocalDate weekAgoDate = LocalDate.from(weekAgo);
         long newUsersThisWeek = userRepository.countBySignUpDateAfter(weekAgoDate);
-        long newPostsThisWeek = postRepository.countByCreatedAtAfter(weekAgo);
+        long newPostsThisWeek =
+                postRepository.countByCreatedAtAfter(weekAgo, PostingType.ANNOUNCEMENT);
 
         return new AdminDto.DashboardStats(totalUsers, totalPosts, totalReports, activeUsers,
                 realUsers, virtualUsers, oAuthUsers, unverifiedUsers, reportedPosts, pendingPosts,
@@ -208,21 +210,6 @@ public class AdminService {
         });
     }
 
-    @Transactional
-    public AdminDto.PostInfo updatePost(Long postId, AdminDto.UpdatePostRequest request) {
-        Posting post = postRepository.findById(postId)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
-
-        if (request.getTitle() != null) {
-            post.setTitle(request.getTitle());
-        }
-        if (request.getContent() != null) {
-            post.setContent(request.getContent());
-        }
-
-        Posting savedPost = postRepository.save(post);
-        return convertToPostInfo(savedPost);
-    }
 
     @Transactional
     public boolean deletePost(Long postId) {
@@ -272,16 +259,6 @@ public class AdminService {
         return convertToReportInfo(report, status);
     }
 
-
-    private AdminDto.PostInfo convertToPostInfo(Posting post) {
-        return new AdminDto.PostInfo(post.getId(), post.getTitle(), post.getContent(),
-                post.getUserId()
-                        .toString(), "published", // Post 엔티티에 status 필드가 있다면 post.getStatus()
-                post.getCreatedAt(), post.getCreatedAt(), 0L,
-                // Post 엔티티에 likes 필드가 있다면 post.getLikes()
-                0L  // Post 엔티티에 views 필드가 있다면 post.getViews()
-        );
-    }
 
     private AdminDto.ReportInfo convertToReportInfo(Report report, String result) {
         return new AdminDto.ReportInfo(report.getId(), report.getTargetType()
@@ -381,5 +358,24 @@ public class AdminService {
                 .orElseThrow(() -> new BusinessException(ExceptionCode.ANNOUNCEMENT_NOT_FOUND));
         return new AdminDto.AnnouncementDto(announcement, isLiked, liked.size());
 
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminDto.CommentItems> getVirtualComments(Pageable pageable) {
+        List<User> testUser = userRepository.findUserByTestUserIsTrue();
+        List<Long> testUserIds = testUser.stream()
+                .map(User::getId)
+                .toList();
+        Map<Long, User> userMap = userRepository.findByIdIn(testUserIds)
+                .stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        Page<Comment> comments = commentRepository.findAllByUserIdsIn(testUserIds, pageable);
+        Map<Long, Posting> postMap = comments.stream()
+                .collect(Collectors.toMap(Comment::getId, Comment::getPosting));
+        return comments.map(comment -> {
+            Posting post = postMap.get(comment.getId());
+            User user = userMap.get(comment.getUserId());
+            return new AdminDto.CommentItems(post, comment, user);
+        });
     }
 }

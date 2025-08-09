@@ -25,4 +25,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     Long getOwnerIdByCommentId(Long commentId);
 
     List<Comment> findByReportedIsTrue();
+
+    @Query("SELECT c FROM Comment c WHERE c.userId IN :testUserIds")
+    Page<Comment> findAllByUserIdsIn(List<Long> testUserIds, Pageable pageable);
 }

@@ -3,6 +3,7 @@ package com.may21.trobl.comment.dto;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import lombok.Getter;
@@ -32,8 +33,23 @@ public class CommentDto {
             this.commentId = comment.getId();
             this.content = comment.getContent();
             this.user = user != null ? new UserDto.Info(user) : null;
-            this.postId = comment.getPosting().getId();
-            this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
+            this.postId = comment.getPosting()
+                    .getId();
+            this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment()
+                    .getId() : null;
+            this.createdAt = comment.getCreatedAt();
+            this.likeCount = comment.getLikeCount();
+            this.liked = liked;
+        }
+
+        public Response(Comment comment, RedisDto.UserDto userDto, boolean liked) {
+            this.commentId = comment.getId();
+            this.content = comment.getContent();
+            this.user = new UserDto.Info(userDto);
+            this.postId = comment.getPosting()
+                    .getId();
+            this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment()
+                    .getId() : null;
             this.createdAt = comment.getCreatedAt();
             this.likeCount = comment.getLikeCount();
             this.liked = liked;
@@ -47,7 +63,8 @@ public class CommentDto {
         private final boolean newComment;
         private final boolean newLike;
 
-        public MyComments(Posting post, Comment comment, User user, boolean liked, NotificationDto.ContentUpdateStatus contentUpdateStatus) {
+        public MyComments(Posting post, Comment comment, User user, boolean liked,
+                NotificationDto.ContentUpdateStatus contentUpdateStatus) {
             super(comment, user, liked);
             this.postTitle = post.getTitle();
             this.unread = contentUpdateStatus.isUnread();

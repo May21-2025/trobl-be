@@ -46,10 +46,6 @@ public class RedisDto {
             this.shareCount = posting.getShareCount();
             this.reported = posting.isReported();
         }
-
-        public LocalDateTime getCreatedAtAsLocalDateTime() {
-            return this.createdAt != null ? LocalDateTime.parse(this.createdAt) : null;
-        }
     }
     
     @Data

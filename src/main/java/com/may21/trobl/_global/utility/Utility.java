@@ -57,4 +57,14 @@ public class Utility {
 
     }
 
+    public static Pageable getPageable(int size, int page, String sortType, boolean asc) {
+        if (sortType == null) {
+            return Pageable.ofSize(size).withPage(page);
+        }
+        if (asc) {
+            return PageRequest.of(page, size, Sort.by(sortType).ascending());
+        } else {
+            return PageRequest.of(page, size, Sort.by(sortType).descending());
+        }
+    }
 }
