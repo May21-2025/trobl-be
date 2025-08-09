@@ -160,18 +160,18 @@ public class PostingServiceImpl implements PostingService {
                     userMap.put(partner.getUserId(), partner);
                 }
             }
-        }else if (postDto.getPostType() == PostingType.POLL) {
+        }
+        else if (postDto.getPostType() == PostingType.POLL) {
             pollDto = cacheService.getPollFromCache(postId);
-            optionDtoList =
-                    cacheService.getPollOptionFromCache(postId);
+            optionDtoList = cacheService.getPollOptionFromCache(postId);
         }
         boolean liked = false;
         boolean bookmarked = false;
         if (userId != null) {
             liked = likeRepository.existsByPostingIdAndUserId(postId, userId);
             bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, userId);
-            Posting post =
-                    postRepository.findById(postId).orElseThrow(()->new BusinessException(ExceptionCode.POST_NOT_FOUND));
+            Posting post = postRepository.findById(postId)
+                    .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
             if (!viewRepository.existsByPostIdAndUserId(postId, userId)) {
                 viewRepository.save(new PostView(post, userId));
             }
@@ -180,10 +180,8 @@ public class PostingServiceImpl implements PostingService {
         List<Long> votedOptionIds =
                 userId == null ? List.of() : voteRepository.findVotedPostIdByUserId(postId, userId);
         PostDto.Detail detailDto =
-                new PostDto.Detail(postDto, fairViews, pollDto,optionDtoList, userMap, tags, liked,
-                        bookmarked,
-                        votedOptionIds,
-                        isOwner);
+                new PostDto.Detail(postDto, fairViews, pollDto, optionDtoList, userMap, tags, liked,
+                        bookmarked, votedOptionIds, isOwner);
         if (!postDto.isConfirmed() && postDto.getPostType() == PostingType.FAIR_VIEW)
             detailDto.blindPartnerContent(userId);
         return detailDto;
@@ -552,7 +550,8 @@ public class PostingServiceImpl implements PostingService {
 
         List<PostView> views = postViewRepository.findAllByPosts(posts);
         Map<Long, Integer> postViewCOuntMap = getViewMaps(views, posts);
-        return cacheService.getQuickPollDtoByCached(userId, posts, votedOptionIds, postViewCOuntMap);
+        return cacheService.getQuickPollDtoByCached(userId, posts, votedOptionIds,
+                postViewCOuntMap);
     }
 
     private Map<Long, Integer> getViewMaps(List<PostView> views, List<Posting> posts) {
@@ -560,7 +559,7 @@ public class PostingServiceImpl implements PostingService {
         for (PostView view : views) {
             postViewCountMap.put(view.getPosting()
                     .getId(), postViewCountMap.getOrDefault(view.getPosting()
-                            .getId(), 0) + 1);
+                    .getId(), 0) + 1);
         }
         for (Posting post : posts) {
             if (!postViewCountMap.containsKey(post.getId())) {
@@ -691,7 +690,7 @@ public class PostingServiceImpl implements PostingService {
 
         List<PostingType> postingTypes = getFilteredPostTypeList(postTypes);
 
-        Page<Posting> postings = postRepository.findAllByPostTypeIn(postingTypes,pageable);
+        Page<Posting> postings = postRepository.findAllByPostTypeIn(postingTypes, pageable);
         Set<Long> userId = postings.stream()
                 .map(Posting::getUserId)
                 .collect(Collectors.toSet());
@@ -706,12 +705,12 @@ public class PostingServiceImpl implements PostingService {
     }
 
     private List<PostingType> getFilteredPostTypeList(List<String> postTypes) {
-        if(postTypes.isEmpty()) return List.of(PostingType.POLL,PostingType.GENERAL,
-                PostingType.FAIR_VIEW);
+        if (postTypes.isEmpty())
+            return List.of(PostingType.POLL, PostingType.GENERAL, PostingType.FAIR_VIEW);
         List<PostingType> postingTypes = new ArrayList<>();
-        for(String string : postTypes) {
+        for (String string : postTypes) {
             PostingType postingType = PostingType.fromString(string);
-            if(postingType==null) continue;
+            if (postingType == null) continue;
             postingTypes.add(postingType);
         }
         return postingTypes;
@@ -719,8 +718,7 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public AdminDto.PostInfo getAdminPostInfo(Long postId) {
-        RedisDto.PostDto postDto =
-                cacheService.getPostFromCache(postId);
+        RedisDto.PostDto postDto = cacheService.getPostFromCache(postId);
         Long ownerId = postDto.getUserId();
         RedisDto.UserDto userDto = cacheService.getUserFromCache(ownerId);
         List<RedisDto.FairViewDto> fairViews = null;
@@ -731,18 +729,76 @@ public class PostingServiceImpl implements PostingService {
         if (postDto.getPostType() == PostingType.FAIR_VIEW) {
             fairViews = cacheService.getFairViewFromCache(postId);
             for (RedisDto.FairViewDto fairView : fairViews) {
-                Long fairviewId = fairView.getUserId();
-                if (!Objects.equals(fairviewId, ownerId)) {
-                    RedisDto.UserDto partner = cacheService.getUserFromCache(fairviewId);
+                Long fairViewUserId = fairView.getUserId();
+                if (!Objects.equals(fairViewUserId, ownerId)) {
+                    RedisDto.UserDto partner = cacheService.getUserFromCache(fairViewUserId);
                     userMap.put(partner.getUserId(), partner);
                 }
             }
-        }else if (postDto.getPostType() == PostingType.POLL) {
+        }
+        else if (postDto.getPostType() == PostingType.POLL) {
             pollDto = cacheService.getPollFromCache(postId);
-            optionDtoList =
-                    cacheService.getPollOptionFromCache(postId);
+            optionDtoList = cacheService.getPollOptionFromCache(postId);
         }
         return new AdminDto.PostInfo(postDto, fairViews, pollDto, optionDtoList, userDto);
+    }
+
+    @Override
+    public Page<PostDto.ListItem> getAnnouncements(Long userId, int page, int size) {
+        Pageable pageable = Utility.getPageable(page, size, "createdAt", "desc");
+        Page<Posting> announcements =
+                postRepository.findAllByPostType(PostingType.ANNOUNCEMENT, List.of(), List.of(),
+                        pageable);
+        Set<Long> userIds = announcements.stream()
+                .map(Posting::getUserId)
+                .collect(Collectors.toSet());
+        List<User> users = userRepository.findAllById(userIds);
+        List<Posting> postList = announcements.stream()
+                .toList();
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        List<Long> likedPostIds = userId == null ? List.of() :
+                postRepository.getAllIdsInListLikedByUserId(userId, announcements.stream()
+                        .toList());
+        List<Long> viewedPostIds = userId == null ? List.of() :
+                postRepository.getAllIdsInListViewedByUserId(userId, postList);
+        List<Long> commentedPostIds = userId == null ? List.of() :
+                postRepository.getAllIdsInListCommentedByUserId(userId, postList);
+        return announcements.map(post -> {
+            User user = userMap.get(post.getUserId());
+            return new PostDto.ListItem(post, user, List.of(), likedPostIds.contains(post.getId()),
+                    viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
+        });
+    }
+
+    @Override
+    public AdminDto.PostInfo createAnnouncement(AdminDto.VirtualPostRequest request) {
+        PostingType postType = PostingType.ANNOUNCEMENT;
+        Long userId = request.getUserId();
+        User user = userRepository.findByUsername("TroblAdmin")
+                .orElseThrow(() -> new BusinessException(ExceptionCode.INVALID_REQUEST));
+        Posting post = Posting.builder()
+                .title(request.getTitle())
+                .postType(postType)
+                .content(request.getContent())
+                .userId(userId)
+                .build();
+        postRepository.save(post);
+        return new AdminDto.PostInfo(post, user);
+
+    }
+
+    @Override
+    public AdminDto.PostInfo updateAnnouncement(Long postId, AdminDto.VirtualPostRequest request) {
+        Posting post = postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
+        if (!userRepository.isVirtualUser(post.getUserId())) {
+            throw new BusinessException(ExceptionCode.FORBIDDEN);
+        }
+        post.update(request);
+        postRepository.save(post);
+        RedisDto.UserDto userDto = cacheService.getUserFromCache(post.getUserId());
+        return new AdminDto.PostInfo(post, userDto);
     }
 
 

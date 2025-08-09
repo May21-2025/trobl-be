@@ -271,4 +271,13 @@ public class JwtTokenUtil {
         }
         new User(userId, username, "", role);
     }
+
+    public Long getUserIdFromToken(String tokenStr) {
+        if (tokenStr == null) {
+           return null;
+        }
+        String token = tokenStr.startsWith("Bearer ") ? tokenStr.substring(7) : tokenStr;
+        Claims claims = getClaims(token);
+        return claims.get("userId", Long.class);
+    }
 }

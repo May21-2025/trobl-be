@@ -467,4 +467,40 @@ public class UserService implements UserDetailsService {
     public boolean isVirtualUsers(Long userId) {
         return userRepository.isVirtualUser(userId);
     }
+
+    public UserDto.Info getAdminAccount() {
+        User user = userRepository.findByUsername("TroblAdmin")
+                .orElse(null);
+        if (user == null) {
+            String nickname = "Trobl Admin";
+            String username = "TroblAdmin";
+
+            user = User.builder()
+                    .username(username)
+                    .encryptPassword(passwordEncoder.encode(UUID.randomUUID()
+                            .toString()))
+                    .nickname(nickname)
+                    .role(RoleType.USER)
+                    .provider(OAuthProvider.NONE.name())
+                    .isTestUser(false)
+                    .address(null)
+                    .build();
+            userRepository.save(user);
+        }
+        return new UserDto.Info(user);
+    }
+
+    public UserDto.Info updateAdminAccount(UserDto.Update request) {
+        User user = userRepository.findByUsername("TroblAdmin")
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        if (!Objects.equals(user.getNickname(), request.getNickname()) &&
+                (request.getNickname() != null && !request.getNickname()
+                        .isEmpty())) {
+            if (userRepository.existsByNickname(request.getNickname())) {
+                throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
+            }
+            user.updateNickname(request.getNickname());
+        }
+        return new UserDto.Info(userRepository.save(user));
+    }
 }

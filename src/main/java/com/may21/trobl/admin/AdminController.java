@@ -94,7 +94,38 @@ public class AdminController {
     }
 
     // ========== 게시글 관리 API ==========
+    @PostMapping("/announcements/account")
+    public ResponseEntity<Message> getAdminAccount(@RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        UserDto.Info response = userService.getAdminAccount();
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 
+    @PutMapping("/announcements/account")
+    public ResponseEntity<Message> updateAdminAccount(@RequestHeader("Authorization") String token, @RequestPart UserDto.Update request,
+            @RequestPart(required = false) MultipartFile thumbnail) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        UserDto.Info response = userService.updateAdminAccount( request);
+        if (thumbnail != null) {
+            String imageKey =
+                    storageService.uploadUserProfileImage(response.getUserId(), thumbnail);
+            userService.setThumbnail(response.getUserId(), imageKey);
+            response.setThumbnailUrl(Utility.getUserProfileUrl(imageKey));
+        }
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @PostMapping("/announcements")
+    public ResponseEntity<Message> createAnnouncement(@RequestHeader("Authorization") String token, @RequestBody AdminDto.VirtualPostRequest createRequest) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        AdminDto.PostInfo response = postingService.createAnnouncement(createRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @PutMapping("/announcements/{postId}")
+    public ResponseEntity<Message> updateAnnouncement(@RequestHeader("Authorization") String token,@PathVariable Long postId,@RequestBody AdminDto.VirtualPostRequest updateRequest) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        AdminDto.PostInfo response = postingService.updateAnnouncement(postId, updateRequest);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     @GetMapping("/posts")
     public ResponseEntity<Message> getAllPosts(@RequestHeader("Authorization") String token,
             @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
@@ -106,6 +137,8 @@ public class AdminController {
                 sortType,asc, postTypes);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
+
     @GetMapping("/posts/{postId}")
     public ResponseEntity<Message> getPosts(@RequestHeader("Authorization") String token,
             @PathVariable Long postId) {

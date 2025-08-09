@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 public class CacheService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Long> keyRedisTemplate;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
@@ -100,8 +101,7 @@ public class CacheService {
             RedisDto.UserDto userDto = convertToRedisUser(user);
 
             // Redis에 저장
-            redisTemplate.opsForValue()
-                    .set(key, userDto, DEFAULT_TTL);
+            redisTemplate.opsForValue().set(key, userDto, DEFAULT_TTL);
             log.info("User {} loaded from DB and cached", userId);
 
             return userDto;
@@ -156,7 +156,7 @@ public class CacheService {
         try {
             // postId -> pollId 매핑을 통해 pollId 찾기
             String mappingKey = POST_POLL_MAPPING_KEY + postId;
-            Long pollId = (Long)redisTemplate.opsForValue()
+            Long pollId = keyRedisTemplate.opsForValue()
                     .get(mappingKey);
 
             if (pollId != null) {
@@ -768,7 +768,8 @@ public class CacheService {
                 return;
             }
 
-            List<String> postRelatedKeys = List.of(POLL_OPTION_LIST_KEY + postId,
+            List<String> postRelatedKeys = List.of(POST_CACHE_KEY +postId ,
+                    POLL_OPTION_LIST_KEY + postId,
                     POST_POLL_MAPPING_KEY + postId, FAIR_VIEW_LIST_KEY+ postId);
             redisTemplate.delete(postRelatedKeys);
         } catch (Exception e) {

@@ -94,6 +94,7 @@ public class AdminDto {
     public static class PostInfo {
         private Long postId;
         private UserDto.Info user;
+        private PostingType postType;
         private String title;
         private String content;
         private boolean confirmed;
@@ -103,6 +104,7 @@ public class AdminDto {
         public PostInfo(RedisDto.PostDto postDto,List<RedisDto.FairViewDto> fairViews,
                 RedisDto.PollDto pollDto, List<RedisDto.PollOptionDto> optionDtoList, RedisDto.UserDto userDto) {
             this.postId = postDto.getPostId();
+            this.postType = postDto.getPostType();
             this.user = new UserDto.Info(userDto);
             this.title = postDto.getTitle();
             this.content = postDto.getContent();
@@ -131,6 +133,29 @@ public class AdminDto {
                             fairView.getContent()))
                     .toList();
         }
+
+        public PostInfo(Posting post, User user) {
+            this.postId = post.getId();
+            this.user = new UserDto.Info(user);
+            this.postType = post.getPostType();
+            this.title = post.getTitle();
+            this.content = post.getContent();
+            this.createdAt = post.getCreatedAt();
+            this.confirmed = post.isConfirmed();
+            this.poll = null;
+            this.fairViewItems = null;
+        }
+
+        public PostInfo(Posting post, RedisDto.UserDto userDto) {
+            this.postId = post.getId();
+            this.user = new UserDto.Info(userDto);
+            this.postType = post.getPostType();
+            this.title = post.getTitle();
+            this.content = post.getContent();
+            this.createdAt = post.getCreatedAt();
+            this.confirmed = post.isConfirmed();
+            this.poll = null;
+            this.fairViewItems = null;}
     }
 
     @Getter

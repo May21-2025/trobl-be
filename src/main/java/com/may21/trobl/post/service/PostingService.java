@@ -52,7 +52,8 @@ public interface PostingService {
     Page<PostDto.ListItem> getVisitedPosts(Long userId, int page, int size);
 
     @Transactional
-    PostDto.FairViewItem setFairView(Long fairViewId, Long userId, PostDto.FairViewRequest fairView);
+    PostDto.FairViewItem setFairView(Long fairViewId, Long userId,
+            PostDto.FairViewRequest fairView);
 
     @Transactional(readOnly = true)
     List<PostDto.QuickPoll> getRandomQuickPoll(Long userId);
@@ -111,7 +112,7 @@ public interface PostingService {
     void evictTopPostsCache(Long userId);
 
     @Transactional
-    PostDto.ListItem  createFairViewByAdmin(AdminDto.FairViewPostRequest request);
+    PostDto.ListItem createFairViewByAdmin(AdminDto.FairViewPostRequest request);
 
     @Transactional(readOnly = true)
     List<PostDto.QuickPoll> getQuickPolls(Long userId);
@@ -128,4 +129,13 @@ public interface PostingService {
 
     @Transactional(readOnly = true)
     AdminDto.PostInfo getAdminPostInfo(Long postId);
+
+    @Transactional(readOnly = true)
+    Page<PostDto.ListItem> getAnnouncements(Long userId, int page, int size);
+
+    @Transactional
+    AdminDto.PostInfo createAnnouncement(AdminDto.VirtualPostRequest createRequest);
+
+    @Transactional
+    AdminDto.PostInfo updateAnnouncement(Long postId ,AdminDto.VirtualPostRequest createRequest);
 }
