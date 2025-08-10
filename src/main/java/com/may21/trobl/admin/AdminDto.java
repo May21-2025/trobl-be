@@ -3,7 +3,6 @@ package com.may21.trobl.admin;
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.ReportType;
-import com.may21.trobl.admin.announcement.Announcement;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.post.dto.PostDto;
@@ -406,11 +405,36 @@ public class AdminDto {
             this.reportedAt = repost.getReportedAt();
         }
     }
+    @Getter
+    public static class AnnouncementList {
+        private final Long postId;
+        private final UserDto.Info user;
+        private final String title;
+        private final int viewCount;
+        private final int commentCount;
+        private final int likeCount;
+        private final LocalDateTime createdAt;
+        private final boolean liked;
+        private final boolean viewed;
+        public AnnouncementList(Posting announcement, User admin, boolean liked, boolean viewed,
+                int likeCount,int viewCount,int commentCount)  {
+            this.postId = announcement.getId();
+            this.user = new UserDto.Info(admin);
+            this.title = announcement.getTitle();
+            this.viewCount = announcement.getViewCount();
+            this.commentCount = announcement.getCommentCount();
+            this.likeCount = likeCount;
+            this.createdAt = announcement.getCreatedAt();
+            this.liked = liked;
+            this.viewed = viewed;
 
+
+        }
+    }
 
     @Getter
     public static class AnnouncementDto {
-        private final Long announcementId;
+        private final Long postId;
         private final String title;
         private final String content;
         private final boolean liked;
@@ -418,11 +442,11 @@ public class AdminDto {
         private final long viewCount;
         private final LocalDateTime createdAt;
 
-        public AnnouncementDto(Announcement announcement, boolean liked, int likeCount) {
-            this.announcementId = announcement.getId();
+        public AnnouncementDto(Posting announcement, boolean liked, int likeCount) {
+            this.postId = announcement.getId();
             this.title = decodeHtml(announcement.getTitle());
             this.content = decodeHtml(announcement.getContent());
-            this.createdAt = announcement.getCreateAt();
+            this.createdAt = announcement.getCreatedAt();
             this.viewCount = announcement.getViewCount();
             this.liked = liked;
             this.likeCount = likeCount;

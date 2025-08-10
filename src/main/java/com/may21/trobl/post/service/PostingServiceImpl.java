@@ -66,6 +66,9 @@ public class PostingServiceImpl implements PostingService {
     private final ProfanityFilter profanityFilter;
     private final CacheService cacheService;
     private final PostViewRepository postViewRepository;
+    private final PostLikeRepository postLikeRepository;
+
+    public static String ADMIN_USERNAME = "TroblAdmin";
 
     @Override
     public Page<PostDto.ListItem> getPostsList(Pageable pageable, Long userId) {
@@ -167,8 +170,17 @@ public class PostingServiceImpl implements PostingService {
         }
         boolean liked = false;
         boolean bookmarked = false;
+        List<PostLike> likes = postLikeRepository.findAllByPostingId(postId);
+        int commentCount = commentService.getCommentCountByPostId(postId);
+        int viewCount = postViewRepository.countByPostingId(postId);
         if (userId != null) {
-            liked = likeRepository.existsByPostingIdAndUserId(postId, userId);
+            for (PostLike like : likes) {
+                if (Objects.equals(like.getUserId(), userId)) {
+                    liked = true;
+                    break;
+                }
+
+            }
             bookmarked = bookmarkRepository.existsByPostingIdAndUserId(postId, userId);
             Posting post = postRepository.findById(postId)
                     .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
@@ -181,7 +193,7 @@ public class PostingServiceImpl implements PostingService {
                 userId == null ? List.of() : voteRepository.findVotedPostIdByUserId(postId, userId);
         PostDto.Detail detailDto =
                 new PostDto.Detail(postDto, fairViews, pollDto, optionDtoList, userMap, tags, liked,
-                        bookmarked, votedOptionIds, isOwner);
+                        bookmarked, votedOptionIds, isOwner, likes.size(), commentCount, viewCount);
         if (!postDto.isConfirmed() && postDto.getPostType() == PostingType.FAIR_VIEW)
             detailDto.blindPartnerContent(userId);
         return detailDto;
@@ -403,9 +415,11 @@ public class PostingServiceImpl implements PostingService {
             liked = false;
             likeRepository.deleteByEntity(postLike);
         }
+        RedisDto.UserDto userDto = cacheService.getUserFromCache(post.getUserId());
         boolean commented = commentService.existsByPostIdAndUserId(postId, userId);
         List<Tag> tags = tagService.getPostTags(postId);
-        return new PostDto.ListItem(post, null, tags, liked, true, commented);
+        User user = new User(userDto);
+        return new PostDto.ListItem(post, user, tags, liked, true, commented);
     }
 
     @Override
@@ -744,30 +758,55 @@ public class PostingServiceImpl implements PostingService {
     }
 
     @Override
-    public Page<PostDto.ListItem> getAnnouncements(Long userId, int page, int size) {
+    public Page<AdminDto.AnnouncementList> getAnnouncements(Long userId, int page, int size) {
         Pageable pageable = Utility.getPageable(page, size, "createdAt", "desc");
         Page<Posting> announcements =
                 postRepository.findAllByPostType(PostingType.ANNOUNCEMENT, List.of(), List.of(),
                         pageable);
-        Set<Long> userIds = announcements.stream()
-                .map(Posting::getUserId)
-                .collect(Collectors.toSet());
-        List<User> users = userRepository.findAllById(userIds);
+        User admin = userRepository.findByUsername(ADMIN_USERNAME)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.INVALID_REQUEST));
         List<Posting> postList = announcements.stream()
                 .toList();
-        Map<Long, User> userMap = users.stream()
-                .collect(Collectors.toMap(User::getId, Function.identity()));
-        List<Long> likedPostIds = userId == null ? List.of() :
-                postRepository.getAllIdsInListLikedByUserId(userId, announcements.stream()
-                        .toList());
-        List<Long> viewedPostIds = userId == null ? List.of() :
-                postRepository.getAllIdsInListViewedByUserId(userId, postList);
-        List<Long> commentedPostIds = userId == null ? List.of() :
-                postRepository.getAllIdsInListCommentedByUserId(userId, postList);
+
+        List<Long> likedPostIds = new ArrayList<>();
+        List<Long> viewedPostIds = new ArrayList<>();
+
+        List<PostLike> likes = postLikeRepository.findAllByPostingIn(postList);
+        Map<Long, Integer> likeMap = new HashMap<>();
+        if (likes != null && !likes.isEmpty()) {
+            for (PostLike like : likes) {
+                if (like.getUserId()
+                        .equals(userId)) {
+                    likedPostIds.add(like.getId());
+                }
+                likeMap.merge(like.getPosting()
+                        .getId(), 1, Integer::sum);
+            }
+        }
+
+        // Ensure every post ID is in the map, even those with 0 comments
+
+        List<PostView> views = postViewRepository.findAllByPostingIn(postList);
+        Map<Long, Integer> viewMap = new HashMap<>();
+        if (views != null && !views.isEmpty()) {
+            for (PostView view : views) {
+                if (view.getUserId()
+                        .equals(userId)) {
+                    viewedPostIds.add(view.getId());
+                }
+                viewMap.merge(view.getPosting()
+                        .getId(), 1, Integer::sum);
+            }
+        }
+        for (Posting post : postList) {
+            likeMap.putIfAbsent(post.getId(), 0);
+            viewMap.putIfAbsent(post.getId(), 0);
+        }
+        Map<Long, Integer> commentMap = commentService.getPostCommentMap(postList);
         return announcements.map(post -> {
-            User user = userMap.get(post.getUserId());
-            return new PostDto.ListItem(post, user, List.of(), likedPostIds.contains(post.getId()),
-                    viewedPostIds.contains(post.getId()), commentedPostIds.contains(post.getId()));
+            return new AdminDto.AnnouncementList(post, admin, likedPostIds.contains(post.getId()),
+                    viewedPostIds.contains(post.getId()), likeMap.get(post.getId()),
+                    viewMap.get(post.getId()), commentMap.get(post.getId()));
         });
     }
 
@@ -775,7 +814,7 @@ public class PostingServiceImpl implements PostingService {
     public AdminDto.PostInfo createAnnouncement(AdminDto.VirtualPostRequest request) {
         PostingType postType = PostingType.ANNOUNCEMENT;
         Long userId = request.getUserId();
-        User user = userRepository.findByUsername("TroblAdmin")
+        User user = userRepository.findByUsername(ADMIN_USERNAME)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.INVALID_REQUEST));
         Posting post = Posting.builder()
                 .title(request.getTitle())
@@ -799,6 +838,27 @@ public class PostingServiceImpl implements PostingService {
         postRepository.save(post);
         RedisDto.UserDto userDto = cacheService.getUserFromCache(post.getUserId());
         return new AdminDto.PostInfo(post, userDto);
+    }
+
+    @Override
+    public AdminDto.AnnouncementDto getAnnouncement(Long postId, Long userId) {
+        Posting post = postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.ANNOUNCEMENT_NOT_FOUND));
+        List<PostLike> likes = postLikeRepository.findAllByPostingId(postId);
+        boolean liked = false;
+        if (userId != null) {
+            for (PostLike like : likes) {
+                if (like.getUserId()
+                        .equals(userId)) {
+                    liked = true;
+                    break;
+                }
+            }
+            if (!viewRepository.existsByPostIdAndUserId(postId, userId)) {
+                viewRepository.save(new PostView(post, userId));
+            }
+        }
+        return new AdminDto.AnnouncementDto(post, liked, likes.size());
     }
 
 

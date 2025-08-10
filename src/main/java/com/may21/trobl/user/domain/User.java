@@ -133,6 +133,12 @@ public class User implements UserDetails, OAuth2User {
         this.nickname = info.getNickname();
     }
 
+    public User(RedisDto.UserDto userDto) {
+        this.id = userDto.getUserId();
+        this.username = userDto.getUsername();
+        this.nickname = userDto.getNickname();
+    }
+
     public String getThumbnailUrl() {
         String ts = thumbnailUpdatedAt == null ? "" : "?ts=" +thumbnailUpdatedAt ;
         return thumbnailKey == null ? null :

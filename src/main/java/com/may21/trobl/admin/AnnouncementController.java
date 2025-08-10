@@ -17,12 +17,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/announcement")
+@RequestMapping("/announcements")
 @RequiredArgsConstructor
 @Slf4j
 public class AnnouncementController {
 
-    private final AdminService adminService;
     private final PostingService postingService;
     private final JwtTokenUtil jwtTokenUtil;
 
@@ -30,16 +29,17 @@ public class AnnouncementController {
     public ResponseEntity<Message> getAnnouncementDetail(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestHeader("Authorization") String token){
+            @RequestHeader(value = "Authorization", required = false) String token){
     Long userId = jwtTokenUtil.getUserIdFromToken(token);
-        Page<PostDto.ListItem> response = postingService.getAnnouncements(userId, page, size);
+        Page<AdminDto.AnnouncementList> response = postingService.getAnnouncements(userId, page,
+                size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-    @GetMapping("/{announcementId}")
-    public ResponseEntity<Message> getAnnouncementDetail(@PathVariable Long announcementId,
+    @GetMapping("/{postId}")
+    public ResponseEntity<Message> getAnnouncementDetail(@PathVariable Long postId,
             @AuthenticationPrincipal User user) {
         Long userId = user==null? null: user.getId();
-        AdminDto.AnnouncementDto response = adminService.getAnnouncement(announcementId, userId);
+        AdminDto.AnnouncementDto response = postingService.getAnnouncement(postId, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }

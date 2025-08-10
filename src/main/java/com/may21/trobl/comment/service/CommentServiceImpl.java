@@ -245,4 +245,10 @@ public class CommentServiceImpl implements CommentService {
         RedisDto.UserDto userDto = cacheService.getUserFromCache(comment.getUserId());
         return new CommentDto.Response(comment, userDto, false);
     }
+
+    @Override
+    public int getCommentCountByPostId(Long postId) {
+
+        return commentRepository.countByPostingIdAndReportedIsFalse(postId);
+    }
 }

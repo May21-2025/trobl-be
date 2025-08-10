@@ -24,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequiredArgsConstructor
@@ -91,7 +92,8 @@ public class PostingController {
     public ResponseEntity<Message> likePost(
             @PathVariable Long postId, @AuthenticationPrincipal User user) {
         PostDto.ListItem response = postingService.likePost(postId, user.getId());
-        if (response.isLiked()) {
+        if (response.isLiked() && !Objects.equals(response.getUser()
+                .getUserId(), user.getId())) {
             notificationService.sendNewLikeNotification(postId, ItemType.POST);
             contentUpdateService.likeUpdate(postId, postId, ItemType.POST);
         }

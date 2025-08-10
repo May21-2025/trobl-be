@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -21,4 +22,8 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
     Page<Posting> findPostingByUserId(Long userId, Pageable pageRequest);
 
     boolean existsByPostingIdAndUserId(Long postId, Long id);
+
+    List<PostLike> findAllByPostingId(Long postId);
+
+    List<PostLike> findAllByPostingIn(List<Posting> postList);
 }

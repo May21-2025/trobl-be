@@ -12,7 +12,6 @@ import com.may21.trobl.post.domain.PostRepository;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.tag.domain.Tag;
-import com.may21.trobl.tag.repository.TagMappingRepository;
 import com.may21.trobl.tag.repository.TagRepository;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -82,6 +81,7 @@ public class CacheService {
             return convertToRedisPost(post);
         }
     }
+
     /**
      * 사용자 정보를 Redis에서 가져오거나, 없으면 DB에서 가져와서 Redis에 저장
      */
@@ -101,7 +101,8 @@ public class CacheService {
             RedisDto.UserDto userDto = convertToRedisUser(user);
 
             // Redis에 저장
-            redisTemplate.opsForValue().set(key, userDto, DEFAULT_TTL);
+            redisTemplate.opsForValue()
+                    .set(key, userDto, DEFAULT_TTL);
             log.info("User {} loaded from DB and cached", userId);
 
             return userDto;
@@ -747,19 +748,6 @@ public class CacheService {
         }
     }
 
-    /**
-     * 태그 수정 시 관련 캐시 무효화
-     */
-    public void invalidateTagCache(Long tagId) {
-        try {
-            evictTagFromCache(tagId);
-            log.info("Tag cache invalidated for tagId: {}", tagId);
-        } catch (Exception e) {
-            log.error("Error invalidating tag cache for tagId {}: {}", tagId, e.getMessage());
-        }
-    }
-
-
 
     public void invalidatePostRelatedCache(Long postId) {
         try {
@@ -767,10 +755,9 @@ public class CacheService {
                 log.warn("postId is null. Skip cache invalidation.");
                 return;
             }
-
-            List<String> postRelatedKeys = List.of(POST_CACHE_KEY +postId ,
-                    POLL_OPTION_LIST_KEY + postId,
-                    POST_POLL_MAPPING_KEY + postId, FAIR_VIEW_LIST_KEY+ postId);
+            List<String> postRelatedKeys =
+                    List.of(POST_CACHE_KEY + postId, POLL_OPTION_LIST_KEY + postId,
+                            POST_POLL_MAPPING_KEY + postId, FAIR_VIEW_LIST_KEY + postId);
             redisTemplate.delete(postRelatedKeys);
         } catch (Exception e) {
             log.error("Error evicting cache for postId {}: {}", postId, e.getMessage(), e);

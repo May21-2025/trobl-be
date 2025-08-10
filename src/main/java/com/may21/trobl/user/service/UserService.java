@@ -14,6 +14,7 @@ import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
+import com.may21.trobl.redis.CacheService;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.user.UserDto;
@@ -38,6 +39,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import static com.may21.trobl.post.service.PostingServiceImpl.ADMIN_USERNAME;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -52,6 +55,7 @@ public class UserService implements UserDetailsService {
     private final ReportService reportService;
     private final KakaoOAuthService kakaoOAuthService;
     private final ProfanityFilter profanityFilter;
+    private final CacheService cacheService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -237,6 +241,7 @@ public class UserService implements UserDetailsService {
             throw new BusinessException(ExceptionCode.NICKNAME_ALREADY_EXISTS);
         }
         user.updateNickname(nickname);
+        cacheService.invalidateUserCache(user.getId());
         return true;
     }
 
@@ -245,6 +250,7 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         user.updateInformation(requestBody);
+        cacheService.invalidateUserCache(user.getId());
         return true;
     }
 
@@ -291,7 +297,7 @@ public class UserService implements UserDetailsService {
 
         // Update user with new image key
         user.setThumbnailKey(imageKey);
-
+        cacheService.invalidateUserCache(user.getId());
         return new UserDto.Info(user);
     }
 
@@ -314,11 +320,13 @@ public class UserService implements UserDetailsService {
             if (signUpDto.getAddress() != null) user.updateAddress(signUpDto.getAddress());
         }
         userRepository.save(user);
+        cacheService.invalidateUserCache(user.getId());
     }
 
     public boolean deleteAllOauth() {
         List<User> users = userRepository.findAllOAuth();
         userRepository.deleteAll(users);
+        for (User user : users) cacheService.invalidateUserCache(user.getId());
         return true;
     }
 
@@ -390,7 +398,7 @@ public class UserService implements UserDetailsService {
         user.updateInformation(marriedInfo);
         partner.updateInformation(marriedInfo);
         userRepository.saveAll(List.of(user, partner));
-
+        cacheService.invalidateUserCache(user.getId());
         return true;
     }
 
@@ -434,7 +442,7 @@ public class UserService implements UserDetailsService {
         if (request.getAddress() != null) {
             user.updateAddress(request.getAddress());
         }
-
+        cacheService.invalidateUserCache(user.getId());
         return new UserDto.Info(userRepository.save(user));
     }
 
@@ -469,11 +477,11 @@ public class UserService implements UserDetailsService {
     }
 
     public UserDto.Info getAdminAccount() {
-        User user = userRepository.findByUsername("TroblAdmin")
+        User user = userRepository.findByUsername(ADMIN_USERNAME)
                 .orElse(null);
         if (user == null) {
-            String nickname = "Trobl Admin";
-            String username = "TroblAdmin";
+            String nickname = ADMIN_USERNAME;
+            String username = ADMIN_USERNAME;
 
             user = User.builder()
                     .username(username)
@@ -491,7 +499,7 @@ public class UserService implements UserDetailsService {
     }
 
     public UserDto.Info updateAdminAccount(UserDto.Update request) {
-        User user = userRepository.findByUsername("TroblAdmin")
+        User user = userRepository.findByUsername(ADMIN_USERNAME)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         if (!Objects.equals(user.getNickname(), request.getNickname()) &&
                 (request.getNickname() != null && !request.getNickname()
@@ -501,6 +509,7 @@ public class UserService implements UserDetailsService {
             }
             user.updateNickname(request.getNickname());
         }
+        cacheService.invalidateUserCache(user.getId());
         return new UserDto.Info(userRepository.save(user));
     }
 }

@@ -257,12 +257,12 @@ public class PostDto {
         public Detail(RedisDto.PostDto postDto, List<RedisDto.FairViewDto> fairViews,
                 RedisDto.PollDto pollDto, List<RedisDto.PollOptionDto> optionDtoList,
                 Map<Long, RedisDto.UserDto> userMap, List<Tag> tags, boolean liked,
-                boolean bookmarked, List<Long> votedOptionIds, boolean isOwner) {
-            super(postDto, userMap.get(postDto.getUserId()), tags, 0);
+                boolean bookmarked, List<Long> votedOptionIds, boolean isOwner, int likeCount,
+                int commentCount, int viewCount) {
+            super(postDto, userMap.get(postDto.getUserId()), tags, viewCount);
             this.userId = postDto.getUserId();
             String createdAtStr = postDto.getCreatedAt();
-            LocalDateTime createdAt = LocalDateTime.parse(createdAtStr);
-            this.createdAt = createdAt; // String을 LocalDateTime으로 변환
+            this.createdAt = LocalDateTime.parse(createdAtStr);
 
             // PollDto 생성
             if (pollDto != null && optionDtoList != null) {
@@ -296,8 +296,8 @@ public class PostDto {
             this.content = decodeHtml(postDto.getContent());
             this.liked = liked;
             this.bookmarked = bookmarked;
-            this.commentCount = 0; // RedisDto에는 comment 정보가 없으므로 0으로 설정
-            this.likeCount = 0; // RedisDto에는 like 정보가 없으므로 0으로 설정
+            this.commentCount = commentCount;
+            this.likeCount = likeCount;
             this.confirmed = postDto.isConfirmed();
         }
 
@@ -312,6 +312,7 @@ public class PostDto {
             }
         }
     }
+
 
     @Getter
     public static class PollDto {

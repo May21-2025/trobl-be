@@ -152,6 +152,7 @@ public class AdminController {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = adminService.deletePost(postId);
         contentUpdateService.deleteItem(postId,ItemType.POST);
+        cacheService.invalidatePostRelatedCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
     @GetMapping("/posts/{postId}/comments")

@@ -184,6 +184,28 @@ public class JwtTokenUtil {
         }
     }
 
+    private void checkTokenValidation(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token);
+        } catch (ExpiredJwtException e) {
+            log.error("JWT 토큰이 만료되었습니다: {}", e.getMessage());
+            throw new BusinessException(ExceptionCode.ACCESS_TOKEN_EXPIRED);
+        } catch (UnsupportedJwtException e) {
+            log.error("지원되지 않는 JWT 토큰입니다: {}", e.getMessage());
+            throw new BusinessException(ExceptionCode.INVALID_ACCESS_TOKEN);
+        } catch (MalformedJwtException e) {
+            log.error("잘못된 형식의 JWT 토큰입니다: {}", e.getMessage());
+            throw new BusinessException(ExceptionCode.MALFORMED_TOKEN);
+        } catch (IllegalArgumentException e) {
+            log.error("JWT 클레임 문자열이 비어있습니다: {}", e.getMessage());
+            throw new BusinessException(ExceptionCode.TOKEN_MISSING);
+        }
+    }
+
+
     private Claims getClaims(String jwt) {
         try {
             return Jwts.parser()
@@ -191,9 +213,14 @@ public class JwtTokenUtil {
                     .build()
                     .parseSignedClaims(jwt)
                     .getPayload();
-        } catch (Exception e) {
-            log.error("JWT 파싱 실패: {}", e.getMessage());
-            throw new BusinessException(ExceptionCode.TOKEN_PARSE_FAILED, e);
+        } catch (ExpiredJwtException e) {
+            throw new BusinessException(ExceptionCode.ACCESS_TOKEN_EXPIRED);
+        } catch (UnsupportedJwtException e) {
+            throw new BusinessException(ExceptionCode.INVALID_ACCESS_TOKEN);
+        } catch (MalformedJwtException e) {
+            throw new BusinessException(ExceptionCode.MALFORMED_TOKEN);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ExceptionCode.TOKEN_MISSING);
         }
     }
 
@@ -274,7 +301,7 @@ public class JwtTokenUtil {
 
     public Long getUserIdFromToken(String tokenStr) {
         if (tokenStr == null) {
-           return null;
+            return null;
         }
         String token = tokenStr.startsWith("Bearer ") ? tokenStr.substring(7) : tokenStr;
         Claims claims = getClaims(token);

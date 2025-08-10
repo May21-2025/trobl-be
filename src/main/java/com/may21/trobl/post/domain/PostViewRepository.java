@@ -30,4 +30,8 @@ public interface PostViewRepository extends JpaRepository<PostView, Long> {
             WHERE p.posting IN :posts
             """)
     List<PostView> findAllByPosts(List<Posting> posts);
+
+    int countByPostingId(Long postId);
+
+    List<PostView> findAllByPostingIn(List<Posting> postList);
 }

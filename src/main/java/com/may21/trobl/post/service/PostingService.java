@@ -131,11 +131,14 @@ public interface PostingService {
     AdminDto.PostInfo getAdminPostInfo(Long postId);
 
     @Transactional(readOnly = true)
-    Page<PostDto.ListItem> getAnnouncements(Long userId, int page, int size);
+    Page<AdminDto.AnnouncementList> getAnnouncements(Long userId, int page, int size);
 
     @Transactional
     AdminDto.PostInfo createAnnouncement(AdminDto.VirtualPostRequest createRequest);
 
     @Transactional
     AdminDto.PostInfo updateAnnouncement(Long postId ,AdminDto.VirtualPostRequest createRequest);
+
+    @Transactional(readOnly = true)
+    AdminDto.AnnouncementDto getAnnouncement(Long postId, Long userId);
 }
