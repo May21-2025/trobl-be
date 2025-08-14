@@ -71,4 +71,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByIdAndTestUserIsTrue(Long userId);
 
     List<User> findUserByTestUserIsTrue();
+
+    @Query("SELECT u FROM User u  WHERE u.id IN (" +
+            "SELECT MIN(u2.id) FROM User u2 WHERE u.testUser = true AND LOWER(u2.nickname) LIKE " +
+            "LOWER(CONCAT('%', " + ":keyword, '%')) GROUP BY u2.nickname" + ")")
+    List<User> searchUsersByKeywordTestUserIsTrue(String keyword);
 }

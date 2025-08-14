@@ -25,5 +25,8 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
 
     List<PostLike> findAllByPostingId(Long postId);
 
-    List<PostLike> findAllByPostingIn(List<Posting> postList);
+    List<PostLike> findAllByPostingIn(java.util.List<com.may21.trobl.post.domain.Posting> postList);
+
+    @Query("SELECT p FROM PostLike p WHERE p.posting.id IN :postIdList ")
+    List<PostLike> findAllByPostingIdIn(List<Long> postIdList);
 }

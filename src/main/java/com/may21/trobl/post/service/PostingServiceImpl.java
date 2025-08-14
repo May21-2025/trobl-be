@@ -7,6 +7,8 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
+import com.may21.trobl.admin.domain.AdminTag;
+import com.may21.trobl.admin.repository.AdminTagRepository;
 import com.may21.trobl.bookmark.PostBookmark;
 import com.may21.trobl.bookmark.PostBookmarkRepository;
 import com.may21.trobl.comment.service.CommentService;
@@ -27,6 +29,7 @@ import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
+import com.may21.trobl.tag.repository.TagMappingRepository;
 import com.may21.trobl.tag.service.TagService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -43,6 +46,8 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.may21.trobl._global.utility.Utility.getFilteredPostTypeList;
 
 @Service
 @RequiredArgsConstructor
@@ -67,6 +72,8 @@ public class PostingServiceImpl implements PostingService {
     private final CacheService cacheService;
     private final PostViewRepository postViewRepository;
     private final PostLikeRepository postLikeRepository;
+    private final AdminTagRepository adminTagRepository;
+    private final TagMappingRepository tagMappingRepository;
 
     public static String ADMIN_USERNAME = "TroblAdmin";
 
@@ -312,17 +319,27 @@ public class PostingServiceImpl implements PostingService {
                 tagList, false, false, votedOptionIds, true);
     }
 
-    public List<PollOption> updatePollOptions(List<PostDto.PollOptionRequest> pollOptionsRequest,
-            Poll poll) {
+    public List<PollOption> updatePollOptions(List<PostDto.PollOptionRequest> pollOptionsRequest, Poll poll) {
         List<PollOption> pollOptions = poll.getPollOptions();
-        List<PollOption> updatedOptions = new ArrayList<>();
         List<Long> pollOptionIds = pollOptionsRequest.stream()
-                .map(com.may21.trobl.post.dto.PostDto.PollOptionRequest::getPollOptionId)
+                .map(PostDto.PollOptionRequest::getPollOptionId)
+                .filter(Objects::nonNull) // Filter out nulls to avoid issues
                 .toList();
+
+        // First, remove options that are no longer in the request
+        List<PollOption> optionsToRemove = pollOptions.stream()
+                .filter(option -> !pollOptionIds.contains(option.getId()))
+                .toList();
+
+        pollOptions.removeAll(optionsToRemove);
+        if (!optionsToRemove.isEmpty()) {
+            pollOptionRepository.deleteAll(optionsToRemove);
+        }
 
         // Process poll options from the request
         for (int i = 0; i < pollOptionsRequest.size(); i++) {
             PostDto.PollOptionRequest pollOptionRequest = pollOptionsRequest.get(i);
+
             if (pollOptionRequest.getPollOptionId() == null) {
                 // Create new poll option
                 String filteredName = profanityFilter.filterProfanity(pollOptionRequest.getName());
@@ -331,42 +348,26 @@ public class PostingServiceImpl implements PostingService {
                         .index(i)
                         .poll(poll)
                         .build();
-                updatedOptions.add(pollOption);
-            }
-            else {
+                pollOptions.add(pollOption); // Add to existing collection
+            } else {
                 // Update existing poll option
                 PollOption existingOption = pollOptions.stream()
-                        .filter(option -> option.getId()
-                                .equals(pollOptionRequest.getPollOptionId()))
+                        .filter(option -> option.getId().equals(pollOptionRequest.getPollOptionId()))
                         .findFirst()
-                        .orElse(new PollOption(pollOptionRequest.getName(), i, poll));
-                if (pollOptionRequest.getName() != null && !pollOptionRequest.getName()
-                        .equals(existingOption.getName())) {
-                    String filteredName =
-                            profanityFilter.filterProfanity(pollOptionRequest.getName());
+                        .orElseThrow(() -> new IllegalArgumentException("Poll option not found: " + pollOptionRequest.getPollOptionId()));
+
+                if (pollOptionRequest.getName() != null && !pollOptionRequest.getName().equals(existingOption.getName())) {
+                    String filteredName = profanityFilter.filterProfanity(pollOptionRequest.getName());
                     existingOption.setName(filteredName);
                 }
                 existingOption.setIndex(i);
-                updatedOptions.add(existingOption);
             }
         }
-        // Find and remove poll options that are not in the request
-        List<PollOption> optionsToRemove = pollOptions.stream()
-                .filter(option -> !pollOptionIds.contains(option.getId()))
-                .toList();
 
-        // Remove the options that are not in the request
-        if (!optionsToRemove.isEmpty()) {
-            pollOptions.removeAll(optionsToRemove);
-            pollOptionRepository.deleteAll(optionsToRemove);
-        }
+        // Save all changes
+        pollOptionRepository.saveAll(pollOptions);
 
-        // Add new poll options to the post
-        if (!updatedOptions.isEmpty()) {
-            pollOptionRepository.saveAll(updatedOptions);
-        }
-        poll.setPollOptions(updatedOptions);
-        return updatedOptions;
+        return new ArrayList<>(pollOptions); // Return a copy if needed
     }
 
     @Override
@@ -415,7 +416,8 @@ public class PostingServiceImpl implements PostingService {
             liked = false;
             likeRepository.deleteByEntity(postLike);
         }
-        RedisDto.UserDto userDto = cacheService.getUserFromCache(post.getUserId());
+        Long ownerId = post.getUserId();
+        RedisDto.UserDto userDto = cacheService.getUserFromCache(ownerId);
         boolean commented = commentService.existsByPostIdAndUserId(postId, userId);
         List<Tag> tags = tagService.getPostTags(postId);
         User user = new User(userDto);
@@ -675,6 +677,7 @@ public class PostingServiceImpl implements PostingService {
         FairView fairView = fairViewRepository.findById(fairViewId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.FAIR_VIEW_NOT_FOUND));
         fairView.update(request);
+        fairViewRepository.save(fairView);
         User user = userRepository.findById(fairView.getUserId())
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
         return new PostDto.FairViewItem(fairView, user);
@@ -708,27 +711,36 @@ public class PostingServiceImpl implements PostingService {
         Set<Long> userId = postings.stream()
                 .map(Posting::getUserId)
                 .collect(Collectors.toSet());
-
+        List<Long> postIds = postings.stream()
+                .map(Posting::getId)
+                .toList();
         List<User> users = userRepository.findByIdIn(new ArrayList<>(userId));
         Map<Long, User> userMap = users.stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
-
+        List<AdminTag> adminTags = adminTagRepository.findByPostIds(postIds);
+        List<TagMapping> tagMappings = tagMappingRepository.findByPostIdIn(postIds);
+        Map<Long, List<AdminDto.TagInfo>> tagMap = new HashMap<>();
+        for (AdminTag adminTag : adminTags) {
+            List<AdminDto.TagInfo> tagInfos = new ArrayList<>();
+            for (String tag : adminTag.getTags()) {
+                tagInfos.add(new AdminDto.TagInfo(tag, true));
+            }
+            tagMap.put(adminTag.getPostId(), tagInfos);
+        }
+        for (TagMapping tagMapping : tagMappings) {
+            Long postId = tagMapping.getPosting()
+                    .getId();
+            List<AdminDto.TagInfo> tagInfo = tagMap.getOrDefault(postId, new ArrayList<>());
+            tagInfo.add(new AdminDto.TagInfo(tagMapping.getTag()
+                    .getName(), false));
+            tagMap.put(postId, tagInfo);
+        }
         return postings.map(post -> {
-            return new PostDto.AdminListItem(post, userMap.get(post.getUserId()));
+            return new PostDto.AdminListItem(post, userMap.get(post.getUserId()), tagMap.get(post.getId()));
         });
     }
 
-    private List<PostingType> getFilteredPostTypeList(List<String> postTypes) {
-        if (postTypes.isEmpty())
-            return List.of(PostingType.POLL, PostingType.GENERAL, PostingType.FAIR_VIEW);
-        List<PostingType> postingTypes = new ArrayList<>();
-        for (String string : postTypes) {
-            PostingType postingType = PostingType.fromString(string);
-            if (postingType == null) continue;
-            postingTypes.add(postingType);
-        }
-        return postingTypes;
-    }
+
 
     @Override
     public AdminDto.PostInfo getAdminPostInfo(Long postId) {
@@ -813,14 +825,13 @@ public class PostingServiceImpl implements PostingService {
     @Override
     public AdminDto.PostInfo createAnnouncement(AdminDto.VirtualPostRequest request) {
         PostingType postType = PostingType.ANNOUNCEMENT;
-        Long userId = request.getUserId();
         User user = userRepository.findByUsername(ADMIN_USERNAME)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.INVALID_REQUEST));
         Posting post = Posting.builder()
                 .title(request.getTitle())
                 .postType(postType)
                 .content(request.getContent())
-                .userId(userId)
+                .userId(user.getId())
                 .build();
         postRepository.save(post);
         return new AdminDto.PostInfo(post, user);
@@ -845,6 +856,7 @@ public class PostingServiceImpl implements PostingService {
         Posting post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.ANNOUNCEMENT_NOT_FOUND));
         List<PostLike> likes = postLikeRepository.findAllByPostingId(postId);
+        RedisDto.UserDto userDto = cacheService.getUserFromCache(post.getUserId());
         boolean liked = false;
         if (userId != null) {
             for (PostLike like : likes) {
@@ -858,7 +870,29 @@ public class PostingServiceImpl implements PostingService {
                 viewRepository.save(new PostView(post, userId));
             }
         }
-        return new AdminDto.AnnouncementDto(post, liked, likes.size());
+        return new AdminDto.AnnouncementDto(post, userDto, liked, likes.size());
+    }
+
+    @Override
+    public void deleteAllHistoriesByBlockedUser(Long userId, Long blockedUserId) {
+        bookmarkRepository.deleteBlockedUser(userId, blockedUserId);
+        voteRepository.deleteByBlockedUser(userId, blockedUserId);
+    }
+
+    @Override
+    public Long getPostIdByFairViewId(Long fairViewId) {
+        return fairViewRepository.findPostIdByFairViewId(fairViewId);
+    }
+
+    @Override
+    public Long getPostIdByPollId(Long pollId) {
+        return pollRepository.findPostIdById(pollId);
+    }
+
+    @Override
+    public void deleteAllHistoriesByBlockedPost(Long userId, Long blockedPostId) {
+        bookmarkRepository.deleteBlockedPost(userId, blockedPostId);
+        voteRepository.deleteBlockedPost(userId, blockedPostId);
     }
 
 

@@ -423,10 +423,12 @@ public class CacheService {
         }
     }
 
-    public void evictFairViewFromCache(Long fairViewId) {
+    public void evictFairViewFromCache(Long postId, Long fairViewId) {
         try {
             String key = FAIR_VIEW_CACHE_KEY + fairViewId;
             redisTemplate.delete(key);
+            String listKey = FAIR_VIEW_LIST_KEY + postId;
+            redisTemplate.delete(listKey);
             log.info("FairView {} evicted from cache", fairViewId);
         } catch (Exception e) {
             log.error("Error evicting fair view from cache: {}", e.getMessage());
@@ -502,7 +504,6 @@ public class CacheService {
     public List<RedisDto.UserDto> getMultipleUsersFromCache(List<Long> userIds) {
         return userIds.stream()
                 .map(this::getUserFromCache)
-
                 .collect(Collectors.toList());
     }
 
@@ -667,17 +668,15 @@ public class CacheService {
     /**
      * Poll 수정 시 관련 캐시 무효화
      */
-    public void invalidatePollCache(Long pollId) {
+    public void invalidatePollCache(Long postId, Long pollId) {
         try {
             // Poll 캐시 삭제
             evictPollFromCache(pollId);
 
-            // PollOption 캐시 삭제
-            evictPollOptionFromCache(pollId);
-
             // PollOption 목록 캐시 삭제
-            String pollOptionListKey = POLL_OPTION_LIST_KEY + pollId;
-            redisTemplate.delete(pollOptionListKey);
+            List<String> keys =
+                    List.of(POLL_OPTION_LIST_KEY + postId, POLL_OPTION_LIST_KEY + postId);
+            redisTemplate.delete(keys);
 
             log.info("Poll cache invalidated for pollId: {}", pollId);
         } catch (Exception e) {
@@ -712,31 +711,6 @@ public class CacheService {
     }
 
     /**
-     * FairView 수정 시 관련 캐시 무효화
-     */
-    public void invalidateFairViewCache(Long fairViewId) {
-        try {
-            // 개별 FairView 캐시 삭제
-            evictFairViewFromCache(fairViewId);
-
-            // 해당 FairView가 속한 포스트의 FairView 목록 캐시도 삭제
-            Optional<FairView> fairView = fairViewRepository.findById(fairViewId);
-            if (fairView.isPresent()) {
-                Long postId = fairView.get()
-                        .getPosting()
-                        .getId();
-                String fairViewListKey = "fair_view_list:" + postId;
-                redisTemplate.delete(fairViewListKey);
-            }
-
-            log.info("FairView cache invalidated for fairViewId: {}", fairViewId);
-        } catch (Exception e) {
-            log.error("Error invalidating fair view cache for fairViewId {}: {}", fairViewId,
-                    e.getMessage());
-        }
-    }
-
-    /**
      * 사용자 수정 시 관련 캐시 무효화
      */
     public void invalidateUserCache(Long userId) {
@@ -765,5 +739,30 @@ public class CacheService {
         }
     }
 
+
+    public void invalidateAllPostRelatedCache() {
+        try {
+            // 서비스에서 사용하는 캐시 키 접두사
+            String pattern = POST_CACHE_KEY + "*";
+
+            // Redis 키 전체 조회
+            Set<String> keys = redisTemplate.keys(pattern);
+            if (!keys.isEmpty()) {
+                redisTemplate.delete(keys);
+                log.info("Deleted {} cache keys with pattern {}", keys.size(), pattern);
+            }
+            else {
+                log.info("No cache keys found for pattern {}", pattern);
+            }
+
+            // 필요하다면 다른 관련 패턴도 삭제
+            redisTemplate.delete(redisTemplate.keys(POLL_OPTION_LIST_KEY + "*"));
+            redisTemplate.delete(redisTemplate.keys(POST_POLL_MAPPING_KEY + "*"));
+            redisTemplate.delete(redisTemplate.keys(FAIR_VIEW_LIST_KEY + "*"));
+
+        } catch (Exception e) {
+            log.error("Error evicting all post related cache: {}", e.getMessage(), e);
+        }
+    }
 
 }

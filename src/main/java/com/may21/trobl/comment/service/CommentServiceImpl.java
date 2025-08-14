@@ -251,4 +251,24 @@ public class CommentServiceImpl implements CommentService {
 
         return commentRepository.countByPostingIdAndReportedIsFalse(postId);
     }
+
+    @Override
+    public Map<Long, Integer> getPostCommentMapByPostIds(List<Long> postIdList) {
+        Map<Long, Integer> postCommentMap = new HashMap<>();
+
+        List<Comment> comments = commentRepository.findByPostIdIn(postIdList);
+
+        if (comments != null && !comments.isEmpty()) {
+            postCommentMap = comments.stream()
+                    .collect(Collectors.toMap(c -> c.getPosting()
+                            .getId(), c -> 1, Integer::sum));
+        }
+
+        // Ensure every post ID is in the map, even those with 0 comments
+        for (Long postId : postIdList) {
+            postCommentMap.putIfAbsent(postId, 0);
+        }
+
+        return postCommentMap;
+    }
 }

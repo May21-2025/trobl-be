@@ -58,6 +58,8 @@ public interface PostingService {
     @Transactional(readOnly = true)
     List<PostDto.QuickPoll> getRandomQuickPoll(Long userId);
 
+    void deleteAllHistoriesByBlockedPost(Long userId, Long blockedPostId);
+
     @Transactional
     boolean bookmarkPost(Long postId, Long userId);
 
@@ -139,6 +141,13 @@ public interface PostingService {
     @Transactional
     AdminDto.PostInfo updateAnnouncement(Long postId ,AdminDto.VirtualPostRequest createRequest);
 
-    @Transactional(readOnly = true)
+    @Transactional
     AdminDto.AnnouncementDto getAnnouncement(Long postId, Long userId);
+
+    @Transactional
+    void deleteAllHistoriesByBlockedUser(Long userId, Long blockedUserId);
+
+    Long getPostIdByFairViewId(Long fairViewId);
+
+    Long getPostIdByPollId(Long pollId);
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.may21.trobl._global.enums.FairViewStatus;
 import com.may21.trobl._global.enums.PostingType;
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
@@ -592,7 +593,8 @@ public class PostDto {
         private final long likeCount;
         private final UserDto.Info user;
 
-        public AdminListItem(Posting post, User user) {
+
+        public AdminListItem(Posting post, User user, List<AdminDto.TagInfo> tags) {
             this.postId = post.getId();
             this.postType = post.getPostType();
             this.title = decodeHtml(post.getTitle());
@@ -601,6 +603,20 @@ public class PostDto {
             this.likeCount = post.getLikeCount();
             this.createdAt = post.getCreatedAt();
             this.user = user == null ? null : new UserDto.Info(user);
+
+        }
+
+        public AdminListItem(RedisDto.PostDto postDto, RedisDto.UserDto userDto) {
+            this.postId = postDto.getPostId();
+            this.postType = postDto.getPostType();
+            this.title = decodeHtml(postDto.getTitle());
+            this.viewCount = 0;
+            this.commentCount = 0;
+            this.likeCount = 0;
+            String createdAt = postDto.getCreatedAt();
+            this.createdAt = LocalDateTime.parse(createdAt);
+            this.user = userDto == null ? null : new UserDto.Info(userDto);
         }
     }
+
 }

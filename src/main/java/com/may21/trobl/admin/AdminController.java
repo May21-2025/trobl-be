@@ -89,8 +89,17 @@ public class AdminController {
             @PathVariable Long userId) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = adminService.deleteUser(userId);
-        contentUpdateService.deleteItem(userId,ItemType.USER);
+        contentUpdateService.deleteItem(userId, ItemType.USER);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/data-organize")
+    public ResponseEntity<Message> dataOrganize(@RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        adminService.dataOrganize();
+        cacheService.invalidateAllPostRelatedCache();
+        postingService.evictAllTopPosts();
+        return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
     }
 
     // ========== 게시글 관리 API ==========
@@ -102,10 +111,11 @@ public class AdminController {
     }
 
     @PutMapping("/announcements/account")
-    public ResponseEntity<Message> updateAdminAccount(@RequestHeader("Authorization") String token, @RequestPart UserDto.Update request,
+    public ResponseEntity<Message> updateAdminAccount(@RequestHeader("Authorization") String token,
+            @RequestPart UserDto.Update request,
             @RequestPart(required = false) MultipartFile thumbnail) {
         jwtTokenUtil.getAdminUserByToken(token);
-        UserDto.Info response = userService.updateAdminAccount( request);
+        UserDto.Info response = userService.updateAdminAccount(request);
         if (thumbnail != null) {
             String imageKey =
                     storageService.uploadUserProfileImage(response.getUserId(), thumbnail);
@@ -114,17 +124,29 @@ public class AdminController {
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PostMapping("/announcements")
-    public ResponseEntity<Message> createAnnouncement(@RequestHeader("Authorization") String token, @RequestBody AdminDto.VirtualPostRequest createRequest) {
+    public ResponseEntity<Message> createAnnouncement(@RequestHeader("Authorization") String token,
+            @RequestBody AdminDto.VirtualPostRequest createRequest) {
         jwtTokenUtil.getAdminUserByToken(token);
         AdminDto.PostInfo response = postingService.createAnnouncement(createRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PutMapping("/announcements/{postId}")
-    public ResponseEntity<Message> updateAnnouncement(@RequestHeader("Authorization") String token,@PathVariable Long postId,@RequestBody AdminDto.VirtualPostRequest updateRequest) {
+    public ResponseEntity<Message> updateAnnouncement(@RequestHeader("Authorization") String token,
+            @PathVariable Long postId, @RequestBody AdminDto.VirtualPostRequest updateRequest) {
         jwtTokenUtil.getAdminUserByToken(token);
         AdminDto.PostInfo response = postingService.updateAnnouncement(postId, updateRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @GetMapping("/tags/search")
+    public ResponseEntity<Message> getTagSearch(@RequestHeader("Authorization") String token,
+            @RequestParam String keyword) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        List<String> response = adminService.getSearchedTags(keyword);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+
     }
     @GetMapping("/posts")
     public ResponseEntity<Message> getAllPosts(@RequestHeader("Authorization") String token,
@@ -133,11 +155,57 @@ public class AdminController {
             @RequestParam(defaultValue = "postTypes") List<String> postTypes,
             @RequestParam(defaultValue = "true") boolean asc) {
         jwtTokenUtil.getAdminUserByToken(token);
-        Page<PostDto.AdminListItem> response = postingService.getAdminAllPosts(size, page,
-                sortType,asc, postTypes);
+        Page<PostDto.AdminListItem> response =
+                postingService.getAdminAllPosts(size, page, sortType, asc, postTypes);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
+    @GetMapping("/posts/List")
+    public ResponseEntity<Message> getAllDetailedPosts(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "createdAt") String sortType,
+            @RequestParam(defaultValue="", required = false) List<String> postTypes,
+            @RequestParam(defaultValue="", required = false) List<String> tags,
+            @RequestParam(defaultValue = "false") boolean asc) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        Page<AdminDto.PostListItem> response =
+                adminService.getAllDetailedPosts(size, page, sortType, asc, postTypes, tags);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/posts/admin-tags")
+    public ResponseEntity<Message> setAdminTagsToPosts(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        adminService.makeTagsForPosts();
+        return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
+    }
+
+    @GetMapping("/posts/details/refresh")
+    public ResponseEntity<Message> updatePostDetailInfos(
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        adminService.updatePostDetailInfos();
+        return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
+    }
+
+
+    @PutMapping("/posts/{postId}/admin-tags")
+    public ResponseEntity<Message> updateAdminTags(@PathVariable Long postId,
+            @RequestBody AdminDto.UpdateAdminTags request,
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        List<AdminDto.TagInfo> response = adminService.updateAdminTags(postId, request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PatchMapping("/posts/{postId}/admin-tags")
+    public ResponseEntity<Message> updateAdminTags(@PathVariable Long postId,
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        List<AdminDto.TagInfo> response = adminService.removeUnsetted(postId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
 
     @GetMapping("/posts/{postId}")
     public ResponseEntity<Message> getPosts(@RequestHeader("Authorization") String token,
@@ -146,15 +214,17 @@ public class AdminController {
         AdminDto.PostInfo response = postingService.getAdminPostInfo(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @DeleteMapping("/posts/{postId}")
     public ResponseEntity<Message> deletePost(@RequestHeader("Authorization") String token,
             @PathVariable Long postId) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = adminService.deletePost(postId);
-        contentUpdateService.deleteItem(postId,ItemType.POST);
+        contentUpdateService.deleteItem(postId, ItemType.POST);
         cacheService.invalidatePostRelatedCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/posts/{postId}/comments")
     public ResponseEntity<Message> getPostComments(@RequestHeader("Authorization") String token,
             @PathVariable Long postId) {
@@ -162,12 +232,14 @@ public class AdminController {
         List<AdminDto.CommentInfo> response = commentService.getAdminCommentInfo(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/reported-items")
     public ResponseEntity<Message> getReportedPosts(@RequestHeader("Authorization") String token) {
         jwtTokenUtil.getAdminUserByToken(token);
         List<AdminDto.ReportedListItem> response = adminService.getReportedItems();
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PatchMapping("/reported-items/{itemId}")
     public ResponseEntity<Message> unblockPost(@RequestHeader("Authorization") String token,
             @PathVariable Long itemId, @RequestParam ItemType itemType,
@@ -220,6 +292,14 @@ public class AdminController {
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+    @GetMapping("/content-simulator/users/search")
+    public ResponseEntity<Message> createVirtualUsers(@RequestHeader("Authorization") String token,
+            @RequestParam String keyword) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        List<AdminDto.SearchedUser>  response = adminService.createVirtualUsers(keyword);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+
+    }
     @GetMapping("/content-simulator/users/{userId}/check")
     public ResponseEntity<Message> isVirtualUsers(@PathVariable Long userId,
             @RequestHeader("Authorization") String token) {
@@ -227,6 +307,7 @@ public class AdminController {
         boolean response = userService.isVirtualUsers(userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PutMapping("/content-simulator/users/{userId}")
     public ResponseEntity<Message> updateVirtualUsers(@PathVariable Long userId,
             @RequestHeader("Authorization") String token, @RequestPart UserDto.Update request,
@@ -269,6 +350,7 @@ public class AdminController {
         PostDto.ListItem response = postingService.createVirtualPost(createRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PostMapping("/content-simulator/posts/fair-view")
     public ResponseEntity<Message> createVirtualPosts(@RequestHeader("Authorization") String token,
             @RequestBody AdminDto.FairViewPostRequest request) {
@@ -284,19 +366,25 @@ public class AdminController {
         PostDto.ListItem response = postingService.updateVirtualPost(postId, updateRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PutMapping("/content-simulator/fair-view/{fairViewId}")
-    public ResponseEntity<Message> updateVirtualFairView(@RequestHeader("Authorization") String token,
-            @PathVariable Long fairViewId, @RequestBody PostDto.FairViewRequest request) {
+    public ResponseEntity<Message> updateVirtualFairView(
+            @RequestHeader("Authorization") String token, @PathVariable Long fairViewId,
+            @RequestBody PostDto.FairViewRequest request) {
         jwtTokenUtil.getAdminUserByToken(token);
         PostDto.FairViewItem response = postingService.updateVirtualFairView(fairViewId, request);
-        cacheService.evictFairViewFromCache(fairViewId);
+        Long postId = postingService.getPostIdByFairViewId(fairViewId);
+        cacheService.evictFairViewFromCache(postId,fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PutMapping("/content-simulator/poll/{pollId}")
     public ResponseEntity<Message> updateVirtualPoll(@RequestHeader("Authorization") String token,
             @PathVariable Long pollId, @RequestBody PostDto.PollRequest request) {
         jwtTokenUtil.getAdminUserByToken(token);
         PostDto.PollDto response = postingService.updatePoll(pollId, request);
+        Long postId = postingService.getPostIdByPollId(pollId);
+        cacheService.invalidatePollCache(postId, pollId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -312,20 +400,27 @@ public class AdminController {
     }
 
     @PostMapping("/content-simulator/comments")
-    public ResponseEntity<Message> createVirtualComments(@RequestHeader("Authorization") String token,
+    public ResponseEntity<Message> createVirtualComments(
+            @RequestHeader("Authorization") String token,
             @RequestBody AdminDto.VirtualCommentRequest createRequest) {
         jwtTokenUtil.getAdminUserByToken(token);
         CommentDto.Response response = commentService.createVirtualComment(createRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PutMapping("/content-simulator/comments/{commentId}")
-    public ResponseEntity<Message> updateVirtualComments(@RequestHeader("Authorization") String token, @PathVariable Long commentId, @RequestBody AdminDto.VirtualCommentRequest createRequest) {
+    public ResponseEntity<Message> updateVirtualComments(
+            @RequestHeader("Authorization") String token, @PathVariable Long commentId,
+            @RequestBody AdminDto.VirtualCommentRequest createRequest) {
         jwtTokenUtil.getAdminUserByToken(token);
-        CommentDto.Response  response = commentService.updateVirtualComments(commentId, createRequest);
+        CommentDto.Response response =
+                commentService.updateVirtualComments(commentId, createRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @DeleteMapping("/content-simulator/comments/{commentId}")
-    public ResponseEntity<Message> deleteVirtualComments(@RequestHeader("Authorization") String token, @PathVariable Long commentId) {
+    public ResponseEntity<Message> deleteVirtualComments(
+            @RequestHeader("Authorization") String token, @PathVariable Long commentId) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = commentService.deleteVirtualComments(commentId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
@@ -441,9 +536,9 @@ public class AdminController {
                         scheduledTime.toString()), NotificationStrategy.SCHEDULED);
         return new ResponseEntity<>(Message.success("예약 전송 테스트 완료 (1분 후 전송 예정)"), HttpStatus.OK);
     }
+
     @GetMapping("/organize")
-    public ResponseEntity<Message> deletedeletedNoti(
-            @RequestHeader("Authorization") String token) {
+    public ResponseEntity<Message> deletedeletedNoti(@RequestHeader("Authorization") String token) {
         jwtTokenUtil.getAdminUserByToken(token);
         return new ResponseEntity<>(Message.success(""), HttpStatus.OK);
     }

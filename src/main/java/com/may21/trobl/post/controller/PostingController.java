@@ -2,8 +2,6 @@ package com.may21.trobl.post.controller;
 
 import com.may21.trobl._global.Message;
 import com.may21.trobl._global.enums.ItemType;
-import com.may21.trobl._global.exception.BusinessException;
-import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl.notification.domain.ContentUpdateService;
 import com.may21.trobl.notification.service.NotificationService;
@@ -39,18 +37,17 @@ public class PostingController {
 
 
     @PostMapping("")
-    public ResponseEntity<Message> createPost(
-            @RequestBody PostDto.Request request, @RequestHeader("Authorization") String token) {
-        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+    public ResponseEntity<Message> createPost(@RequestBody PostDto.Request request,
+            @RequestHeader("Authorization") String token) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token)
+                .getId();
         PostDto.Detail response = postingService.createPost(request, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PutMapping("/{postId}")
-    public ResponseEntity<Message> updatePost(
-            @RequestBody PostDto.Request request,
-            @PathVariable Long postId,
-            @AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> updatePost(@RequestBody PostDto.Request request,
+            @PathVariable Long postId, @AuthenticationPrincipal User user) {
         PostDto.Detail response = postingService.updatePost(request, user.getId(), postId);
         postingService.evictAllTopPosts();
         cacheService.invalidatePostRelatedCache(postId);
@@ -58,7 +55,8 @@ public class PostingController {
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<Message> getPostDetail(@PathVariable Long postId, @AuthenticationPrincipal User user, HttpServletRequest request) {
+    public ResponseEntity<Message> getPostDetail(@PathVariable Long postId,
+            @AuthenticationPrincipal User user, HttpServletRequest request) {
         if (user == null) {
             String authHeader = request.getHeader("Authorization");
         }
@@ -69,8 +67,7 @@ public class PostingController {
     }
 
     @DeleteMapping("/{postId}")
-    public ResponseEntity<Message> deletePost(
-            @PathVariable Long postId,
+    public ResponseEntity<Message> deletePost(@PathVariable Long postId,
             @AuthenticationPrincipal User user) {
         boolean response = postingService.deletePost(user.getId(), postId);
         contentUpdateService.deleteItem(postId, ItemType.POST);
@@ -79,18 +76,17 @@ public class PostingController {
     }
 
     @PutMapping("/{postId}/report")
-    public ResponseEntity<Message> reportPost(
-            @PathVariable Long postId,
-            @RequestBody ReportDto.Request reportRequest,
-            @AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> reportPost(@PathVariable Long postId,
+            @RequestBody ReportDto.Request reportRequest, @AuthenticationPrincipal User user) {
         boolean response = postingService.reportPost(user.getId(), postId, reportRequest);
+        postingService.deleteAllHistoriesByBlockedPost(user.getId(), postId);
         postingService.evictAllTopPosts();
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PutMapping("/{postId}/like")
-    public ResponseEntity<Message> likePost(
-            @PathVariable Long postId, @AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> likePost(@PathVariable Long postId,
+            @AuthenticationPrincipal User user) {
         PostDto.ListItem response = postingService.likePost(postId, user.getId());
         if (response.isLiked() && !Objects.equals(response.getUser()
                 .getUserId(), user.getId())) {
@@ -102,40 +98,45 @@ public class PostingController {
     }
 
     @PutMapping("/{postId}/bookmarks")
-    public ResponseEntity<Message> bookmarkPost(
-            @PathVariable Long postId, @AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> bookmarkPost(@PathVariable Long postId,
+            @AuthenticationPrincipal User user) {
         boolean response = postingService.bookmarkPost(postId, user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PatchMapping("/{postId}/share")
-    public ResponseEntity<Message> sharePost(
-            @PathVariable Long postId, @AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> sharePost(@PathVariable Long postId,
+            @AuthenticationPrincipal User user) {
         boolean response = postingService.sharePost(postId, user.getId());
         cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PatchMapping("/{postId}/view")
-    public ResponseEntity<Message> viewPost(
-            @PathVariable Long postId, @AuthenticationPrincipal User user) {
+    public ResponseEntity<Message> viewPost(@PathVariable Long postId,
+            @AuthenticationPrincipal User user) {
         boolean response = postingService.viewPost(postId, user.getId());
         cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @PatchMapping("/{postId}/confirm")
-    public ResponseEntity<Message> confirmFairViewPost(
-            @RequestHeader("Authorization") String token, @PathVariable Long postId) {
-        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+    public ResponseEntity<Message> confirmFairViewPost(@RequestHeader("Authorization") String token,
+            @PathVariable Long postId) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token)
+                .getId();
         boolean response = postingService.confirmFairViewPost(userId, postId);
         cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/all")
     public ResponseEntity<Message> getAllPostsList(@AuthenticationPrincipal User user,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         // PageRequest 객체 생성 (페이지, 사이즈, 정렬 정보)
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt")
+                .descending());
         Long userId = user != null ? user.getId() : null;
         Page<PostDto.ListItem> response = postingService.getPostsList(pageable, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
@@ -150,30 +151,30 @@ public class PostingController {
 
     @GetMapping("/fair-view")
     public ResponseEntity<Message> getFairView(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @AuthenticationPrincipal User user) {
+            @RequestParam(defaultValue = "10") int size, @AuthenticationPrincipal User user) {
         Long userId = user != null ? user.getId() : null;
-            Page<PostDto.HotFairView> response = postingService.getFairViewList(userId, page, size);
+        Page<PostDto.HotFairView> response = postingService.getFairViewList(userId, page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/top-list")
-    public ResponseEntity<Message> getTopListPostsView(@AuthenticationPrincipal User user, @RequestParam(required = false, defaultValue = "all") String type, @RequestParam(required = false, defaultValue = "10") int count) {
+    public ResponseEntity<Message> getTopListPostsView(@AuthenticationPrincipal User user,
+            @RequestParam(required = false, defaultValue = "all") String type,
+            @RequestParam(required = false, defaultValue = "10") int count) {
         Long userId = user != null ? user.getId() : null;
         List<PostDto.Card> response = postingService.getTop10Views(type, userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
 
-
     @GetMapping("/search")
-    public ResponseEntity<Message> search(
-            @AuthenticationPrincipal User user, @RequestParam String keyword,
-        @RequestParam(defaultValue = "0") int page,
-    @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<Message> search(@AuthenticationPrincipal User user,
+            @RequestParam String keyword, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Long userId = user != null ? user.getId() : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<PostDto.ListItem> response = postingService.searchPostsByKeyword(userId, keyword,pageable);
+        Page<PostDto.ListItem> response =
+                postingService.searchPostsByKeyword(userId, keyword, pageable);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

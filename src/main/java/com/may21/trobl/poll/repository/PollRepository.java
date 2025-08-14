@@ -16,4 +16,7 @@ public interface PollRepository extends JpaRepository<Poll, Long> {
     List<Poll> findAllByPostingIn(List<Posting> posts);
     
     Optional<Poll> findByPostingId(Long postingId);
+
+    @Query("SELECT p.id FROM Poll p WHERE p.id =:pollId")
+    Long findPostIdById(Long pollId);
 }

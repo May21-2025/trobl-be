@@ -215,6 +215,7 @@ public class UserController {
             @RequestHeader("Authorization") String token) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         boolean response = userService.reportUser(user.getId(), userId, reportRequest);
+        postingService.deleteAllHistoriesByBlockedUser(user.getId(), userId);
         postingService.evictTopPostsCache(user.getId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }

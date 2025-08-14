@@ -29,37 +29,40 @@ public class FairViewController {
     private final CacheService cacheService;
 
     @PutMapping("/{fairViewId}")
-    public ResponseEntity<Message> addFairView(
-            @PathVariable Long fairViewId,
-            @RequestBody PostDto.FairViewRequest request, @RequestHeader("Authorization") String token) {
-        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token).getId();
+    public ResponseEntity<Message> addFairView(@PathVariable Long fairViewId,
+            @RequestBody PostDto.FairViewRequest request,
+            @RequestHeader("Authorization") String token) {
+        Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token)
+                .getId();
         PostDto.FairViewItem response = postingService.setFairView(fairViewId, userId, request);
-        cacheService.evictFairViewFromCache(fairViewId);
+        Long postId = postingService.getPostIdByFairViewId(fairViewId);
+        cacheService.evictFairViewFromCache(postId, fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PatchMapping("/{fairViewId}/confirm")
-    public ResponseEntity<Message> confirmFairView(
-            @PathVariable Long fairViewId,  @RequestHeader("Authorization") String token)  {
+    public ResponseEntity<Message> confirmFairView(@PathVariable Long fairViewId,
+            @RequestHeader("Authorization") String token) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         Long userId = user != null ? user.getId() : null;
         boolean response = postingService.confirmFairView(userId, fairViewId);
-        if(response) {
+        Long postId = postingService.getPostIdByFairViewId(fairViewId);
+        if (response) {
             notificationService.sendFairViewConfirmedRequest(fairViewId);
         }
-        cacheService.evictFairViewFromCache(fairViewId);
+        cacheService.evictFairViewFromCache(postId, fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @GetMapping("/confirm")
-    public ResponseEntity<Message> getFairViewConfirmList(
-            @AuthenticationPrincipal User user,
+    public ResponseEntity<Message> getFairViewConfirmList(@AuthenticationPrincipal User user,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         if (user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<PostDto.RequestedItem>
-                response = postingService.getFairViewConfirmList(user.getId(), pageable);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt")
+                .descending());
+        Page<PostDto.RequestedItem> response =
+                postingService.getFairViewConfirmList(user.getId(), pageable);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -70,8 +73,8 @@ public class FairViewController {
             @RequestParam(defaultValue = "10") int size) {
         User user = jwtTokenUtil.getUserFromValidateAccessToken(token);
         if (user == null) throw new BusinessException(ExceptionCode.TOKEN_MISSING);
-        Page<PostDto.RequestedListItem> response = postingService.getFairViewRequestedList(user.getId(),
-                page,size);
+        Page<PostDto.RequestedListItem> response =
+                postingService.getFairViewRequestedList(user.getId(), page, size);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 }

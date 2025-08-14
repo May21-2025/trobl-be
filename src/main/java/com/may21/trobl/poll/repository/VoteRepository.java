@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +21,8 @@ public interface VoteRepository extends JpaRepository<PollVote, Long> {
 
     @Modifying
     @Query("DELETE FROM PollVote p WHERE p.pollOption.id = :pollOptionId AND p.userId = :userId")
-    void deleteByPollOptionIdAndUserId(@Param("pollOptionId") Long pollOptionId, @Param("userId") Long userId);
+    void deleteByPollOptionIdAndUserId(@Param("pollOptionId") Long pollOptionId,
+            @Param("userId") Long userId);
 
     @Query("SELECT DISTINCT p.pollOption.poll.posting FROM PollVote p WHERE p.userId = :userId")
     Page<Posting> findVotedPostsByUserId(Long userId, Pageable pageable);
@@ -33,7 +35,31 @@ public interface VoteRepository extends JpaRepository<PollVote, Long> {
     List<Long> findVotedPostIdByUserId(Long postId, Long userId);
 
     @Query("SELECT p.pollOption.id FROM PollVote p WHERE p.pollOption.poll.posting.id IN :postIds" +
-            " AND p" +
-            ".userId = :userId")
+            " AND p" + ".userId = :userId")
     List<Long> findVotedPostIdsByUserId(List<Long> postIds, Long userId);
+
+    @Modifying
+    @Transactional
+    @Query("""
+                DELETE FROM PollVote p
+                WHERE p.userId = :userId
+                  AND p.pollOption.poll.posting.userId = :blockedUserId
+            """)
+    void deleteByBlockedUser(Long userId, Long blockedUserId);
+
+    @Modifying
+    @Transactional
+    @Query("""
+                DELETE FROM PollVote p
+                WHERE p.userId = :userId
+                  AND p.pollOption.poll.posting.id = :blockedPostId
+            """)
+    void deleteBlockedPost(Long userId, Long blockedPostId);
+
+
+    @Query("SELECT p FROM PollVote p WHERE p.pollOption.poll.posting IN :newPosts ")
+    List<PollVote> findAllByPostingIn(List<Posting> newPosts);
+
+    @Query("SELECT p FROM PollVote p WHERE p.pollOption.poll.posting.id IN :postIdList ")
+    List<PollVote> findAllByPostingIdIn(List<Long> postIdList);
 }

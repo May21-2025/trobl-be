@@ -51,4 +51,7 @@ public interface CommentService {
     CommentDto.Response updateVirtualComments(Long commentId, AdminDto.VirtualCommentRequest createRequest);
 
     int getCommentCountByPostId(Long postId);
+
+    @Transactional(readOnly = true)
+    Map<Long, Integer> getPostCommentMapByPostIds(List<Long> postIdList);
 }

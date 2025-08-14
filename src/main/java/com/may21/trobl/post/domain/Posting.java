@@ -87,11 +87,13 @@ public class Posting {
     private boolean confirmed;
 
     @Setter
-    private boolean reported;
+    private boolean reported = false;
+
+    @Setter
+    private Boolean adminTagged = false;
 
     @Builder
-    public Posting(
-            String title, PostingType postType, String content, Long userId) {
+    public Posting(String title, PostingType postType, String content, Long userId) {
         this.userId = userId;
         this.title = title;
         this.content = content;
@@ -147,7 +149,8 @@ public class Posting {
         }
         if (poll == null) {
             this.poll = null;
-        } else {
+        }
+        else {
             this.poll = List.of(poll);
             poll.setPosting(this);
         }

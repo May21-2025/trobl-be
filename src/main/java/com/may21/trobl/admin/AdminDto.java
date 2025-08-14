@@ -3,6 +3,8 @@ package com.may21.trobl.admin;
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.ReportType;
+import com.may21.trobl._global.utility.Utility;
+import com.may21.trobl.admin.domain.PostDetailInfo;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.post.dto.PostDto;
@@ -100,8 +102,10 @@ public class AdminDto {
         private LocalDateTime createdAt;
         private final PostDto.PollDto poll;
         private final List<PostDto.FairViewItem> fairViewItems;
-        public PostInfo(RedisDto.PostDto postDto,List<RedisDto.FairViewDto> fairViews,
-                RedisDto.PollDto pollDto, List<RedisDto.PollOptionDto> optionDtoList, RedisDto.UserDto userDto) {
+
+        public PostInfo(RedisDto.PostDto postDto, List<RedisDto.FairViewDto> fairViews,
+                RedisDto.PollDto pollDto, List<RedisDto.PollOptionDto> optionDtoList,
+                RedisDto.UserDto userDto) {
             this.postId = postDto.getPostId();
             this.postType = postDto.getPostType();
             this.user = new UserDto.Info(userDto);
@@ -115,8 +119,9 @@ public class AdminDto {
                 List<PostDto.PollItem> pollItems = new ArrayList<>();
                 for (RedisDto.PollOptionDto optionDto : optionDtoList) {
                     boolean voted = false;
-                    pollItems.add(new PostDto.PollItem(optionDto.getPollOptionId(), optionDto.getName(),
-                            optionDto.getVoteCount(), optionDto.getIndex(), voted));
+                    pollItems.add(
+                            new PostDto.PollItem(optionDto.getPollOptionId(), optionDto.getName(),
+                                    optionDto.getVoteCount(), optionDto.getIndex(), voted));
                 }
                 this.poll = new PostDto.PollDto(pollDto.getPollId(), pollDto.getTitle(),
                         pollDto.isAllowMultipleVotes(), true, pollItems);
@@ -154,7 +159,8 @@ public class AdminDto {
             this.createdAt = post.getCreatedAt();
             this.confirmed = post.isConfirmed();
             this.poll = null;
-            this.fairViewItems = null;}
+            this.fairViewItems = null;
+        }
     }
 
     @Getter
@@ -391,6 +397,33 @@ public class AdminDto {
     }
 
     @Getter
+    public static class TagInfo {
+        private final String title;
+        private final boolean adminAdded;
+
+        public TagInfo(String title, boolean adminAdded) {
+            this.title = title;
+            this.adminAdded = adminAdded;
+        }
+
+        public static List<TagInfo> fromPostDetailInfo(PostDetailInfo postDetailInfo) {
+            List<TagInfo> tagInfos = new ArrayList<>();
+            String adminTags = postDetailInfo.getAdminTags();
+            List<String> adminTagList = Utility.stringtoStringList(adminTags);
+            String tags = postDetailInfo.getTags();
+            List<String> tagList = Utility.stringtoStringList(tags);
+            for (String tag : adminTagList) {
+                tagInfos.add(new TagInfo(tag, true));
+            }
+            for (String tag : tagList) {
+                tagInfos.add(new TagInfo(tag, false));
+            }
+
+            return tagInfos;
+        }
+    }
+
+    @Getter
     public static class ReportedDetails {
 
         private final String nickname;
@@ -405,6 +438,7 @@ public class AdminDto {
             this.reportedAt = repost.getReportedAt();
         }
     }
+
     @Getter
     public static class AnnouncementList {
         private final Long postId;
@@ -416,8 +450,9 @@ public class AdminDto {
         private final LocalDateTime createdAt;
         private final boolean liked;
         private final boolean viewed;
+
         public AnnouncementList(Posting announcement, User admin, boolean liked, boolean viewed,
-                int likeCount,int viewCount,int commentCount)  {
+                int likeCount, int viewCount, int commentCount) {
             this.postId = announcement.getId();
             this.user = new UserDto.Info(admin);
             this.title = announcement.getTitle();
@@ -434,6 +469,7 @@ public class AdminDto {
 
     @Getter
     public static class AnnouncementDto {
+        private final UserDto.Info user;
         private final Long postId;
         private final String title;
         private final String content;
@@ -442,7 +478,9 @@ public class AdminDto {
         private final long viewCount;
         private final LocalDateTime createdAt;
 
-        public AnnouncementDto(Posting announcement, boolean liked, int likeCount) {
+        public AnnouncementDto(Posting announcement, RedisDto.UserDto userDto, boolean liked,
+                int likeCount) {
+            this.user = new UserDto.Info(userDto);
             this.postId = announcement.getId();
             this.title = decodeHtml(announcement.getTitle());
             this.content = decodeHtml(announcement.getContent());
@@ -460,6 +498,7 @@ public class AdminDto {
         private Long postId;
         private Long userId;
     }
+
     @Getter
     public static class CommentInfo {
         private final Long commentId;
@@ -478,6 +517,7 @@ public class AdminDto {
         }
 
     }
+
     @Getter
     public static class CommentItems {
         private final PostParent postInfo;
@@ -511,4 +551,87 @@ public class AdminDto {
         }
     }
 
+    @Getter
+    public static class UpdateAdminTags {
+        private final List<String> tags;
+
+        public UpdateAdminTags(List<String> tags) {
+            this.tags = tags;
+        }
+    }
+
+    @Getter
+    public static class UserDetailInfo {
+        private final Long userId;
+        private final String nickname;
+        private final String address;
+        private final LocalDate marriageDate;
+
+
+        public UserDetailInfo(User user) {
+            this.userId = user.getId();
+            this.nickname = user.getNickname();
+            this.address = user.getAddress();
+            this.marriageDate = user.getWeddingAnniversaryDate();
+
+        }
+
+        public UserDetailInfo(RedisDto.UserDto userDto) {
+            this.userId = userDto.getUserId();
+            this.nickname = userDto.getNickname();
+            this.address = userDto.getAddress();
+            String marriageDateStr = userDto.getMarriageDate();
+            this.marriageDate =marriageDateStr !=null? LocalDate.parse(marriageDateStr) : null;
+        }
+    }
+
+    @Getter
+    public static class PostListItem {
+        private final Long postId;
+        private final PostingType postType;
+        private final String title;
+        private final LocalDateTime createdAt;
+        private final long viewCount;
+        private final long commentCount;
+        private final long likeCount;
+        private final UserDetailInfo user;
+        private final List<AdminDto.TagInfo> tags;
+
+
+        public PostListItem(PostDetailInfo postDetailInfo, RedisDto.PostDto postDto,
+                RedisDto.UserDto userDto) {
+            this.postId = postDetailInfo.getPostId();
+            this.postType = postDto.getPostType();
+            this.title = postDto.getTitle();
+            this.viewCount = postDetailInfo.getViewCount();
+            this.commentCount = postDetailInfo.getCommentCount();
+            this.likeCount = postDetailInfo.getLikeCount();
+            this.createdAt = postDetailInfo.getCreatedAt();
+            this.user = new UserDetailInfo(userDto);
+            this.tags = TagInfo.fromPostDetailInfo(postDetailInfo);
+
+        }
+    }
+
+    @Getter
+    public static class SearchedUser{
+        private final Long userId;
+        private final String nickname;
+        private final LocalDate marriedDate;
+        private final boolean hasPartner;
+
+        public SearchedUser(User user) {
+            this.userId = user.getId();
+            this.nickname = user.getNickname();
+            this.hasPartner= user.isMarried();
+            this.marriedDate = user.getWeddingAnniversaryDate();
+        }
+
+        public static List<SearchedUser> fromUserList(List<User> searchedUsers) {
+            return searchedUsers.stream()
+                    .map(SearchedUser::new)
+                    .toList();
+
+        }
+    }
 }

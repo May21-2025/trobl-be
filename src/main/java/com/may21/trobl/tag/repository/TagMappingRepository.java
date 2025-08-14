@@ -19,4 +19,7 @@ public interface TagMappingRepository extends JpaRepository<TagMapping, Long> {
 
     @Query("SELECT tm.tag FROM TagMapping tm WHERE tm.posting.id = :postId")
     List<Tag> getTagsByPostId(Long postId);
+
+    @Query("SELECT tm FROM TagMapping tm WHERE tm.posting.id IN :postIds")
+    List<TagMapping> findByPostIdIn(List<Long> postIds);
 }

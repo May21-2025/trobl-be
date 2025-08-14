@@ -16,30 +16,30 @@ import java.util.Optional;
 @Repository
 public interface PostRepository extends JpaRepository<Posting, Long> {
 
-    @Query(
-            """
-                    SELECT p FROM Posting p LEFT JOIN p.postLikes l
-                    LEFT JOIN p.poll poll
-                    LEFT JOIN  poll.pollOptions
-                    WHERE p.reported !=true AND p.postType = :postType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true AND p.id NOT IN :blockedPostIds
-                    ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
-                    LIMIT :count
-                    """)
-    List<Posting> findTopPostsByLikesAndViews(int count, LocalDate startDate, PostingType postType, List<Long> blockedPostIds,
-            List<Long> blockedUserIds);
+    @Query("""
+            SELECT p FROM Posting p LEFT JOIN p.postLikes l
+            LEFT JOIN p.poll poll
+            LEFT JOIN  poll.pollOptions
+            WHERE p.reported !=true AND p.postType = :postType AND l.createdAt >= :startDate OR l IS NULL AND p.confirmed = true AND p.id NOT IN :blockedPostIds
+            ORDER BY SIZE(p.postLikes) DESC, p.viewCount DESC
+            LIMIT :count
+            """)
+    List<Posting> findTopPostsByLikesAndViews(int count, LocalDate startDate, PostingType postType,
+            List<Long> blockedPostIds, List<Long> blockedUserIds);
 
-    @Query(
-            """
-                    SELECT p FROM Posting p LEFT JOIN p.postLikes l
-                    LEFT JOIN p.poll poll
-                    LEFT JOIN poll.pollOptions
-                    WHERE p.reported !=true AND p.id NOT IN :blockedPostIds AND p.userId NOT IN :blockedUserIds AND p.postType = :postType AND p.confirmed = true ORDER BY SIZE(p.postLikes) DESC
-                    LIMIT :count
-                    """)
+    @Query("""
+            SELECT p FROM Posting p LEFT JOIN p.postLikes l
+            LEFT JOIN p.poll poll
+            LEFT JOIN poll.pollOptions
+            WHERE p.reported !=true AND p.id NOT IN :blockedPostIds AND p.userId NOT IN :blockedUserIds AND p.postType = :postType AND p.confirmed = true ORDER BY SIZE(p.postLikes) DESC
+            LIMIT :count
+            """)
     List<Posting> findTopPostsByLikes(int count, PostingType postType, List<Long> blockedPostIds,
             List<Long> blockedUserIds);
 
-    @Query("SELECT p FROM Posting p " + "WHERE p.reported !=true AND p.postType = :postType AND p.id NOT IN :blockedPostIds  AND p.userId NOT IN :blockedUserIds AND p.confirmed = true ORDER BY p.viewCount DESC " + "LIMIT :count")
+    @Query("SELECT p FROM Posting p " +
+            "WHERE p.reported !=true AND p.postType = :postType AND p.id NOT IN :blockedPostIds  AND p.userId NOT IN :blockedUserIds AND p.confirmed = true ORDER BY p.viewCount DESC " +
+            "LIMIT :count")
     List<Posting> findTopPostsByViews(int count, PostingType postType, List<Long> blockedPostIds,
             List<Long> blockedUserIds);
 
@@ -52,10 +52,9 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     List<Posting> findTopPostsByShares(int count, PostingType postType, List<Long> blockedPostIds,
             List<Long> blockedUserIds);
 
-    @Query(
-            "SELECT p FROM Posting p LEFT JOIN p.comments l "
-                    + "WHERE p.reported !=true AND p.postType = :postType AND p.id NOT IN :blockedPostIds  AND p.userId NOT IN :blockedUserIds AND p.confirmed = true ORDER BY SIZE(p.comments) DESC "
-                    + "LIMIT :count")
+    @Query("SELECT p FROM Posting p LEFT JOIN p.comments l " +
+            "WHERE p.reported !=true AND p.postType = :postType AND p.id NOT IN :blockedPostIds  AND p.userId NOT IN :blockedUserIds AND p.confirmed = true ORDER BY SIZE(p.comments) DESC " +
+            "LIMIT :count")
     List<Posting> findTopPostsByComments(int count, PostingType postType, List<Long> blockedPostIds,
             List<Long> blockedUserIds);
 
@@ -85,18 +84,17 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             ORDER BY RANDOM() 
             LIMIT :count
             """, nativeQuery = true)
-    List<Posting> findRandomPostsByType(@Param("count") int count, @Param("postType") PostingType postType, List<Long> blockedPostIds, List<Long> blockedUserIds);
+    List<Posting> findRandomPostsByType(@Param("count") int count,
+            @Param("postType") PostingType postType, List<Long> blockedPostIds,
+            List<Long> blockedUserIds);
 
     @Query("SELECT p FROM Posting p " +
             "WHERE p.reported != true AND p.postType = :postType AND p.confirmed = true " +
             "AND p.id NOT IN :blockedPostIds AND p.userId NOT IN :blockedUserIds " +
-            "ORDER BY p.createdAt DESC " +
-            "LIMIT :count")
-    List<Posting> findRecentPollsByType(@Param("count") int count, 
-                                       @Param("postType") PostingType postType, 
-                                       List<Long> blockedPostIds, 
-                                       List<Long> blockedUserIds);
-
+            "ORDER BY p.createdAt DESC " + "LIMIT :count")
+    List<Posting> findRecentPollsByType(@Param("count") int count,
+            @Param("postType") PostingType postType, List<Long> blockedPostIds,
+            List<Long> blockedUserIds);
 
 
     @Query("SELECT p.id FROM Posting p LEFT JOIN p.postLikes l WHERE l.userId = :userId AND p.confirmed = true AND l.posting IN :list")
@@ -114,14 +112,10 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     Page<Posting> findAllUnconfirmedPostsByUserIdIn(List<Long> userIds, Pageable pageable);
 
 
-
     List<Posting> findAllByUserId(Long userId);
 
     @Query("SELECT p FROM Posting p WHERE p.postType !=:postType AND p.reported !=true AND p.id " +
-            "NOT IN " +
-            ":blockedPostIds" +
-            " " +
-            "AND p" +
+            "NOT IN " + ":blockedPostIds" + " " + "AND p" +
             ".userId NOT IN :blockedUserIds AND p.confirmed = true")
     Page<Posting> findAllExceptBlocked(Pageable pageable, List<Long> blockedPostIds,
             List<Long> blockedUserIds, PostingType postType);
@@ -145,16 +139,14 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
     @Query("SELECT p FROM Posting p WHERE " +
             "p.reported != true AND p.id NOT IN :blockedPostIds AND " +
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND p.postType = :postType")
-    Page<Posting> findAllByPostType(PostingType postType,
-            List<Long> blockedPostIds,
+    Page<Posting> findAllByPostType(PostingType postType, List<Long> blockedPostIds,
             List<Long> blockedUserIds, Pageable pageable);
 
     @Query("SELECT DISTINCT p FROM Posting p WHERE p.postType !=:postType AND " +
             "p.reported != true AND p.id NOT IN :blockedPostIds AND " +
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND " +
             "LOWER(p.title) = LOWER(:keyword)")
-    List<Posting> searchByTitleExact(@Param("keyword") String keyword,
-            List<Long> blockedPostIds,
+    List<Posting> searchByTitleExact(@Param("keyword") String keyword, List<Long> blockedPostIds,
             List<Long> blockedUserIds, PostingType postType);
 
     // 제목 부분 일치 검색 (높은 우선순위)
@@ -163,8 +155,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND " +
             "LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) AND " +
             "LOWER(p.title) != LOWER(:keyword)")
-    List<Posting> searchByTitlePartial(@Param("keyword") String keyword,
-            List<Long> blockedPostIds,
+    List<Posting> searchByTitlePartial(@Param("keyword") String keyword, List<Long> blockedPostIds,
             List<Long> blockedUserIds, PostingType postType);
 
     // 내용 검색 (중간 우선순위)
@@ -172,8 +163,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             "p.reported != true AND p.id NOT IN :blockedPostIds AND " +
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND " +
             "LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    List<Posting> searchByContent(@Param("keyword") String keyword,
-            List<Long> blockedPostIds,
+    List<Posting> searchByContent(@Param("keyword") String keyword, List<Long> blockedPostIds,
             List<Long> blockedUserIds, PostingType postType);
 
     // 태그 검색 (낮은 우선순위)
@@ -181,8 +171,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             "p.reported != true AND p.id NOT IN :blockedPostIds AND " +
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND " +
             "LOWER(t.tag.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    List<Posting> searchByTags(@Param("keyword") String keyword,
-            List<Long> blockedPostIds,
+    List<Posting> searchByTags(@Param("keyword") String keyword, List<Long> blockedPostIds,
             List<Long> blockedUserIds, PostingType postType);
 
     // Poll 제목 검색
@@ -190,8 +179,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             "p.reported != true AND p.id NOT IN :blockedPostIds AND " +
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND " +
             "LOWER(poll.title) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    List<Posting> searchByPollTitle(@Param("keyword") String keyword,
-            List<Long> blockedPostIds,
+    List<Posting> searchByPollTitle(@Param("keyword") String keyword, List<Long> blockedPostIds,
             List<Long> blockedUserIds);
 
     // FairView 내용 검색
@@ -200,8 +188,7 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             "p.userId NOT IN :blockedUserIds AND p.confirmed = true AND " +
             "LOWER(fv.content) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Posting> searchByFairViewContent(@Param("keyword") String keyword,
-            List<Long> blockedPostIds,
-            List<Long> blockedUserIds);
+            List<Long> blockedPostIds, List<Long> blockedUserIds);
 
     @Query("SELECT COUNT(e) FROM Posting e WHERE e.postType != :postType AND e.createdAt > " +
             ":weekAgo")
@@ -212,4 +199,23 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
 
     @Query("SELECT p FROM Posting p WHERE p.postType IN :postingTypes")
     Page<Posting> findAllByPostTypeIn(List<PostingType> postingTypes, Pageable pageable);
+
+    @Query("SELECT p FROM Posting p WHERE p.id != :id")
+    List<Posting> findAllIdExceptAnnouncement(Long id);
+
+    @Query("SELECT p FROM Posting p WHERE p.postType != :announcement AND (p.adminTagged IS NULL OR p.adminTagged = false) " +
+            "AND p.confirmed = true")
+    List<Posting> findAllHasNoAdminTagged(PostingType announcement);
+
+    @Query("SELECT p FROM Posting p " +
+            "WHERE p.postType != :postType AND p.createdAt > :localDateTime OR p.updatedAt > " +
+            ":localDateTime")
+    List<Posting> findAllByCreatedAtAfterOrUpdatedAtAfter(LocalDateTime localDateTime,
+            PostingType postType);
+
+    @Query("SELECT p.id FROM Posting p LEFT JOIN p.views v LEFT JOIN p.postLikes l LEFT JOIN p" +
+            ".comments c WHERE p.postType != :postType AND p.createdAt < :localDateTime  AND (v" + ".createdAt " + "> " +
+            ":localDateTime OR l.createdAt > :localDateTime OR c.createdAt > :localDateTime)")
+    List<Long> findIdsByInteractedAtAfter(LocalDateTime localDateTime,
+            PostingType postType);
 }
