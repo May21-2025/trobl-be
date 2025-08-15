@@ -89,7 +89,7 @@ public class TagServiceImpl implements TagService {
     @Override
     public List<Tag> getPostTags(Long postId) {
 
-        return tagMappingRepository.getTagsByPostId(postId);
+        return tagMappingRepository.getTagsByPostIdAndNotAdmin(postId);
     }
 
     @Override
@@ -121,7 +121,7 @@ public class TagServiceImpl implements TagService {
         }
         List<TagMapping> onesToSave = new ArrayList<>();
         for (Tag tagToDelete : tagsToDelete) {
-            List<TagMapping> tagMappings = tagMappingRepository.findByTag(tagToDelete);
+            List<TagMapping> tagMappings = tagMappingRepository.findByTagAndAdminIsFalseOrAdminIsNull(tagToDelete);
             if (!tagMappings.isEmpty()) {
                 Tag remainingTag = uniqueTagNames.get(tagToDelete.getName());
                 for (TagMapping tagMapping : tagMappings) {
@@ -141,7 +141,7 @@ public class TagServiceImpl implements TagService {
             return Map.of();
         }
         Map<Long, List<Tag>> postTagsMap = new HashMap<>();
-        List<TagMapping> tagMappings = tagMappingRepository.findByPostingIn(postList);
+        List<TagMapping> tagMappings = tagMappingRepository.findByPostingInAndAdminIsFalseOrAdminIsNull(postList);
         for (TagMapping tagMapping : tagMappings) {
             Long postId = tagMapping.getPosting()
                     .getId();

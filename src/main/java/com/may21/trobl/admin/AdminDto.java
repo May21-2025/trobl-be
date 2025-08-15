@@ -11,6 +11,7 @@ import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.Report;
 import com.may21.trobl.tag.domain.Tag;
+import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.dto.TagDto;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
@@ -406,20 +407,16 @@ public class AdminDto {
             this.adminAdded = adminAdded;
         }
 
-        public static List<TagInfo> fromPostDetailInfo(PostDetailInfo postDetailInfo) {
-            List<TagInfo> tagInfos = new ArrayList<>();
-            String adminTags = postDetailInfo.getAdminTags();
-            List<String> adminTagList = Utility.stringtoStringList(adminTags);
-            String tags = postDetailInfo.getTags();
-            List<String> tagList = Utility.stringtoStringList(tags);
-            for (String tag : adminTagList) {
-                tagInfos.add(new TagInfo(tag, true));
-            }
-            for (String tag : tagList) {
-                tagInfos.add(new TagInfo(tag, false));
-            }
+        public TagInfo(TagMapping tagMapping) {
+            Tag tag = tagMapping.getTag();
+            this.title = tag.getName();
+            this.adminAdded = tagMapping.getAdmin();
+        }
 
-            return tagInfos;
+        public static List<TagInfo> fromTagMappings(List<TagMapping> tags) {
+            return tags.stream()
+                    .map(tag -> new TagInfo(tag.getTag().getName(), tag.getTag().getTagPool() != null))
+                    .toList();
         }
     }
 
@@ -599,7 +596,7 @@ public class AdminDto {
 
 
         public PostListItem(PostDetailInfo postDetailInfo, RedisDto.PostDto postDto,
-                RedisDto.UserDto userDto) {
+                RedisDto.UserDto userDto, List<AdminDto.TagInfo> tags) {
             this.postId = postDetailInfo.getPostId();
             this.postType = postDto.getPostType();
             this.title = postDto.getTitle();
@@ -608,7 +605,7 @@ public class AdminDto {
             this.likeCount = postDetailInfo.getLikeCount();
             this.createdAt = postDetailInfo.getCreatedAt();
             this.user = new UserDetailInfo(userDto);
-            this.tags = TagInfo.fromPostDetailInfo(postDetailInfo);
+            this.tags = tags;
 
         }
     }

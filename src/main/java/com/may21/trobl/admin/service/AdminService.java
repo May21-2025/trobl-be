@@ -6,9 +6,7 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
-import com.may21.trobl.admin.domain.AdminTag;
 import com.may21.trobl.admin.domain.PostDetailInfo;
-import com.may21.trobl.admin.repository.AdminTagRepository;
 import com.may21.trobl.admin.repository.PostDetailInfoRepository;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.domain.CommentRepository;
@@ -27,6 +25,7 @@ import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.dto.TagDto;
 import com.may21.trobl.tag.repository.TagMappingRepository;
+import com.may21.trobl.tag.repository.TagRepository;
 import com.may21.trobl.tag.service.TagService;
 import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
@@ -63,11 +62,12 @@ public class AdminService {
     private final VoteRepository voteRepository;
     private final NotificationService notificationService;
     private final FairViewRepository fairViewRepository;
-    private final AdminTagRepository adminTagRepository;
+
     private final CacheService cacheService;
     private final TagMappingRepository tagMappingRepository;
     private final PostDetailInfoRepository postDetailInfoRepository;
     private final CommentService commentService;
+    private final TagRepository tagRepository;
 
 
     @Transactional
@@ -396,7 +396,13 @@ public class AdminService {
         Map<Long, List<FairView>> fairViewMap = fairViews.stream()
                 .collect(Collectors.groupingBy(fv -> fv.getPosting()
                         .getId()));
-        List<AdminTag> tags = new ArrayList<>();
+        List<TagMapping> tags = new ArrayList<>();
+        tagMappingRepository.deleteAllByPostingInAndAdminIsTrue(allPost);
+        tagMappingRepository.flush();
+
+        List<Tag> defaultTags = tagRepository.findAllByTagPoolIsNotNull();
+        Map<String, Tag> tagMap = defaultTags.stream()
+                .collect(Collectors.toMap(Tag::getName, Function.identity()));
         for (Posting post : allPost) {
             StringBuilder postContent =
                     new StringBuilder(post.getTitle() + "\n" + post.getContent() + "\n");
@@ -406,16 +412,20 @@ public class AdminService {
                     postContent.append(fairView.getContent());
                 }
             }
-            tags.add(new AdminTag(post.getId(), examinePostingAndGetAdminTags(postContent)));
+            for (Tag tag : examinePostingAndGetAdminTags(tagMap, postContent)) {
+                if (tag == null) continue;
+                tags.add(new TagMapping(post, tag, true));
+            }
+            post.setAdminTagged(true);
         }
-        adminTagRepository.saveAll(tags);
+        tagMappingRepository.saveAll(tags);
     }
 
-    private List<String> examinePostingAndGetAdminTags(StringBuilder postContent) {
+    private Set<Tag> examinePostingAndGetAdminTags(Map<String, Tag> tagMap,
+            StringBuilder postContent) {
         if (postContent == null || postContent.isEmpty()) {
-            return new ArrayList<>();
+            return new HashSet<>();
         }
-
         String content = postContent.toString();
         Map<String, Double> tagScores = new HashMap<>();
 
@@ -444,7 +454,17 @@ public class AdminService {
         if (result.size() < 10) {
             result = addMeaningfulDefaultTags(result);
         }
-        return result;
+
+        Set<Tag> tags = new HashSet<>();
+
+        log.info("\nTag");
+        for (String tagTitle : result) {
+            tags.add(tagMap.get(tagTitle));
+            log.info(tagTitle);
+        }
+
+        log.info("added\n");
+        return tags;
     }
 
     private List<String> addMeaningfulDefaultTags(List<String> currentTags) {
@@ -465,19 +485,19 @@ public class AdminService {
         int length = content.length();
 
         if (length < 100) {
-            return "짧은글";
+            return "단문";
         }
         else if (length < 300) {
-            return "보통글";
+            return "중문";
         }
         else if (length < 600) {
-            return "긴글";
+            return "장문";
         }
         else if (length < 1000) {
-            return "매우긴글";
+            return "초장문";
         }
         else {
-            return "초장문";
+            return "대하소설";
         }
     }
 
@@ -551,15 +571,6 @@ public class AdminService {
             }
         }
 
-        // 관계 관련 단어들과 함께 나오는 경우
-        if (isRelationshipTag(tag)) {
-            String[] relationWords = {"우리", "같이", "함께", "서로"};
-            for (String relWord : relationWords) {
-                if (lower.contains(relWord)) {
-                    score += 0.5;
-                }
-            }
-        }
 
         return score;
     }
@@ -569,69 +580,25 @@ public class AdminService {
                 .contains(tag);
     }
 
-    private boolean isRelationshipTag(String tag) {
-        return TAG_POOL.get("관계유형")
-                .contains(tag);
-    }
-
-    @Transactional
-    public List<AdminDto.TagInfo> updateAdminTags(Long postId, AdminDto.UpdateAdminTags request) {
-        AdminTag adminTag = adminTagRepository.findById(postId)
-                .orElse(null);
-        RedisDto.PostDto postDto = cacheService.getPostFromCache(postId);
-        if (adminTag == null) {
-            StringBuilder postContent =
-                    new StringBuilder(postDto.getTitle() + "\n" + postDto.getContent() + "\n");
-            adminTag = new AdminTag(postId, examinePostingAndGetAdminTags(postContent));
-        }
-        adminTag.updateTags(request.getTags());
-        List<AdminDto.TagInfo> tagInfos = new ArrayList<>();
-        List<Tag> tagList = tagMappingRepository.getTagsByPostId(postId);
-        for (String tagName : adminTag.getTags()) {
-            tagInfos.add(new AdminDto.TagInfo(tagName, true));
-        }
-        for (Tag tag : tagList) {
-            tagInfos.add(new AdminDto.TagInfo(tag.getName(), false));
-        }
-        adminTagRepository.save(adminTag);
-        return tagInfos;
-    }
-
-    public List<AdminDto.TagInfo> removeUnsetted(Long postId) {
-        AdminTag adminTag = adminTagRepository.findById(postId)
-                .orElse(null);
-        RedisDto.PostDto postDto = cacheService.getPostFromCache(postId);
-        if (adminTag == null) {
-            StringBuilder postContent =
-                    new StringBuilder(postDto.getTitle() + "\n" + postDto.getContent() + "\n");
-            adminTag = adminTagRepository.save(
-                    new AdminTag(postId, examinePostingAndGetAdminTags(postContent)));
-        }
-        adminTag.getTags()
-                .remove("미분류,");
-        List<AdminDto.TagInfo> tagInfos = new ArrayList<>();
-        List<Tag> tagList = tagMappingRepository.getTagsByPostId(postId);
-        for (String tagName : adminTag.getTags()) {
-            tagInfos.add(new AdminDto.TagInfo(tagName, true));
-        }
-        for (Tag tag : tagList) {
-            tagInfos.add(new AdminDto.TagInfo(tag.getName(), false));
-        }
-        return tagInfos;
-    }
 
     @Transactional
     public void updatePostDetailInfos() {
         // postview postlike comment pollvote 가 전날 0시 부터 생성괸 기록이 있는 모든 포스트,
         // 그리고 생성 혹은 수정 된 날짜가 전날 0시 이후인 모든 포스트가 대상
         List<PostDetailInfo> postDetailInfos = new ArrayList<>();
+
         List<Posting> newPosts = postRepository.findAllByCreatedAtAfterOrUpdatedAtAfter(
                 LocalDateTime.now()
-                        .minusDays(30), PostingType.ANNOUNCEMENT);
+                        .minusDays(1), PostingType.ANNOUNCEMENT);
         List<Long> postIds = newPosts.stream()
                 .distinct()
                 .map(Posting::getId)
                 .toList();
+        List<PostDetailInfo> existingInfos = postDetailInfoRepository.findAllByPostIdIn(postIds);
+        Set<Long> existingPostIds = existingInfos.stream()
+                .map(PostDetailInfo::getPostId)
+                .collect(Collectors.toSet());
+
         List<Long> userIds = newPosts.stream()
                 .map(Posting::getUserId)
                 .distinct()
@@ -642,36 +609,30 @@ public class AdminService {
                 .filter(Objects::nonNull) // dto 자체가 null인지 체크
                 .filter(dto -> dto.getUserId() != null) // userId null 체크
                 .collect(Collectors.toMap(RedisDto.UserDto::getUserId, Function.identity()));
-        List<AdminTag> adminTags = adminTagRepository.findByPostIds(postIds);
-        Map<Long, AdminTag> adminTagMap = adminTags.stream()
-                .collect(Collectors.toMap(AdminTag::getPostId, Function.identity(),
-                        (existing, replacement) -> existing // 기존 값 유지
-                ));
-        List<TagMapping> tagMappings = tagMappingRepository.findByPostIdIn(postIds);
-        Map<Long, List<String>> postUserTags = new HashMap<>();
+        List<TagMapping> tagMappings = tagMappingRepository.findByPostIdInIncludingAdmin(postIds);
+        Map<Long, List<Long>> postUserTags = new HashMap<>();
         for (TagMapping tagMapping : tagMappings) {
             Long postId = tagMapping.getPosting()
                     .getId();
             postUserTags.computeIfAbsent(postId, k -> new ArrayList<>())
-                    .add(tagMapping.getTag()
-                            .getName());
+                    .add(tagMapping.getId());
         }
         for (Posting post : newPosts) {
-            AdminTag adminTag = adminTagMap.get(post.getId());
-            String adminTagStr = adminTag == null ? "" : adminTag.getTagString();
+            if (existingPostIds.contains(post.getId())) continue;
             PostDetailInfo item =
                     new PostDetailInfo(post, userDtoMap.getOrDefault(post.getUserId(), null),
-                            adminTagStr, postUserTags.getOrDefault(post.getUserId(), List.of()));
+                            postUserTags.getOrDefault(post.getId(), List.of()));
             postDetailInfos.add(item);
+
         }
 
 
-        //        List<Long> oldPostIds = postRepository.findIdsByInteractedAtAfter(LocalDateTime.now()
-        //                .minusDays(1), PostingType.ANNOUNCEMENT);
-        //        List<PostDetailInfo> oldPostDetailInfos =
-        //                postDetailInfoRepository.findAllByPostIdIn(oldPostIds);
+                List<Long> oldPostIds = postRepository.findIdsByInteractedAtAfter(LocalDateTime.now()
+                        .minusDays(1), PostingType.ANNOUNCEMENT);
+                List<PostDetailInfo> oldPostDetailInfos =
+                        postDetailInfoRepository.findAllByPostIdIn(oldPostIds);
         List<PostDetailInfo> allPostDetailInfos = new ArrayList<>();
-        //        allPostDetailInfos.addAll(oldPostDetailInfos);
+                allPostDetailInfos.addAll(oldPostDetailInfos);
         allPostDetailInfos.addAll(postDetailInfos);
         Map<Long, PostDetailInfo> postDetailInfoMap = allPostDetailInfos.stream()
                 .collect(Collectors.toMap(PostDetailInfo::getPostId,
@@ -724,18 +685,22 @@ public class AdminService {
     @Transactional
     public Page<AdminDto.PostListItem> getAllDetailedPosts(int size, int page, String sortType,
             boolean asc, List<String> postTypes, List<String> tags) {
-        //postTypes 으로 필터 가능
         List<PostingType> postingTypes = getFilteredPostTypeList(postTypes);
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.fromString(asc ? "ASC" : "DESC"), sortType));
-        Page<PostDetailInfo> postDetailInfos = tags.isEmpty() ?
-                postDetailInfoRepository.findAllContainsTagsFilteredByTypes(postingTypes,
-                        pageable) :
-                postDetailInfoRepository.findAllContainsTagsFilteredByTypesAndTags(tags,
-                        postingTypes, pageable);
+        Page<PostDetailInfo> postDetailInfos =
+                postDetailInfoRepository.findAllContainsTagsFilteredByTypes(postingTypes, pageable);
         List<Long> postIds = postDetailInfos.stream()
                 .map(PostDetailInfo::getPostId)
                 .toList();
+        List<Long> tagMappingIds = postDetailInfos.stream()
+                .map(PostDetailInfo::getTagMappingIds)
+                .flatMap(List::stream)
+                .toList();
+        List<TagMapping> tagMappings = tagMappingRepository.findAllByIdIn(tagMappingIds);
+        Map<Long, List<TagMapping>> postTagMappingMap = tagMappings.stream()
+                .collect(Collectors.groupingBy(tagMapping -> tagMapping.getPosting()
+                        .getId()));
         List<RedisDto.PostDto> postDtoList = cacheService.getMultiplePostsFromCache(postIds);
         List<Long> userIds = postDtoList.stream()
                 .map(RedisDto.PostDto::getUserId)
@@ -755,8 +720,10 @@ public class AdminService {
         for (PostDetailInfo postDetailInfo : postDetailInfos) {
             Long postId = postDetailInfo.getPostId();
             RedisDto.PostDto postDto = postDtoMap.get(postId);
+            List<TagMapping> tagMappingForPost = postTagMappingMap.getOrDefault(postId, List.of());
+            List<AdminDto.TagInfo> tagInfos = AdminDto.TagInfo.fromTagMappings(tagMappingForPost);
             postListItems.add(new AdminDto.PostListItem(postDetailInfo, postDto,
-                    userDtoMap.get(postDto.getUserId())));
+                    userDtoMap.get(postDto.getUserId()), tagInfos));
         }
         return new PageImpl<>(postListItems, pageable, postDetailInfos.getTotalElements());
 
@@ -765,11 +732,14 @@ public class AdminService {
     public List<String> getSearchedTags(String keyword) {
         List<TagDto.Response> response = tagService.searchTags(keyword);
         List<String> adminTags = findTagsContainingKeyword(keyword);
-        List<String> tagNames = new ArrayList<>(adminTags);
+        Set<String> tagNames = new HashSet<>(adminTags);
+
         tagNames.addAll(response.stream()
                 .map(TagDto.Response::getName)
                 .toList());
-        return tagNames;
+
+        return tagNames.stream()
+                .toList();
     }
 
     public List<AdminDto.SearchedUser> createVirtualUsers(String keyword) {

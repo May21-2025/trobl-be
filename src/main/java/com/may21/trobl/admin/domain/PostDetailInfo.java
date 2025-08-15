@@ -5,14 +5,12 @@ import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.redis.RedisDto;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.checkerframework.common.aliasing.qual.Unique;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -20,14 +18,9 @@ import java.util.List;
 @NoArgsConstructor
 public class PostDetailInfo {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Unique
     private Long postId;
     private PostingType postType;
-    private String adminTags;
-    private String tags;
+    private String tagMappingIds;
     private long likeCount;
     private long commentCount;
     private long viewCount;
@@ -40,12 +33,17 @@ public class PostDetailInfo {
     private LocalDateTime createdAt;
 
 
-    public PostDetailInfo(Posting post, RedisDto.UserDto userDto, String adminTags,
-            List<String> tags) {
+    public List<Long> getTagMappingIds(){
+        if (this.tagMappingIds == null) {
+            return new ArrayList<>();
+        }
+        return Utility.stringToLongList(this.tagMappingIds);
+    }
+
+    public PostDetailInfo(Posting post, RedisDto.UserDto userDto, List<Long> tagMappingIds) {
         this.postId = post.getId();
         this.postType = post.getPostType();
-        this.adminTags = adminTags;
-        this.tags = Utility.stringListToString(tags);
+        this.tagMappingIds = Utility.longListToString(tagMappingIds);
         this.likeCount = post.getPostLikes()
                 .size();
         this.commentCount = post.getComments()

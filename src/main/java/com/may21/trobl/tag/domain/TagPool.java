@@ -4,12 +4,14 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.checkerframework.common.aliasing.qual.Unique;
+
+import java.util.List;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
-public class Tag {
+public class TagPool {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,17 +20,10 @@ public class Tag {
     @Column(unique = true)
     private String name;
 
-    @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    private TagPool tagPool;
+    @OneToMany(mappedBy = "tagPool", fetch = FetchType.LAZY)
+    private List<Tag> tags;
 
-    public Tag(String name) {
+    public TagPool(String name) {
         this.name = name;
     }
-
-    public Tag(String name, TagPool tagPool) {
-        this.name = name;
-        this.tagPool = tagPool;
-    }
-
 }

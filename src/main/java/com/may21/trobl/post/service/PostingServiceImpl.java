@@ -7,8 +7,6 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
-import com.may21.trobl.admin.domain.AdminTag;
-import com.may21.trobl.admin.repository.AdminTagRepository;
 import com.may21.trobl.bookmark.PostBookmark;
 import com.may21.trobl.bookmark.PostBookmarkRepository;
 import com.may21.trobl.comment.service.CommentService;
@@ -72,7 +70,7 @@ public class PostingServiceImpl implements PostingService {
     private final CacheService cacheService;
     private final PostViewRepository postViewRepository;
     private final PostLikeRepository postLikeRepository;
-    private final AdminTagRepository adminTagRepository;
+
     private final TagMappingRepository tagMappingRepository;
 
     public static String ADMIN_USERNAME = "TroblAdmin";
@@ -319,7 +317,8 @@ public class PostingServiceImpl implements PostingService {
                 tagList, false, false, votedOptionIds, true);
     }
 
-    public List<PollOption> updatePollOptions(List<PostDto.PollOptionRequest> pollOptionsRequest, Poll poll) {
+    public List<PollOption> updatePollOptions(List<PostDto.PollOptionRequest> pollOptionsRequest,
+            Poll poll) {
         List<PollOption> pollOptions = poll.getPollOptions();
         List<Long> pollOptionIds = pollOptionsRequest.stream()
                 .map(PostDto.PollOptionRequest::getPollOptionId)
@@ -349,15 +348,20 @@ public class PostingServiceImpl implements PostingService {
                         .poll(poll)
                         .build();
                 pollOptions.add(pollOption); // Add to existing collection
-            } else {
+            }
+            else {
                 // Update existing poll option
                 PollOption existingOption = pollOptions.stream()
-                        .filter(option -> option.getId().equals(pollOptionRequest.getPollOptionId()))
+                        .filter(option -> option.getId()
+                                .equals(pollOptionRequest.getPollOptionId()))
                         .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("Poll option not found: " + pollOptionRequest.getPollOptionId()));
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Poll option not found: " + pollOptionRequest.getPollOptionId()));
 
-                if (pollOptionRequest.getName() != null && !pollOptionRequest.getName().equals(existingOption.getName())) {
-                    String filteredName = profanityFilter.filterProfanity(pollOptionRequest.getName());
+                if (pollOptionRequest.getName() != null && !pollOptionRequest.getName()
+                        .equals(existingOption.getName())) {
+                    String filteredName =
+                            profanityFilter.filterProfanity(pollOptionRequest.getName());
                     existingOption.setName(filteredName);
                 }
                 existingOption.setIndex(i);
@@ -717,29 +721,21 @@ public class PostingServiceImpl implements PostingService {
         List<User> users = userRepository.findByIdIn(new ArrayList<>(userId));
         Map<Long, User> userMap = users.stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
-        List<AdminTag> adminTags = adminTagRepository.findByPostIds(postIds);
-        List<TagMapping> tagMappings = tagMappingRepository.findByPostIdIn(postIds);
+        List<TagMapping> tagMappings = tagMappingRepository.findByPostIdInIncludingAdmin(postIds);
         Map<Long, List<AdminDto.TagInfo>> tagMap = new HashMap<>();
-        for (AdminTag adminTag : adminTags) {
-            List<AdminDto.TagInfo> tagInfos = new ArrayList<>();
-            for (String tag : adminTag.getTags()) {
-                tagInfos.add(new AdminDto.TagInfo(tag, true));
-            }
-            tagMap.put(adminTag.getPostId(), tagInfos);
-        }
         for (TagMapping tagMapping : tagMappings) {
             Long postId = tagMapping.getPosting()
                     .getId();
             List<AdminDto.TagInfo> tagInfo = tagMap.getOrDefault(postId, new ArrayList<>());
             tagInfo.add(new AdminDto.TagInfo(tagMapping.getTag()
-                    .getName(), false));
+                    .getName(), tagMapping.getAdmin()));
             tagMap.put(postId, tagInfo);
         }
         return postings.map(post -> {
-            return new PostDto.AdminListItem(post, userMap.get(post.getUserId()), tagMap.get(post.getId()));
+            return new PostDto.AdminListItem(post, userMap.get(post.getUserId()),
+                    tagMap.get(post.getId()));
         });
     }
-
 
 
     @Override

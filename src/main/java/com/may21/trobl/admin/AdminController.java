@@ -190,23 +190,6 @@ public class AdminController {
     }
 
 
-    @PutMapping("/posts/{postId}/admin-tags")
-    public ResponseEntity<Message> updateAdminTags(@PathVariable Long postId,
-            @RequestBody AdminDto.UpdateAdminTags request,
-            @RequestHeader("Authorization") String token) {
-        jwtTokenUtil.getAdminUserByToken(token);
-        List<AdminDto.TagInfo> response = adminService.updateAdminTags(postId, request);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
-    @PatchMapping("/posts/{postId}/admin-tags")
-    public ResponseEntity<Message> updateAdminTags(@PathVariable Long postId,
-            @RequestHeader("Authorization") String token) {
-        jwtTokenUtil.getAdminUserByToken(token);
-        List<AdminDto.TagInfo> response = adminService.removeUnsetted(postId);
-        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
-    }
-
     @GetMapping("/posts/{postId}")
     public ResponseEntity<Message> getPosts(@RequestHeader("Authorization") String token,
             @PathVariable Long postId) {

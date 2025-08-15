@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.may21.trobl._global.component.GlobalValues.USER_PROFILE_IMAGE_PATH;
 import static com.may21.trobl._global.utility.PostExamineTagValue.KEYWORD_MAPPINGS;
@@ -83,7 +84,12 @@ public class Utility {
                     .descending());
         }
     }
-
+    public static String longListToString(List<Long> longList) {
+        return longList == null || longList.isEmpty() ? "" :
+                longList.stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(","));
+    }
 
     public static String stringListToString(List<String> stringList) {
         return stringList == null ? "" : String.join(",", stringList);
@@ -236,5 +242,14 @@ public class Utility {
         }
 
         return result;
+    }
+
+    public static List<Long> stringToLongList(String tagMappingIds) {
+        if (tagMappingIds == null || tagMappingIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return Arrays.stream(tagMappingIds.split(","))
+                .map(Long::parseLong)
+                .collect(Collectors.toList());
     }
 }

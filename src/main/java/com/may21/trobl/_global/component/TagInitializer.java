@@ -1,15 +1,16 @@
 package com.may21.trobl._global.component;
 
+import com.may21.trobl._global.utility.PostExamineTagValue;
 import com.may21.trobl.tag.domain.Tag;
+import com.may21.trobl.tag.domain.TagPool;
+import com.may21.trobl.tag.repository.TagPoolRepository;
 import com.may21.trobl.tag.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -18,92 +19,103 @@ import java.util.stream.Collectors;
 public class TagInitializer implements CommandLineRunner {
 
     private final TagRepository tagRepository;
-
-    // 모든 태그 단어들을 정의
-    private static final List<String> PREDEFINED_TAGS = Arrays.asList(
-            // 감정 표현
-            "서운함", "억울함", "분노", "기쁨", "감동", "슬픔", "짜증", "두려움", "설렘", "외로움",
-            "불안감", "행복감", "답답함", "허전함", "당황함", "불편함", "긴장감", "황당함", "불쾌감", "편안함",
-            "안도감", "쓸쓸함", "무기력", "희망적", "감사함", "후회감", "초조함", "절망감", "담담함", "우울감",
-            "아쉬움", "충격적", "흥분됨", "의기소침", "자괴감", "상쾌함", "혼란스러움", "들뜸", "고독함", "위축됨",
-            "자신감", "미안함", "부끄럼", "억눌림", "홀가분", "찝찝함", "지루함", "무감정", "신경질", "불만족",
-
-            // 갈등 주제
-            "돈관리", "가사분담", "육아방식", "명절방문", "생활습관", "친구문제", "가족행사", "직장문제", "취미생활", "개인시간",
-            "소비성향", "청소기준", "부모간섭", "주말계획", "외식선택", "이사문제", "자녀교육", "저축계획", "가족모임", "술자리",
-            "과거연애", "퇴근시간", "경제관념", "맞벌이", "외벌이", "명절선물", "친정방문", "시댁방문", "휴가계획", "친구관계",
-            "핸드폰", "SNS활동", "귀가시간", "식습관", "수면습관", "가족방문", "교통수단", "가정교육", "부부역할", "집안일",
-            "TV채널", "개인취향", "커피취향", "옷스타일", "주거지역", "이직문제", "양가관계", "외모관리", "종교문제", "결혼식",
-
-            // 관계 유형
-            "부부", "연인", "신혼부부", "기혼자", "동거인", "장거리", "재혼자", "이혼남녀", "직장동료", "친구사이",
-            "맞선상대", "가족관계", "형제자매", "부모자식", "사내연애", "연상연하", "비밀연애", "동성커플", "사돈지간", "예비부부",
-            "약혼자", "싱글부모", "가족동반", "부자관계", "모녀관계", "클럽회원", "부녀관계", "부부동반", "이성친구", "동창관계",
-            "지인관계", "친척관계", "이웃관계", "사회관계", "온라인친구", "가족모임", "시댁식구", "처가식구", "자녀관계", "친정식구",
-            "대학동기", "학부모관계", "회사상사", "팀원관계", "옛연인", "선후배", "상사부하", "손윗사람", "손아랫사람",
-
-            // 행동 패턴
-            "침묵하기", "회피하기", "소리지름", "말바꿈", "잔소리함", "무시하기", "공격하기", "설득하기", "양보하기", "폭발직전",
-            "눈치보기", "지적하기", "타협하기", "변명하기", "단정짓기", "약속어김", "감정억압", "핑계대기", "고집부림", "비꼬기",
-            "차단", "경청하기", "의심", "압박하기", "요구하기", "혼자결정", "무반응함", "대화거부", "도피하기", "책임전가",
-            "눈물", "대화요청", "감정표현", "억지부림", "의견무시", "상처주기", "부정", "비난", "강요", "억울",
-            "화해시도", "자책하기", "사과안함", "폭언하기", "극단선택", "물건던짐", "모른척함", "거짓말", "책임회피", "즉흥결정",
-
-            // 생활 습관
-            "청소", "정리", "양치", "샤워", "외출복", "세탁", "요리", "정돈", "식습관", "청결",
-            "빨래", "정시귀가", "분리수거", "정리벽", "게으름", "정돈강박", "청소분담", "불규칙", "습관차이", "수면패턴",
-
-            // 성격 차이
-            "내향", "외향", "급함", "여유", "감성", "이성", "꼼꼼", "대충", "소심", "무던",
-            "지배욕", "의존", "독립", "고집", "융통성", "계획형", "즉흥형", "우유부단", "비관적", "완벽주의",
-
-            // 대화 방식
-            "침묵", "지적", "질문", "공감", "설득", "경청", "반박", "중단", "무시", "해명",
-            "단답", "장황", "거절", "비난", "회피", "요청", "감정실림", "논리적", "무반응", "맞장구",
-
-            // 육아/가사
-            "육아", "등하원", "식사준비", "청소분담", "기저귀", "밤중수유", "놀이시간", "가사노동", "육아휴직", "아기잠",
-            "교육방식", "용돈", "부모역할", "아이걱정", "육아갈등", "수면교육", "육퇴시간", "돌봄", "가사역할", "양육태도",
-
-            // 경제/재정
-            "생활비", "카드값", "월급", "저축", "대출", "가계부", "공동지출", "돈관리", "소비습관", "보험",
-            "신용", "비상금", "분담금", "모임회비", "주식", "가족지원", "빚청산", "외벌이", "맞벌이",
-
-            // 시댁/처가
-            "시댁", "처가", "명절", "부모님", "제사", "가족행사", "불만", "왕래", "중재", "거절",
-            "감정싸움", "불편함", "차별", "눈치", "잦은방문", "도움요청", "갈등", "거절감", "선물"
-    );
+    private final TagPoolRepository tagPoolRepository;
 
     @Override
-    public void run(String... args) throws Exception {
-        initializeTags();
+    public void run(String... args) {
+        initializeTagPoolsAndTags();
     }
 
-    private void initializeTags() {
-        log.debug("태그 초기화 작업을 시작합니다.");
+    private void initializeTagPoolsAndTags() {
+        log.info("태그 풀과 태그 초기화 작업을 시작합니다.");
 
-        // 현재 데이터베이스에 있는 태그들의 이름을 가져옴
+        // 1. PostExamineTagValue의 TAG_POOL에서 TagPool 생성
+        Map<String, TagPool> tagPoolMap = createTagPools();
+        
+        // 2. 각 TagPool에 해당하는 Tag들 생성
+        createTagsForAllPools(tagPoolMap);
+
+        log.info("태그 풀과 태그 초기화 작업이 완료되었습니다.");
+    }
+
+    private Map<String, TagPool> createTagPools() {
+        Map<String, TagPool> tagPoolMap = new HashMap<>();
+        
+        log.info("TagPool 생성을 시작합니다. 총 {}개의 풀이 필요합니다.", PostExamineTagValue.TAG_POOL.size());
+        List<TagPool> newTagPool = new ArrayList<>();
+        // PostExamineTagValue의 TAG_POOL에서 TagPool 생성
+        for (String poolName : PostExamineTagValue.TAG_POOL.keySet()) {
+            TagPool tagPool = tagPoolRepository.findByName(poolName)
+                    .orElseGet(() -> {
+                        log.info("새로운 TagPool '{}'을 생성합니다.", poolName);
+                        TagPool newPool = new TagPool(poolName);
+                        newTagPool.add(newPool);
+                        return newPool;
+                    });
+            tagPoolRepository.saveAll(newTagPool);
+            tagPoolMap.put(poolName, tagPool);
+            log.info("TagPool '{}' 준비 완료 (ID: {})", poolName, tagPool.getId());
+        }
+        
+        log.info("총 {}개의 TagPool이 준비되었습니다.", tagPoolMap.size());
+        return tagPoolMap;
+    }
+
+    private void createTagsForAllPools(Map<String, TagPool> tagPoolMap) {
+        int totalCreatedTags = 0;
+        
+        log.info("각 TagPool에 태그 생성을 시작합니다.");
+        
+        // 각 TagPool에 해당하는 Tag들 생성
+        for (Map.Entry<String, List<String>> entry : PostExamineTagValue.TAG_POOL.entrySet()) {
+            String poolName = entry.getKey();
+            List<String> tagNames = entry.getValue();
+            TagPool tagPool = tagPoolMap.get(poolName);
+            
+            if (tagPool == null) {
+                log.warn("TagPool '{}'을 찾을 수 없습니다.", poolName);
+                continue;
+            }
+            
+            log.info("TagPool '{}'에 {}개의 태그를 생성합니다.", poolName, tagNames.size());
+            int createdTags = createTagsForPool(tagPool, tagNames);
+            totalCreatedTags += createdTags;
+            
+            log.info("TagPool '{}'에 {}개의 새로운 태그가 생성되었습니다.", poolName, createdTags);
+        }
+        
+        log.info("총 {}개의 새로운 태그가 생성되었습니다.", totalCreatedTags);
+        log.info("현재 전체 태그 개수: {}", tagRepository.count());
+    }
+
+    private int createTagsForPool(TagPool tagPool, List<String> tagNames) {
+        // 현재 데이터베이스에 있는 태그들의 이름을 가져옴 (해당 풀에 속한 것들만)
         Set<String> existingTagNames = tagRepository.findAll()
                 .stream()
+                .filter(tag -> tag.getTagPool() != null && tag.getTagPool().getId().equals(tagPool.getId()))
                 .map(Tag::getName)
                 .collect(Collectors.toSet());
 
+        log.debug("TagPool '{}'에 이미 존재하는 태그: {}개", tagPool.getName(), existingTagNames.size());
+
         // 없는 태그들만 필터링하여 새로 생성
-        List<Tag> newTags = PREDEFINED_TAGS.stream()
+        List<Tag> newTags = tagNames.stream()
                 .filter(tagName -> !existingTagNames.contains(tagName))
-                .map(Tag::new)
+                .map(tagName -> new Tag(tagName, tagPool))
                 .collect(Collectors.toList());
 
         if (!newTags.isEmpty()) {
             tagRepository.saveAll(newTags);
-            log.debug("{}개의 새로운 태그가 생성되었습니다.", newTags.size());
-
-            // 생성된 태그들 로깅 (선택적)
-            newTags.forEach(tag -> log.debug("생성된 태그: {}", tag.getName()));
+            log.info("TagPool '{}'에 {}개의 새로운 태그가 생성되었습니다.", 
+                    tagPool.getName(), newTags.size());
+            
+            // 생성된 태그들 로깅
+            newTags.forEach(tag -> log.debug("생성된 태그: {} (풀: {})", 
+                    tag.getName(), tagPool.getName()));
         } else {
-            log.debug("모든 태그가 이미 존재합니다. 새로 생성할 태그가 없습니다.");
+            log.info("TagPool '{}'에 새로 생성할 태그가 없습니다.", tagPool.getName());
         }
 
-        log.debug("현재 전체 태그 개수: {}", tagRepository.count());
+        return newTags.size();
     }
 }
