@@ -1,4 +1,4 @@
-package com.may21.trobl.admin;
+package com.may21.trobl.admin.controller;
 
 import com.may21.trobl._global.Message;
 import com.may21.trobl._global.enums.ItemType;
@@ -8,6 +8,7 @@ import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl._global.utility.Utility;
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.admin.service.AdminService;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
@@ -58,12 +59,7 @@ public class AdminController {
 
     // ========== 대시보드 API ==========
 
-    @GetMapping("/dashboard/stats")
-    public ResponseEntity<Message> getDashboardStats(@RequestHeader("Authorization") String token) {
-        jwtTokenUtil.getAdminUserByToken(token);
-        AdminDto.DashboardStats stats = adminService.getDashboardStats();
-        return new ResponseEntity<>(Message.success(stats), HttpStatus.OK);
-    }
+
 
     @GetMapping("/authenticate")
     public ResponseEntity<Message> authenticateAdmin(@RequestHeader("Authorization") String token) {
@@ -165,11 +161,11 @@ public class AdminController {
             @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "createdAt") String sortType,
             @RequestParam(defaultValue="", required = false) List<String> postTypes,
-            @RequestParam(defaultValue="", required = false) List<String> tags,
+            @RequestParam(defaultValue="", required = false) List<Long> tagIds,
             @RequestParam(defaultValue = "false") boolean asc) {
         jwtTokenUtil.getAdminUserByToken(token);
         Page<AdminDto.PostListItem> response =
-                adminService.getAllDetailedPosts(size, page, sortType, asc, postTypes, tags);
+                adminService.getAllDetailedPosts(size, page, sortType, asc, postTypes, tagIds);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -303,6 +299,7 @@ public class AdminController {
             userService.setThumbnail(response.getUserId(), imageKey);
             response.setThumbnailUrl(Utility.getUserProfileUrl(imageKey));
         }
+        cacheService.invalidateUserCache(userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -311,6 +308,8 @@ public class AdminController {
             @RequestBody AdminDto.ConnectPartners request) {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = userService.connectPartners(request);
+        cacheService.invalidateUserCache(request.getUserId());
+        cacheService.invalidateUserCache(request.getPartnerId());
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -347,6 +346,7 @@ public class AdminController {
             @PathVariable Long postId, @RequestBody PostDto.Request updateRequest) {
         jwtTokenUtil.getAdminUserByToken(token);
         PostDto.ListItem response = postingService.updateVirtualPost(postId, updateRequest);
+        cacheService.invalidatePostRelatedCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

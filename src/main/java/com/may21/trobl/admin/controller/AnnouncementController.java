@@ -1,9 +1,8 @@
-package com.may21.trobl.admin;
+package com.may21.trobl.admin.controller;
 
 import com.may21.trobl._global.Message;
 import com.may21.trobl._global.security.JwtTokenUtil;
-import com.may21.trobl.admin.service.AdminService;
-import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.post.service.PostingService;
 import com.may21.trobl.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/announcements")

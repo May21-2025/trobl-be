@@ -31,6 +31,8 @@ import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -684,12 +686,16 @@ public class AdminService {
 
     @Transactional
     public Page<AdminDto.PostListItem> getAllDetailedPosts(int size, int page, String sortType,
-            boolean asc, List<String> postTypes, List<String> tags) {
+            boolean asc, List<String> postTypes, List<Long> tags) {
+        log.info("게시물 목록을 데이터베이스에서 조회합니다. (캐시 미적용)");
+        
         List<PostingType> postingTypes = getFilteredPostTypeList(postTypes);
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.fromString(asc ? "ASC" : "DESC"), sortType));
+
         Page<PostDetailInfo> postDetailInfos =
                 postDetailInfoRepository.findAllContainsTagsFilteredByTypes(postingTypes, pageable);
+
         List<Long> postIds = postDetailInfos.stream()
                 .map(PostDetailInfo::getPostId)
                 .toList();
@@ -726,7 +732,14 @@ public class AdminService {
                     userDtoMap.get(postDto.getUserId()), tagInfos));
         }
         return new PageImpl<>(postListItems, pageable, postDetailInfos.getTotalElements());
+    }
 
+    /**
+     * 게시물 목록 캐시를 수동으로 무효화합니다.
+     */
+    @CacheEvict(value = "postDetailInfos", allEntries = true)
+    public void clearPostListCache() {
+        log.info("게시물 목록 캐시를 수동으로 무효화했습니다.");
     }
 
     public List<String> getSearchedTags(String keyword) {

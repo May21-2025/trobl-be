@@ -288,7 +288,7 @@ public class PostDto {
             this.fairViewItems = fairViews == null ? null : fairViews.stream()
                     .map(fairView -> new FairViewItem(fairView.getFairViewId(),
                             fairView.getUserId(), fairView.getTitle(), fairView.getNickname(),
-                            fairView.getContent()))
+                            decodeHtml(fairView.getContent())))
                     .toList();
 
             this.shareCount = postDto.getShareCount();

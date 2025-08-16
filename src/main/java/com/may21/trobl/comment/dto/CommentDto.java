@@ -10,6 +10,8 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+import static com.may21.trobl._global.utility.SecurityUtils.decodeHtml;
+
 public class CommentDto {
 
     @Getter
@@ -31,7 +33,7 @@ public class CommentDto {
 
         public Response(Comment comment, User user, boolean liked) {
             this.commentId = comment.getId();
-            this.content = comment.getContent();
+            this.content = decodeHtml(comment.getContent());
             this.user = user != null ? new UserDto.Info(user) : null;
             this.postId = comment.getPosting()
                     .getId();
@@ -44,7 +46,7 @@ public class CommentDto {
 
         public Response(Comment comment, RedisDto.UserDto userDto, boolean liked) {
             this.commentId = comment.getId();
-            this.content = comment.getContent();
+            this.content = decodeHtml(comment.getContent());
             this.user = new UserDto.Info(userDto);
             this.postId = comment.getPosting()
                     .getId();

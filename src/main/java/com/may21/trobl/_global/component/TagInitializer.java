@@ -11,6 +11,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
@@ -31,7 +32,7 @@ public class TagInitializer implements CommandLineRunner {
 
         // 1. PostExamineTagValue의 TAG_POOL에서 TagPool 생성
         Map<String, TagPool> tagPoolMap = createTagPools();
-        
+
         // 2. 각 TagPool에 해당하는 Tag들 생성
         createTagsForAllPools(tagPoolMap);
 
@@ -65,7 +66,10 @@ public class TagInitializer implements CommandLineRunner {
         int totalCreatedTags = 0;
         
         log.info("각 TagPool에 태그 생성을 시작합니다.");
-        
+
+        List<Tag> existingTags = tagRepository.findAll();
+        Map<String, Tag> tagMap = existingTags.stream().collect(Collectors.toMap(Tag::getName, Function.identity()));
+
         // 각 TagPool에 해당하는 Tag들 생성
         for (Map.Entry<String, List<String>> entry : PostExamineTagValue.TAG_POOL.entrySet()) {
             String poolName = entry.getKey();
@@ -78,7 +82,7 @@ public class TagInitializer implements CommandLineRunner {
             }
             
             log.info("TagPool '{}'에 {}개의 태그를 생성합니다.", poolName, tagNames.size());
-            int createdTags = createTagsForPool(tagPool, tagNames);
+            int createdTags = createTagsForPool(tagPool, tagNames, tagMap);
             totalCreatedTags += createdTags;
             
             log.info("TagPool '{}'에 {}개의 새로운 태그가 생성되었습니다.", poolName, createdTags);
@@ -88,22 +92,19 @@ public class TagInitializer implements CommandLineRunner {
         log.info("현재 전체 태그 개수: {}", tagRepository.count());
     }
 
-    private int createTagsForPool(TagPool tagPool, List<String> tagNames) {
-        // 현재 데이터베이스에 있는 태그들의 이름을 가져옴 (해당 풀에 속한 것들만)
-        Set<String> existingTagNames = tagRepository.findAll()
-                .stream()
-                .filter(tag -> tag.getTagPool() != null && tag.getTagPool().getId().equals(tagPool.getId()))
-                .map(Tag::getName)
-                .collect(Collectors.toSet());
-
-        log.debug("TagPool '{}'에 이미 존재하는 태그: {}개", tagPool.getName(), existingTagNames.size());
-
+    private int createTagsForPool(TagPool tagPool, List<String> tagNames, Map<String, Tag> tagMap) {
+        //
         // 없는 태그들만 필터링하여 새로 생성
-        List<Tag> newTags = tagNames.stream()
-                .filter(tagName -> !existingTagNames.contains(tagName))
-                .map(tagName -> new Tag(tagName, tagPool))
-                .collect(Collectors.toList());
+        List<Tag> newTags =new ArrayList<>();
 
+        for(String tagName : tagNames) {
+            Tag tag = tagMap.getOrDefault(tagName, null);
+            if(tag == null) {
+                tag = new Tag(tagName, tagPool);
+                newTags.add(tag);
+            }
+            else tag.setTagPool(tagPool);
+        }
         if (!newTags.isEmpty()) {
             tagRepository.saveAll(newTags);
             log.info("TagPool '{}'에 {}개의 새로운 태그가 생성되었습니다.", 

@@ -15,6 +15,7 @@ public class Scheduler {
     public void dailyJob() {
         adminService.makeTagsForPosts();
         adminService.updatePostDetailInfos();
+        adminService.clearPostListCache();
     }
 
 }

@@ -110,8 +110,8 @@ public class AdminDto {
             this.postId = postDto.getPostId();
             this.postType = postDto.getPostType();
             this.user = new UserDto.Info(userDto);
-            this.title = postDto.getTitle();
-            this.content = postDto.getContent();
+            this.title = decodeHtml(postDto.getTitle());
+            this.content = decodeHtml(postDto.getContent());
             String createdAt = postDto.getCreatedAt();
             this.createdAt = LocalDateTime.parse(createdAt);
             this.confirmed = postDto.isConfirmed();
@@ -143,8 +143,8 @@ public class AdminDto {
             this.postId = post.getId();
             this.user = new UserDto.Info(user);
             this.postType = post.getPostType();
-            this.title = post.getTitle();
-            this.content = post.getContent();
+            this.title = decodeHtml(post.getTitle());
+            this.content = decodeHtml(post.getContent());
             this.createdAt = post.getCreatedAt();
             this.confirmed = post.isConfirmed();
             this.poll = null;
@@ -155,8 +155,8 @@ public class AdminDto {
             this.postId = post.getId();
             this.user = new UserDto.Info(userDto);
             this.postType = post.getPostType();
-            this.title = post.getTitle();
-            this.content = post.getContent();
+            this.title = decodeHtml(post.getTitle());
+            this.content = decodeHtml(post.getContent());
             this.createdAt = post.getCreatedAt();
             this.confirmed = post.isConfirmed();
             this.poll = null;
@@ -370,8 +370,8 @@ public class AdminDto {
             this.nickname = user.getNickname();
             this.itemType = ItemType.POST;
             this.itemId = posting.getId();
-            this.title = posting.getTitle();
-            this.content = posting.getContent();
+            this.title = decodeHtml(posting.getTitle());
+            this.content = decodeHtml(posting.getContent());
             this.reportedDetails = reportedDetails;
         }
 
@@ -391,7 +391,7 @@ public class AdminDto {
             this.itemType = ItemType.COMMENT;
             this.itemId = comment.getId();
             this.title = "comment";
-            this.content = comment.getContent();
+            this.content = decodeHtml(comment.getContent());
             this.reportedDetails = reportedDetails;
         }
 

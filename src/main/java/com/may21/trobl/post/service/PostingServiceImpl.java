@@ -1443,7 +1443,9 @@ public class PostingServiceImpl implements PostingService {
     public PostDto.ListItem updateVirtualPost(Long postId, PostDto.Request request) {
         Posting post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
-        if (!userRepository.isVirtualUser(post.getUserId())) {
+        User user = userRepository.findById(post.getUserId())
+                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
+        if (!user.isTestUser()) {
             throw new BusinessException(ExceptionCode.FORBIDDEN);
         }
         post.update(request);
@@ -1470,11 +1472,9 @@ public class PostingServiceImpl implements PostingService {
         post.getTags()
                 .addAll(tagResponses);
         postRepository.save(post);
-        return new PostDto.ListItem(post, userRepository.findById(post.getUserId())
-                .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND)),
-                tagResponses.stream()
-                        .map(TagMapping::getTag)
-                        .toList(), false, false, false);
+        return new PostDto.ListItem(post, user, tagResponses.stream()
+                .map(TagMapping::getTag)
+                .toList(), false, false, false);
     }
 
 

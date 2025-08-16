@@ -65,7 +65,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.id FROM User u WHERE u.testUser = true")
     List<Long> findUserIdsByTestUserIsTrue();
 
-    @Query("SELECT u FROM User u WHERE u.testUser = true")
+    @Query("SELECT COUNT(u) > 0  FROM User u WHERE u.id = :userId AND u.testUser = true")
     boolean isVirtualUser(Long userId);
 
     Optional<User> findByIdAndTestUserIsTrue(Long userId);
