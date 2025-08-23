@@ -136,6 +136,7 @@ public class AdminController {
         AdminDto.PostInfo response = postingService.updateAnnouncement(postId, updateRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/tags/search")
     public ResponseEntity<Message> getTagSearch(@RequestHeader("Authorization") String token,
             @RequestParam String keyword) {
@@ -144,6 +145,8 @@ public class AdminController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
 
     }
+
+
     @GetMapping("/posts")
     public ResponseEntity<Message> getAllPosts(@RequestHeader("Authorization") String token,
             @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
@@ -160,8 +163,8 @@ public class AdminController {
     public ResponseEntity<Message> getAllDetailedPosts(@RequestHeader("Authorization") String token,
             @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "createdAt") String sortType,
-            @RequestParam(defaultValue="", required = false) List<String> postTypes,
-            @RequestParam(defaultValue="", required = false) List<Long> tagIds,
+            @RequestParam(defaultValue = "", required = false) List<String> postTypes,
+            @RequestParam(defaultValue = "", required = false) List<Long> tagIds,
             @RequestParam(defaultValue = "false") boolean asc) {
         jwtTokenUtil.getAdminUserByToken(token);
         Page<AdminDto.PostListItem> response =
@@ -271,14 +274,16 @@ public class AdminController {
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/content-simulator/users/search")
     public ResponseEntity<Message> createVirtualUsers(@RequestHeader("Authorization") String token,
             @RequestParam String keyword) {
         jwtTokenUtil.getAdminUserByToken(token);
-        List<AdminDto.SearchedUser>  response = adminService.createVirtualUsers(keyword);
+        List<AdminDto.SearchedUser> response = adminService.createVirtualUsers(keyword);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
 
     }
+
     @GetMapping("/content-simulator/users/{userId}/check")
     public ResponseEntity<Message> isVirtualUsers(@PathVariable Long userId,
             @RequestHeader("Authorization") String token) {
@@ -357,7 +362,7 @@ public class AdminController {
         jwtTokenUtil.getAdminUserByToken(token);
         PostDto.FairViewItem response = postingService.updateVirtualFairView(fairViewId, request);
         Long postId = postingService.getPostIdByFairViewId(fairViewId);
-        cacheService.evictFairViewFromCache(postId,fairViewId);
+        cacheService.evictFairViewFromCache(postId, fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

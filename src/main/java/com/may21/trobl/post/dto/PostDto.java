@@ -286,9 +286,7 @@ public class PostDto {
 
             // FairViewItems 생성
             this.fairViewItems = fairViews == null ? null : fairViews.stream()
-                    .map(fairView -> new FairViewItem(fairView.getFairViewId(),
-                            fairView.getUserId(), fairView.getTitle(), fairView.getNickname(),
-                            decodeHtml(fairView.getContent())))
+                    .map(fairView -> new FairViewItem(fairView, userMap.get(fairView.getUserId())))
                     .toList();
 
             this.shareCount = postDto.getShareCount();
@@ -425,6 +423,16 @@ public class PostDto {
         public FairViewItem(FairView fairView, User user) {
             String nickname = user == null ? fairView.getNickname() : user.getNickname();
             this.fairViewId = fairView.getId();
+            this.userId = fairView.getUserId();
+            this.content = decodeHtml(fairView.getContent());
+            this.title = decodeHtml(fairView.getTitle());
+            this.nickname = nickname;
+            this.confirmed = fairView.isConfirmed();
+        }
+
+        public FairViewItem(RedisDto.FairViewDto fairView, RedisDto.UserDto userDto) {
+            String nickname = userDto == null ? fairView.getNickname() : userDto.getNickname();
+            this.fairViewId = fairView.getFairViewId();
             this.userId = fairView.getUserId();
             this.content = decodeHtml(fairView.getContent());
             this.title = decodeHtml(fairView.getTitle());
@@ -594,7 +602,7 @@ public class PostDto {
         private final UserDto.Info user;
 
 
-        public AdminListItem(Posting post, User user, List<AdminDto.TagInfo> tags) {
+        public AdminListItem(Posting post, User user, List<TagDto.TagMappingInfo> tags) {
             this.postId = post.getId();
             this.postType = post.getPostType();
             this.title = decodeHtml(post.getTitle());

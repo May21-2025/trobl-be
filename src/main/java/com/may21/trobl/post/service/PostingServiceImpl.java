@@ -217,6 +217,10 @@ public class PostingServiceImpl implements PostingService {
                 .userId(userId)
                 .build();
         postRepository.save(post);
+
+        Map<Long, User> userMap = new HashMap<>();
+        userMap.put(userId, user);
+
         if (postType == PostingType.POLL) {
             Poll poll = new Poll(profanityFilter.filterProfanity(request.getPollTitle()), post,
                     request.isAllowMultipleVotes());
@@ -264,12 +268,11 @@ public class PostingServiceImpl implements PostingService {
             fairViewRepository.saveAll(fairViews);
             post.addFairView(myFairView);
             post.addFairView(partnerFairView);
+            userMap.put(partnerId, partner);
         }
         Set<Tag> tags = tagService.createTags(request.getTags());
         List<TagMapping> tagResponses = tagService.createTagMapping(tags, post);
         post.setTags(tagResponses);
-        Map<Long, User> userMap = new HashMap<>();
-        userMap.put(userId, user);
         List<Tag> tagList = tags.stream()
                 .toList();
         return new PostDto.Detail(post, user, userMap, tagList, false, false, List.of(), true);
@@ -762,7 +765,7 @@ public class PostingServiceImpl implements PostingService {
             pollDto = cacheService.getPollFromCache(postId);
             optionDtoList = cacheService.getPollOptionFromCache(postId);
         }
-        return new AdminDto.PostInfo(postDto, fairViews, pollDto, optionDtoList, userDto);
+        return new AdminDto.PostInfo(postDto, fairViews, pollDto, optionDtoList, userMap);
     }
 
     @Override
@@ -1500,7 +1503,7 @@ public class PostingServiceImpl implements PostingService {
         Long userId = request.getUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-
+        Long partnerId = user.getPartnerId();
         Posting post = Posting.builder()
                 .title(request.getTitle())
                 .postType(postType)
@@ -1511,13 +1514,15 @@ public class PostingServiceImpl implements PostingService {
         postRepository.save(post);
 
         List<FairView> fairViews = new ArrayList<>();
+        boolean isMine = true;
         for (AdminDto.FairViewRequest fairViewRequest : request.getFairViewItem()) {
             FairView fairView = FairView.builder()
                     .title(fairViewRequest.getTitle())
                     .content(fairViewRequest.getContent())
                     .post(post)
-                    .userId(fairViewRequest.getUserId())
+                    .userId(isMine ? fairViewRequest.getUserId() : partnerId)
                     .build();
+            if (isMine) {isMine = false;}
             fairView.setConfirmed(true);
             fairViews.add(fairView);
         }
