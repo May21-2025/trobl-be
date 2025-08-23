@@ -836,4 +836,40 @@ public class AdminService {
         mainLayoutRepository.deleteByCode(code);
         return true;
     }
+
+    public boolean changeIndex(String code, int index) {
+        MainLayoutGroup layout = mainLayoutRepository.findByCode(code)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.LAYOUT_NOT_FOUND));
+        int currentIndex = layout.getIndex();
+        if (currentIndex == index) {
+            return true; // 변경할 필요 없음
+        }
+        int maxIndex = mainLayoutRepository.findMaxIndex();
+        if (index < 0 || index > maxIndex) {
+            throw new BusinessException(ExceptionCode.INVALID_LAYOUT_INDEX);
+        }
+
+        if (currentIndex < index) {
+            // 아래로 이동: 현재 인덱스보다 크고, 목표 인덱스 이하인 항목들의 인덱스를 -1
+            List<MainLayoutGroup> affectedLayouts = mainLayoutRepository.findByIndexBetween(currentIndex + 1, index);
+            for (MainLayoutGroup l : affectedLayouts) {
+                l.setIndex(l.getIndex() - 1);
+            }
+            mainLayoutRepository.saveAll(affectedLayouts);
+        } else {
+            // 위로 이동: 현재 인덱스보다 작고, 목표 인덱스 이상인 항목들의 인덱스를 +1
+            List<MainLayoutGroup> affectedLayouts = mainLayoutRepository.findByIndexBetween(index, currentIndex - 1);
+            for (MainLayoutGroup l : affectedLayouts) {
+                l.setIndex(l.getIndex() + 1);
+            }
+            mainLayoutRepository.saveAll(affectedLayouts);
+        }
+
+        // 대상 항목의 인덱스를 목표 인덱스로 설정
+        layout.setIndex(index);
+        mainLayoutRepository.save(layout);
+
+        return true;
+
+    }
 }

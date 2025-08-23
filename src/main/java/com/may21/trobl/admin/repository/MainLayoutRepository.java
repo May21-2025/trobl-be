@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
+
 @Repository
 public interface MainLayoutRepository extends JpaRepository<MainLayoutGroup, Long> {
     boolean existsByCode(String code);
@@ -19,4 +22,8 @@ public interface MainLayoutRepository extends JpaRepository<MainLayoutGroup, Lon
     @Modifying
     @Query("DELETE FROM MainLayoutGroup m WHERE m.code = :code")
     void deleteByCode(String code);
+
+    List<MainLayoutGroup> findByIndexBetween(int i, int index);
+
+    Optional<MainLayoutGroup> findByCode(String code);
 }

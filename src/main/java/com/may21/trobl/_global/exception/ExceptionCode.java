@@ -14,6 +14,7 @@ public enum ExceptionCode {
     // LAYOUT L000
     LAYOUT_NOT_FOUND(HttpStatus.NOT_FOUND, "L000", "레이아웃을 찾을 수 없습니다."),
     LAYOUT_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "L001", "이미 존재하는 레이아웃입니다."),
+    INVALID_LAYOUT_INDEX(HttpStatus.BAD_REQUEST, "L002", "유효하지 않은 인덱스입니다."),
 
     // NOTIFICATION N000
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N000", "알림을 찾을 수 없습니다."),

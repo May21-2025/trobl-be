@@ -7,6 +7,7 @@ import com.may21.trobl.admin.AdminDto;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -25,6 +26,7 @@ public class MainLayoutGroup {
     private DateType dateType;
 
     private String address;
+    @Setter
     private int index;
 
     @ElementCollection(fetch = FetchType.EAGER)

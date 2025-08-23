@@ -32,6 +32,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -121,6 +122,14 @@ public class AdminController {
     public ResponseEntity<Message> createMainLayoutInfo(@RequestHeader("Authorization") String token,@RequestBody AdminDto.MainLayoutRequest request) {
         jwtTokenUtil.getAdminUserByToken(token);
         AdminDto.MainLayoutInfo response = adminService.createMainLayoutInfo(request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PatchMapping("/layout/main/{code}/index")
+    public ResponseEntity<Message> changeIndex(@RequestHeader("Authorization") String token,
+            @RequestParam int index, @PathVariable String code) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = adminService.changeIndex(code, index);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
     @DeleteMapping("/layout/main/{code}")
