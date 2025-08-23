@@ -772,14 +772,29 @@ public class CacheService {
         try {
             String code = group.getCode();
             String key = "main_layout:" + code;
-            @SuppressWarnings("unchecked") Collection<Long> postIds =
-                    (Collection<Long>) redisTemplate.opsForValue()
-                            .get(key);
-            return postIds != null ? postIds : fetchAllMainLayoutPostIdsFromDB(group);
+
+            @SuppressWarnings("unchecked")
+            Collection<Long> postIds = (Collection<Long>) redisTemplate.opsForValue().get(key);
+
+            if (postIds != null) {
+                return postIds;
+            }
+
+            // 캐시에 없으면 DB에서 가져오고 캐싱
+            return cachePostIds(group, key);
         } catch (Exception e) {
             log.error("Error getting main layout post IDs from cache: {}", e.getMessage());
-            return fetchAllMainLayoutPostIdsFromDB(group);
+            String key = "main_layout:" + group.getCode();
+            return cachePostIds(group, key);
         }
+    }
+
+    private Collection<Long> cachePostIds(MainLayoutGroup group, String key) {
+        Collection<Long> postIds = fetchAllMainLayoutPostIdsFromDB(group);
+        if (postIds != null && !postIds.isEmpty()) {
+            redisTemplate.opsForValue().set(key, postIds,Duration.ofHours(24));
+        }
+        return postIds;
     }
 
     private Collection<Long> fetchAllMainLayoutPostIdsFromDB(MainLayoutGroup group) {
