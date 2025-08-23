@@ -1,6 +1,8 @@
 package com.may21.trobl.tag.dto;
 
 import com.may21.trobl.tag.domain.Tag;
+import com.may21.trobl.tag.domain.TagMapping;
+import com.may21.trobl.tag.domain.TagPool;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,6 +29,52 @@ public class TagDto {
         public static List<Response> fromTagList(List<Tag> tags) {
             return tags.stream()
                     .map(tag -> new Response(tag.getId(), tag.getName()))
+                    .toList();
+        }
+    }
+
+    @Getter
+    public static class TagMappingInfo extends TagInfo{
+        private final boolean adminAdded;
+
+        public TagMappingInfo(TagMapping tagMapping) {
+            super(tagMapping);
+            this.adminAdded = tagMapping.getAdmin();
+        }
+
+        public static List<TagMappingInfo> fromTagMappings(List<TagMapping> tags) {
+            return tags.stream()
+                    .map(TagMappingInfo::new)
+                    .toList();
+        }
+    }
+
+    @Getter
+    public static class TagInfo {
+        private final Long tagId;
+        private final Long tagPoolId;
+        private final String tagPoolName;
+        private final String title;
+
+        public TagInfo(TagMapping tagMapping) {
+            Tag tag = tagMapping.getTag();
+            TagPool tagPool = tag.getTagPool();
+            this.tagId = tag.getId();
+            this.title = tag.getName();
+            this.tagPoolId = tagPool != null ? tagPool.getId() : null;
+            this.tagPoolName = tagPool != null ? tagPool.getName() : null;
+        }
+        public TagInfo(Tag tag) {
+            TagPool tagPool = tag.getTagPool();
+            this.tagId = tag.getId();
+            this.title = tag.getName();
+            this.tagPoolId = tagPool != null ? tagPool.getId() : null;
+            this.tagPoolName = tagPool != null ? tagPool.getName() : null;
+        }
+
+        public static List<TagInfo> fromTags(List<Tag> tags) {
+            return tags.stream()
+                    .map(TagInfo::new)
                     .toList();
         }
     }

@@ -12,11 +12,7 @@ import lombok.NonNull;
 @AllArgsConstructor
 @Getter
 @Table(uniqueConstraints = {
-        @UniqueConstraint(
-                name = "uk_tag_posting",
-                columnNames = {"tag_id", "posting_id"}
-        )
-})
+        @UniqueConstraint(name = "uk_tag_posting", columnNames = {"tag_id", "posting_id"})})
 public class TagMapping {
 
     @Id
@@ -31,13 +27,13 @@ public class TagMapping {
 
     private Boolean admin;
 
-    public TagMapping(@NonNull Tag tag,@NonNull  Posting post) {
+    public TagMapping(@NonNull Tag tag, @NonNull Posting post) {
         this.tag = tag;
         this.posting = post;
         this.admin = false;
     }
 
-    public TagMapping(@NonNull Posting post,@NonNull  Tag tag, boolean admin) {
+    public TagMapping(@NonNull Posting post, @NonNull Tag tag, boolean admin) {
         this.tag = tag;
         this.posting = post;
         this.admin = admin;
@@ -45,5 +41,9 @@ public class TagMapping {
 
     public void setTag(Tag remainingTag) {
         this.tag = remainingTag;
+    }
+
+    public boolean getAdmin() {
+        return this.admin != null && this.admin;
     }
 }

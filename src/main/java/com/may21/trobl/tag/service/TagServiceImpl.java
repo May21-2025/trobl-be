@@ -35,6 +35,7 @@ public class TagServiceImpl implements TagService {
             }
             else if (!profanityFilter.containsProfanity(tagRequest.getName())) {
                 newTagRequests.add(tagRequest);
+                tagNames.add(tagRequest.getName());
             }
         }
         List<Tag> existingTags = tagRepository.findAllByIdsAndNames(existingTagIds, tagNames);
@@ -149,6 +150,27 @@ public class TagServiceImpl implements TagService {
                     .add(tagMapping.getTag());
         }
         return postTagsMap;
+    }
+
+    @Override
+    public Map<Long, Tag> getLayoutTagMap(Set<Long> tagIds, Map<String, List<Long>> tagIdMap) {
+        if (tagIds != null && !tagIds.isEmpty() && tagIdMap != null && !tagIdMap.isEmpty()) {
+            List<Tag> tags = tagRepository.findAllById(tagIds);
+            Map<Long, Tag> tagMap = new HashMap<>();
+            for (Tag tag : tags) {
+                tagMap.put(tag.getId(), tag);
+            }
+            return tagMap;
+        }
+        return Map.of();
+    }
+
+    @Override
+    public List<Tag> getTagsByIds(HashSet<Long> longs) {
+        if (longs != null && !longs.isEmpty()) {
+            return tagRepository.findAllById(longs);
+        }
+        return List.of();
     }
 
 }

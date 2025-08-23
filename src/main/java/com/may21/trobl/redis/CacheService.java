@@ -1,7 +1,11 @@
 package com.may21.trobl.redis;
 
+import com.may21.trobl._global.enums.DateType;
+import com.may21.trobl._global.enums.PostSortType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
+import com.may21.trobl.admin.domain.MainLayoutGroup;
+import com.may21.trobl.admin.repository.PostDetailInfoRepository;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
 import com.may21.trobl.poll.repository.PollOptionRepository;
@@ -21,6 +25,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -38,6 +43,7 @@ public class CacheService {
     private final PollRepository pollRepository;
     private final PollOptionRepository pollOptionRepository;
     private final FairViewRepository fairViewRepository;
+    private final PostDetailInfoRepository postDetailInfoRepository;
 
     private static final String POST_CACHE_KEY = "post:";
     private static final String USER_CACHE_KEY = "user:";
@@ -687,7 +693,7 @@ public class CacheService {
     /**
      * PollOption 수정 시 관련 캐시 무효화
      */
-    public void invalidatePollOptionCache(Long pollOptionId) {
+    public void invalidatePollOptionCache(Long postId, Long pollOptionId) {
         try {
             // 개별 PollOption 캐시 삭제
             evictPollOptionFromCache(pollOptionId);
@@ -696,10 +702,7 @@ public class CacheService {
             // PollOption에서 pollId를 찾아서 해당 Poll의 목록 캐시 삭제
             Optional<PollOption> pollOption = pollOptionRepository.findById(pollOptionId);
             if (pollOption.isPresent()) {
-                Long pollId = pollOption.get()
-                        .getPoll()
-                        .getId();
-                String pollOptionListKey = POLL_OPTION_LIST_KEY + pollId;
+                String pollOptionListKey = POLL_OPTION_LIST_KEY + postId;
                 redisTemplate.delete(pollOptionListKey);
             }
 
@@ -763,6 +766,133 @@ public class CacheService {
         } catch (Exception e) {
             log.error("Error evicting all post related cache: {}", e.getMessage(), e);
         }
+    }
+
+    public Collection<Long> getPostIdsFromMainLayoutCache(MainLayoutGroup group) {
+        try {
+            String code = group.getCode();
+            String key = "main_layout:" + code;
+            @SuppressWarnings("unchecked") Collection<Long> postIds =
+                    (Collection<Long>) redisTemplate.opsForValue()
+                            .get(key);
+            return postIds != null ? postIds : fetchAllMainLayoutPostIdsFromDB(group);
+        } catch (Exception e) {
+            log.error("Error getting main layout post IDs from cache: {}", e.getMessage());
+            return fetchAllMainLayoutPostIdsFromDB(group);
+        }
+    }
+
+    private Collection<Long> fetchAllMainLayoutPostIdsFromDB(MainLayoutGroup group) {
+        PostSortType sortType = group.getSortType();
+        DateType dateType = group.getDateType();
+        Integer dateInt = group.getDateInt();
+        String address = group.getAddress();
+        List<Long> tagIds = group.getTagIds();
+        String code = group.getCode();
+        boolean timeLimited = dateType != DateType.NONE && dateInt != null && dateInt > 0;
+        boolean hasTags = tagIds != null && !tagIds.isEmpty();
+        boolean hasAddress = address != null && !address.isEmpty();
+        List<Long> postIds = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        if (!timeLimited && !hasTags && !hasAddress) {
+            postIds = switch (sortType) {
+                case TOTAL_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsOrderByTotalEngagementDesc();
+                case REGION_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsOrderByRegionEngagementDesc();
+                case VIEW_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByViewCountDesc();
+                case LIKE_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByLikeCountDesc();
+                case PARTICIPANT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsOrderByParticipantCountDesc();
+                case LIKE_COMMENT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsOrderByLikeCommentCountDesc();
+            };
+        }
+        else if (timeLimited && !hasTags && !hasAddress) {
+            LocalDateTime fromDate = switch (dateType) {
+                case DAY -> now.minusDays(dateInt);
+                case WEEK -> now.minusWeeks(dateInt);
+                case MONTH -> now.minusMonths(dateInt);
+                case YEAR -> now.minusYears(dateInt);
+                default -> LocalDateTime.now()
+                        .minusYears(10);
+            };
+            postIds = switch (sortType) {
+                case TOTAL_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByTotalEngagementDesc(
+                                fromDate);
+                case REGION_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByRegionEngagementDesc(
+                                fromDate);
+                case VIEW_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByViewCountDesc(
+                                fromDate);
+                case LIKE_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCountDesc(
+                                fromDate);
+                case PARTICIPANT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByParticipantCountDesc(
+                                fromDate);
+                case LIKE_COMMENT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCommentCountDesc(
+                                fromDate);
+            };
+        }
+        else if (!timeLimited && !hasTags) {
+            postIds = switch (sortType) {
+                case TOTAL_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressOrderByTotalEngagementDesc(address);
+                case REGION_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressOrderByRegionEngagementDesc(address);
+                case VIEW_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressOrderByViewCountDesc(address);
+                case LIKE_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCountDesc(address);
+                case PARTICIPANT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressOrderByParticipantCountDesc(address);
+                case LIKE_COMMENT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCommentCountDesc(address);
+            };
+        }
+        else if (timeLimited && !hasTags) {
+            LocalDateTime fromDate = switch (dateType) {
+                case DAY -> now.minusDays(dateInt);
+                case WEEK -> now.minusWeeks(dateInt);
+                case MONTH -> now.minusMonths(dateInt);
+                case YEAR -> now.minusYears(dateInt);
+                default -> LocalDateTime.now()
+                        .minusYears(10);
+            };
+            postIds = switch (sortType) {
+                case TOTAL_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByTotalEngagementDesc(
+                                address, fromDate);
+                case REGION_ENGAGEMENT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByRegionEngagementDesc(
+                                address, fromDate);
+                case VIEW_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByViewCountDesc(
+                                address, fromDate);
+                case LIKE_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCountDesc(
+                                address, fromDate);
+                case PARTICIPANT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByParticipantCountDesc(
+                                address, fromDate);
+                case LIKE_COMMENT_COUNT ->
+                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCommentCountDesc(
+                                address, fromDate);
+            };
+        }
+        else if (!timeLimited && hasAddress){}
+        else if (timeLimited && !hasAddress){}
+        else if (!timeLimited){}
+        else
+            log.warn("Invalid MainLayoutGroup configuration for code {}: timeLimited={}, hasTags={}, hasAddress={}",
+                    code, timeLimited, hasTags, hasAddress);
+        return postIds;
+
+
     }
 
 }

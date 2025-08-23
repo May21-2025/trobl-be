@@ -150,4 +150,9 @@ public interface PostingService {
     Long getPostIdByFairViewId(Long fairViewId);
 
     Long getPostIdByPollId(Long pollId);
+
+    Long getPostIdByPollOptionId(Long pollOptionId);
+
+    @Transactional(readOnly = true)
+    Page<PostDto.MainLayout> getMainLayoutPostings(Long userId, int size, int page);
 }

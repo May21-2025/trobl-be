@@ -1,9 +1,7 @@
 package com.may21.trobl.admin;
 
-import com.may21.trobl._global.enums.ItemType;
-import com.may21.trobl._global.enums.PostingType;
-import com.may21.trobl._global.enums.ReportType;
-import com.may21.trobl._global.utility.Utility;
+import com.may21.trobl._global.enums.*;
+import com.may21.trobl.admin.domain.MainLayoutGroup;
 import com.may21.trobl.admin.domain.PostDetailInfo;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.post.domain.Posting;
@@ -11,12 +9,12 @@ import com.may21.trobl.post.dto.PostDto;
 import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.Report;
 import com.may21.trobl.tag.domain.Tag;
-import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.dto.TagDto;
 import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NonNull;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -106,10 +104,10 @@ public class AdminDto {
 
         public PostInfo(RedisDto.PostDto postDto, List<RedisDto.FairViewDto> fairViews,
                 RedisDto.PollDto pollDto, List<RedisDto.PollOptionDto> optionDtoList,
-                RedisDto.UserDto userDto) {
+                Map<Long, RedisDto.UserDto> userMap) {
             this.postId = postDto.getPostId();
             this.postType = postDto.getPostType();
-            this.user = new UserDto.Info(userDto);
+            this.user = new UserDto.Info(userMap.getOrDefault(postDto.getUserId(), null));
             this.title = decodeHtml(postDto.getTitle());
             this.content = decodeHtml(postDto.getContent());
             String createdAt = postDto.getCreatedAt();
@@ -133,9 +131,8 @@ public class AdminDto {
 
             // FairViewItems 생성
             this.fairViewItems = fairViews == null ? null : fairViews.stream()
-                    .map(fairView -> new PostDto.FairViewItem(fairView.getFairViewId(),
-                            fairView.getUserId(), fairView.getTitle(), fairView.getNickname(),
-                            fairView.getContent()))
+                    .map(fairView -> new PostDto.FairViewItem(fairView,
+                            userMap.get(fairView.getUserId())))
                     .toList();
         }
 
@@ -397,28 +394,6 @@ public class AdminDto {
 
     }
 
-    @Getter
-    public static class TagInfo {
-        private final String title;
-        private final boolean adminAdded;
-
-        public TagInfo(String title, boolean adminAdded) {
-            this.title = title;
-            this.adminAdded = adminAdded;
-        }
-
-        public TagInfo(TagMapping tagMapping) {
-            Tag tag = tagMapping.getTag();
-            this.title = tag.getName();
-            this.adminAdded = tagMapping.getAdmin();
-        }
-
-        public static List<TagInfo> fromTagMappings(List<TagMapping> tags) {
-            return tags.stream()
-                    .map(tag -> new TagInfo(tag.getTag().getName(), tag.getTag().getTagPool() != null))
-                    .toList();
-        }
-    }
 
     @Getter
     public static class ReportedDetails {
@@ -578,7 +553,7 @@ public class AdminDto {
             this.nickname = userDto.getNickname();
             this.address = userDto.getAddress();
             String marriageDateStr = userDto.getMarriageDate();
-            this.marriageDate =marriageDateStr !=null? LocalDate.parse(marriageDateStr) : null;
+            this.marriageDate = marriageDateStr != null ? LocalDate.parse(marriageDateStr) : null;
         }
     }
 
@@ -592,11 +567,11 @@ public class AdminDto {
         private final long commentCount;
         private final long likeCount;
         private final UserDetailInfo user;
-        private final List<AdminDto.TagInfo> tags;
+        private final List<TagDto.TagMappingInfo> tags;
 
 
         public PostListItem(PostDetailInfo postDetailInfo, RedisDto.PostDto postDto,
-                RedisDto.UserDto userDto, List<AdminDto.TagInfo> tags) {
+                RedisDto.UserDto userDto, List<TagDto.TagMappingInfo> tags) {
             this.postId = postDetailInfo.getPostId();
             this.postType = postDto.getPostType();
             this.title = postDto.getTitle();
@@ -611,7 +586,7 @@ public class AdminDto {
     }
 
     @Getter
-    public static class SearchedUser{
+    public static class SearchedUser {
         private final Long userId;
         private final String nickname;
         private final LocalDate marriedDate;
@@ -620,7 +595,7 @@ public class AdminDto {
         public SearchedUser(User user) {
             this.userId = user.getId();
             this.nickname = user.getNickname();
-            this.hasPartner= user.isMarried();
+            this.hasPartner = user.isMarried();
             this.marriedDate = user.getWeddingAnniversaryDate();
         }
 
@@ -630,5 +605,47 @@ public class AdminDto {
                     .toList();
 
         }
+    }
+    @Getter
+    public static class MainLayoutInfo {
+        private final String code;
+        private final String name;
+        private final String description;
+        private final LayoutType layoutType;
+        private final Integer dateInt;
+        private final DateType dateType;
+        private final String address;
+        private final List<TagDto.TagInfo> tags;
+        
+        private final PostSortType sortType;
+
+        public MainLayoutInfo(MainLayoutGroup group,
+                List<Tag> tags) {
+            this.code = group.getCode();
+            this.name = group.getName();
+            this.sortType = group.getSortType();
+            this.layoutType = group.getLayoutType();
+            this.description = group.getDescription();
+            this.dateInt = group.getDateInt();
+            this.dateType = group.getDateType();
+            this.address = group.getAddress();
+            this.tags = TagDto.TagInfo.fromTags(tags);
+        }
+    }
+
+
+    @Getter
+    @AllArgsConstructor
+    public static class MainLayoutRequest {
+        private final String code;
+        private final PostSortType sortType;
+        private final String name;
+        private final String description;
+        private final LayoutType layoutType;
+        private final DateType dateType;
+        private final Integer dateInt;
+        private final String address;
+        private final List<Long> tagIds;
+
     }
 }

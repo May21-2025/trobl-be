@@ -5,6 +5,7 @@ import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.dto.TagDto;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,4 +26,8 @@ public interface TagService {
     boolean organize();
 
     Map<Long, List<Tag>> getPostTagsMap(List<Posting> postList);
+
+    Map<Long, Tag> getLayoutTagMap(Set<Long> tagIds, Map<String, List<Long>> tagIdMap);
+
+    List<Tag> getTagsByIds(HashSet<Long> longs);
 }

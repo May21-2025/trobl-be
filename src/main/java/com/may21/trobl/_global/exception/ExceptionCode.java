@@ -11,6 +11,10 @@ public enum ExceptionCode {
     // COMMENT C000
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "C000", "댓글을 찾을 수 없습니다."),
 
+    // LAYOUT L000
+    LAYOUT_NOT_FOUND(HttpStatus.NOT_FOUND, "L000", "레이아웃을 찾을 수 없습니다."),
+    LAYOUT_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "L001", "이미 존재하는 레이아웃입니다."),
+
     // NOTIFICATION N000
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N000", "알림을 찾을 수 없습니다."),
     NOTIFICATION_TYPE_NOT_BLOCKABLE(HttpStatus.BAD_REQUEST, "N001", "차단할 수 없는 알림 유형입니다."),

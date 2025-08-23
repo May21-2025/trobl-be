@@ -18,4 +18,8 @@ public interface PollOptionRepository extends JpaRepository<PollOption, Long> {
             "JOIN FETCH po.poll p " +
             "WHERE p.posting.id = :postId")
     List<PollOption> findByPostId(Long postId);
+
+    @Query("SELECT po.poll.posting.id FROM PollOption po " +
+            "WHERE po.id = :pollOptionId")
+    Long findPostIdById(Long pollOptionId);
 }

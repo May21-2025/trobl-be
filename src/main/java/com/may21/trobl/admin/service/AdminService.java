@@ -6,7 +6,9 @@ import com.may21.trobl._global.enums.RoleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
+import com.may21.trobl.admin.domain.MainLayoutGroup;
 import com.may21.trobl.admin.domain.PostDetailInfo;
+import com.may21.trobl.admin.repository.MainLayoutRepository;
 import com.may21.trobl.admin.repository.PostDetailInfoRepository;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.domain.CommentRepository;
@@ -31,7 +33,6 @@ import com.may21.trobl.user.domain.User;
 import com.may21.trobl.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -70,6 +71,7 @@ public class AdminService {
     private final PostDetailInfoRepository postDetailInfoRepository;
     private final CommentService commentService;
     private final TagRepository tagRepository;
+    private final MainLayoutRepository mainLayoutRepository;
 
 
     @Transactional
@@ -244,8 +246,6 @@ public class AdminService {
         return reportPage.getContent()
                 .stream()
                 .map(report -> {
-                    Posting post = postRepository.findById(report.getTargetId())
-                            .orElseThrow(() -> new BusinessException(ExceptionCode.POST_NOT_FOUND));
                     return convertToReportInfo(report, "pending");
                 })
                 .collect(Collectors.toList());
@@ -394,33 +394,60 @@ public class AdminService {
     @Transactional
     public void makeTagsForPosts() {
         List<Posting> allPost = postRepository.findAllHasNoAdminTagged(PostingType.ANNOUNCEMENT);
+
+        // 기존 admin 태그만 삭제
+        tagMappingRepository.deleteAllByPostingInAndAdminIsTrue(allPost);
+        tagMappingRepository.flush();
+
+        // fairView 매핑
         List<FairView> fairViews = fairViewRepository.findByPosts(allPost);
         Map<Long, List<FairView>> fairViewMap = fairViews.stream()
                 .collect(Collectors.groupingBy(fv -> fv.getPosting()
                         .getId()));
-        List<TagMapping> tags = new ArrayList<>();
-        tagMappingRepository.deleteAllByPostingInAndAdminIsTrue(allPost);
-        tagMappingRepository.flush();
 
+        // 기본 태그 풀
         List<Tag> defaultTags = tagRepository.findAllByTagPoolIsNotNull();
         Map<String, Tag> tagMap = defaultTags.stream()
                 .collect(Collectors.toMap(Tag::getName, Function.identity()));
+
+        // (postingId, tagId) 중복 방지
+        Set<String> uniqueKeys = new HashSet<>();
+        List<TagMapping> tagsToSave = new ArrayList<>();
+
+        // user 태그 조회 → skip 기준
+        List<TagMapping> userTags =
+                tagMappingRepository.findAllByPostingInAndAdminIsFalseOrAdminIsNull(allPost);
+        Set<String> userKeys = userTags.stream()
+                .map(tm -> tm.getPosting()
+                        .getId() + "_" + tm.getTag()
+                        .getId())
+                .collect(Collectors.toSet());
         for (Posting post : allPost) {
-            StringBuilder postContent =
-                    new StringBuilder(post.getTitle() + "\n" + post.getContent() + "\n");
+            StringBuilder postContent = new StringBuilder().append(post.getTitle())
+                    .append("\n")
+                    .append(post.getContent())
+                    .append("\n");
             if (post.getPostType() == PostingType.FAIR_VIEW) {
                 List<FairView> fairViewList = fairViewMap.get(post.getId());
-                for (FairView fairView : fairViewList) {
-                    postContent.append(fairView.getContent());
+                if (fairViewList != null) {
+                    for (FairView fairView : fairViewList) {
+                        postContent.append(fairView.getContent());
+                    }
                 }
             }
             for (Tag tag : examinePostingAndGetAdminTags(tagMap, postContent)) {
                 if (tag == null) continue;
-                tags.add(new TagMapping(post, tag, true));
+                String key = post.getId() + "_" + tag.getId();
+                // user 태그와 겹치면 skip
+                if (userKeys.contains(key)) continue;
+                // admin 태그 중복 방지
+                if (uniqueKeys.add(key)) {
+                    tagsToSave.add(new TagMapping(post, tag, true));
+                }
             }
             post.setAdminTagged(true);
         }
-        tagMappingRepository.saveAll(tags);
+        tagMappingRepository.saveAll(tagsToSave);
     }
 
     private Set<Tag> examinePostingAndGetAdminTags(Map<String, Tag> tagMap,
@@ -629,12 +656,12 @@ public class AdminService {
         }
 
 
-                List<Long> oldPostIds = postRepository.findIdsByInteractedAtAfter(LocalDateTime.now()
-                        .minusDays(1), PostingType.ANNOUNCEMENT);
-                List<PostDetailInfo> oldPostDetailInfos =
-                        postDetailInfoRepository.findAllByPostIdIn(oldPostIds);
+        List<Long> oldPostIds = postRepository.findIdsByInteractedAtAfter(LocalDateTime.now()
+                .minusDays(1), PostingType.ANNOUNCEMENT);
+        List<PostDetailInfo> oldPostDetailInfos =
+                postDetailInfoRepository.findAllByPostIdIn(oldPostIds);
         List<PostDetailInfo> allPostDetailInfos = new ArrayList<>();
-                allPostDetailInfos.addAll(oldPostDetailInfos);
+        allPostDetailInfos.addAll(oldPostDetailInfos);
         allPostDetailInfos.addAll(postDetailInfos);
         Map<Long, PostDetailInfo> postDetailInfoMap = allPostDetailInfos.stream()
                 .collect(Collectors.toMap(PostDetailInfo::getPostId,
@@ -688,7 +715,7 @@ public class AdminService {
     public Page<AdminDto.PostListItem> getAllDetailedPosts(int size, int page, String sortType,
             boolean asc, List<String> postTypes, List<Long> tags) {
         log.info("게시물 목록을 데이터베이스에서 조회합니다. (캐시 미적용)");
-        
+
         List<PostingType> postingTypes = getFilteredPostTypeList(postTypes);
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.fromString(asc ? "ASC" : "DESC"), sortType));
@@ -727,9 +754,9 @@ public class AdminService {
             Long postId = postDetailInfo.getPostId();
             RedisDto.PostDto postDto = postDtoMap.get(postId);
             List<TagMapping> tagMappingForPost = postTagMappingMap.getOrDefault(postId, List.of());
-            List<AdminDto.TagInfo> tagInfos = AdminDto.TagInfo.fromTagMappings(tagMappingForPost);
+            List<TagDto.TagMappingInfo> tagMappingInfos = TagDto.TagMappingInfo.fromTagMappings(tagMappingForPost);
             postListItems.add(new AdminDto.PostListItem(postDetailInfo, postDto,
-                    userDtoMap.get(postDto.getUserId()), tagInfos));
+                    userDtoMap.get(postDto.getUserId()), tagMappingInfos));
         }
         return new PageImpl<>(postListItems, pageable, postDetailInfos.getTotalElements());
     }
@@ -759,5 +786,54 @@ public class AdminService {
         List<User> searchedUsers = keyword.isEmpty() ? userRepository.findUserByTestUserIsTrue() :
                 userRepository.searchUsersByKeywordTestUserIsTrue(keyword);
         return AdminDto.SearchedUser.fromUserList(searchedUsers);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminDto.MainLayoutInfo> getMainLayoutInfo(int size, int page) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("index")
+                .ascending());
+        Page<MainLayoutGroup> layouts = mainLayoutRepository.findAll(pageable);
+        Set<Long> tagIds = new HashSet<>();
+        Map<String, List<Long>> tagIdMap = new HashMap<>();
+        for (MainLayoutGroup layout : layouts) {
+            List<Long> tagIdList = layout.getTagIds();
+            tagIdMap.putIfAbsent(layout.getCode(), tagIdList);
+            tagIds.addAll(tagIdList);
+        }
+        Map<Long, Tag> tagMap  = tagService.getLayoutTagMap(tagIds, tagIdMap);
+        Map<String,List<Tag>> layoutTagMap = new HashMap<>();
+        for (MainLayoutGroup layout : layouts) {
+            String code =layout.getCode();
+            List<Tag> tags = new ArrayList<>();
+            for (Long tagId : tagIdMap.get(code)) {
+                if (tagMap.containsKey(tagId)) {
+                    tags.add(tagMap.get(tagId));
+                }
+            }
+            layoutTagMap.put(code, tags);
+        }
+        return layouts.map(layout -> {
+            return new AdminDto.MainLayoutInfo(layout, layoutTagMap.get(layout.getCode()));
+        });
+    }
+
+    @Transactional
+    public AdminDto.MainLayoutInfo createMainLayoutInfo(AdminDto.MainLayoutRequest request) {
+        if (mainLayoutRepository.existsByCode(request.getCode())) {
+            throw new BusinessException(ExceptionCode.LAYOUT_ALREADY_EXISTS);
+        }
+        int maxIndex = mainLayoutRepository.findMaxIndex();
+        MainLayoutGroup layout = new MainLayoutGroup(request, maxIndex);
+        layout = mainLayoutRepository.save(layout);
+        List<Tag> tags = tagService.getTagsByIds(new HashSet<>(request.getTagIds()));
+        return new AdminDto.MainLayoutInfo(layout, tags);
+    }
+
+    public boolean deleteMainLayoutInfo(String code) {
+        if (!mainLayoutRepository.existsByCode(code)) {
+            throw new BusinessException(ExceptionCode.LAYOUT_NOT_FOUND);
+        }
+        mainLayoutRepository.deleteByCode(code);
+        return true;
     }
 }
