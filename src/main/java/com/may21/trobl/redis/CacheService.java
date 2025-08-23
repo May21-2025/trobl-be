@@ -813,8 +813,6 @@ public class CacheService {
             postIds = switch (sortType) {
                 case TOTAL_ENGAGEMENT ->
                         postDetailInfoRepository.findAllPostIdsOrderByTotalEngagementDesc();
-                case REGION_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsOrderByRegionEngagementDesc();
                 case VIEW_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByViewCountDesc();
                 case LIKE_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByLikeCountDesc();
                 case PARTICIPANT_COUNT ->
@@ -836,9 +834,6 @@ public class CacheService {
                 case TOTAL_ENGAGEMENT ->
                         postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByTotalEngagementDesc(
                                 fromDate);
-                case REGION_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByRegionEngagementDesc(
-                                fromDate);
                 case VIEW_COUNT ->
                         postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByViewCountDesc(
                                 fromDate);
@@ -857,8 +852,6 @@ public class CacheService {
             postIds = switch (sortType) {
                 case TOTAL_ENGAGEMENT ->
                         postDetailInfoRepository.findAllPostIdsByAddressOrderByTotalEngagementDesc(address);
-                case REGION_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressOrderByRegionEngagementDesc(address);
                 case VIEW_COUNT ->
                         postDetailInfoRepository.findAllPostIdsByAddressOrderByViewCountDesc(address);
                 case LIKE_COUNT ->
@@ -881,9 +874,6 @@ public class CacheService {
             postIds = switch (sortType) {
                 case TOTAL_ENGAGEMENT ->
                         postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByTotalEngagementDesc(
-                                address, fromDate);
-                case REGION_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByRegionEngagementDesc(
                                 address, fromDate);
                 case VIEW_COUNT ->
                         postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByViewCountDesc(

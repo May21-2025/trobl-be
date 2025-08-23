@@ -324,7 +324,13 @@ public class AdminController {
         boolean response = userService.isVirtualUsers(userId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-
+    @GetMapping("/content-simulator/users/{userId}")
+    public ResponseEntity<Message> getVirtualUser(@PathVariable Long userId,
+            @RequestHeader("Authorization") String token) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        UserDto.Info response = userService.getVirtualUser(userId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     @PutMapping("/content-simulator/users/{userId}")
     public ResponseEntity<Message> updateVirtualUsers(@PathVariable Long userId,
             @RequestHeader("Authorization") String token, @RequestPart UserDto.Update request,

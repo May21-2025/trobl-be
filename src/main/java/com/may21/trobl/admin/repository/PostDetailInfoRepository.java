@@ -24,12 +24,6 @@ public interface PostDetailInfoRepository extends JpaRepository<PostDetailInfo, 
             ".viewCount + p.voteCount) DESC LIMIT 10")
     List<Long> findAllPostIdsOrderByTotalEngagementDesc();
 
-    // REGION_ENGAGEMENT: 지역별 참여도 (주소가 있는 경우 우선, 그 다음 총 참여도)
-    @Query("SELECT p.postId FROM PostDetailInfo p ORDER BY " +
-            "CASE WHEN p.address IS NOT NULL THEN 1 ELSE 0 END DESC, " +
-            "(p.likeCount + p.commentCount + p.viewCount + p.voteCount) DESC LIMIT 10")
-    List<Long> findAllPostIdsOrderByRegionEngagementDesc();
-
     // VIEW_COUNT: 조회수 기준 정렬
     @Query("SELECT p.postId FROM PostDetailInfo p ORDER BY p.viewCount DESC LIMIT 10")
     List<Long> findAllPostIdsOrderByViewCountDesc();
@@ -51,11 +45,6 @@ public interface PostDetailInfoRepository extends JpaRepository<PostDetailInfo, 
             "ORDER BY (p.likeCount + p.commentCount + p.viewCount + p.voteCount) DESC LIMIT 10")
     List<Long> findAllPostIdsByCreatedAtAfterOrderByTotalEngagementDesc(@Param("fromDate") LocalDateTime fromDate);
 
-    // REGION_ENGAGEMENT: 특정 날짜 이후, 지역별 참여도 기준 정렬
-    @Query("SELECT p.postId FROM PostDetailInfo p WHERE p.createdAt >= :fromDate " +
-            "ORDER BY CASE WHEN p.address IS NOT NULL THEN 1 ELSE 0 END DESC, " +
-            "(p.likeCount + p.commentCount + p.viewCount + p.voteCount) DESC LIMIT 10")
-    List<Long> findAllPostIdsByCreatedAtAfterOrderByRegionEngagementDesc(@Param("fromDate") LocalDateTime fromDate);
 
     // VIEW_COUNT: 특정 날짜 이후, 조회수 기준 정렬
     @Query("SELECT p.postId FROM PostDetailInfo p WHERE p.createdAt >= :fromDate ORDER BY p.viewCount DESC LIMIT 10")
@@ -77,11 +66,6 @@ public interface PostDetailInfoRepository extends JpaRepository<PostDetailInfo, 
     @Query("SELECT p.postId FROM PostDetailInfo p WHERE p.address = :address " +
             "ORDER BY (p.likeCount + p.commentCount + p.viewCount + p.voteCount) DESC LIMIT 10")
     List<Long> findAllPostIdsByAddressOrderByTotalEngagementDesc(@Param("address") String address);
-
-    // REGION_ENGAGEMENT: 특정 주소, 지역별 참여도 기준 정렬
-    @Query("SELECT p.postId FROM PostDetailInfo p WHERE p.address = :address " +
-            "ORDER BY (p.likeCount + p.commentCount + p.viewCount + p.voteCount) DESC LIMIT 10")
-    List<Long> findAllPostIdsByAddressOrderByRegionEngagementDesc(@Param("address") String address);
 
     // VIEW_COUNT: 특정 주소, 조회수 기준 정렬
     @Query("SELECT p.postId FROM PostDetailInfo p WHERE p.address = :address ORDER BY p.viewCount DESC LIMIT 10")
@@ -111,12 +95,6 @@ public interface PostDetailInfoRepository extends JpaRepository<PostDetailInfo, 
             @Param("address") String address,
             @Param("fromDate") LocalDateTime fromDate);
 
-    // REGION_ENGAGEMENT: 특정 주소 + 특정 날짜 이후, 지역별 참여도 기준 정렬
-    @Query("SELECT p.postId FROM PostDetailInfo p WHERE p.address = :address AND p.createdAt >= :fromDate " +
-            "ORDER BY (p.likeCount + p.commentCount + p.viewCount + p.voteCount) DESC LIMIT 10")
-    List<Long> findAllPostIdsByAddressCreatedAtAfterOrderByRegionEngagementDesc(
-            @Param("address") String address,
-            @Param("fromDate") LocalDateTime fromDate);
 
     // VIEW_COUNT: 특정 주소 + 특정 날짜 이후, 조회수 기준 정렬
     @Query("SELECT p.postId FROM PostDetailInfo p WHERE p.address = :address AND p.createdAt >= :fromDate " +

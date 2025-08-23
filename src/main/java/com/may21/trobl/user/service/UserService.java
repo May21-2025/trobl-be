@@ -15,6 +15,7 @@ import com.may21.trobl.oAuth.AppleOAuthService;
 import com.may21.trobl.oAuth.GoogleOAuthService;
 import com.may21.trobl.oAuth.KakaoOAuthService;
 import com.may21.trobl.redis.CacheService;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.user.UserDto;
@@ -511,5 +512,10 @@ public class UserService implements UserDetailsService {
         }
         cacheService.invalidateUserCache(user.getId());
         return new UserDto.Info(userRepository.save(user));
+    }
+
+    public UserDto.Info getVirtualUser(Long userId) {
+        RedisDto.UserDto userDto = cacheService.getUserFromCache(userId);
+        return new UserDto.Info(userDto);
     }
 }

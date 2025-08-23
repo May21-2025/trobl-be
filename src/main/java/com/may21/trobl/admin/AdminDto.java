@@ -14,7 +14,6 @@ import com.may21.trobl.user.UserDto;
 import com.may21.trobl.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NonNull;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -591,12 +590,14 @@ public class AdminDto {
         private final String nickname;
         private final LocalDate marriedDate;
         private final boolean hasPartner;
+        private final Long partnerId;
 
         public SearchedUser(User user) {
             this.userId = user.getId();
             this.nickname = user.getNickname();
             this.hasPartner = user.isMarried();
             this.marriedDate = user.getWeddingAnniversaryDate();
+            this.partnerId = user.getPartnerId();
         }
 
         public static List<SearchedUser> fromUserList(List<User> searchedUsers) {
@@ -606,6 +607,7 @@ public class AdminDto {
 
         }
     }
+
     @Getter
     public static class MainLayoutInfo {
         private final String code;
@@ -616,11 +618,10 @@ public class AdminDto {
         private final DateType dateType;
         private final String address;
         private final List<TagDto.TagInfo> tags;
-        
+
         private final PostSortType sortType;
 
-        public MainLayoutInfo(MainLayoutGroup group,
-                List<Tag> tags) {
+        public MainLayoutInfo(MainLayoutGroup group, List<Tag> tags) {
             this.code = group.getCode();
             this.name = group.getName();
             this.sortType = group.getSortType();
