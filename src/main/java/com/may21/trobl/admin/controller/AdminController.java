@@ -60,7 +60,6 @@ public class AdminController {
     // ========== 대시보드 API ==========
 
 
-
     @GetMapping("/authenticate")
     public ResponseEntity<Message> authenticateAdmin(@RequestHeader("Authorization") String token) {
         Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token)
@@ -97,6 +96,40 @@ public class AdminController {
         postingService.evictAllTopPosts();
         return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
     }
+    // ========== 레이아웃 관리 API ==========
+
+
+    @GetMapping("/layout/main/posts")
+    public ResponseEntity<Message> getMainLayoutPreviews(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "3") int size,
+            @RequestParam(defaultValue = "0") int page) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        Page<PostDto.MainLayout> response = postingService.getMainLayoutPostings(null ,size, page);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @GetMapping("/layout/main")
+    public ResponseEntity<Message> getMainLayoutInfo(@RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") int page) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        Page<AdminDto.MainLayoutInfo> response = adminService.getMainLayoutInfo(size, page);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PostMapping("/layout/main")
+    public ResponseEntity<Message> createMainLayoutInfo(@RequestHeader("Authorization") String token,@RequestBody AdminDto.MainLayoutRequest request) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        AdminDto.MainLayoutInfo response = adminService.createMainLayoutInfo(request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @DeleteMapping("/layout/main/{code}")
+    public ResponseEntity<Message> deleteMainLayoutInfo(@RequestHeader("Authorization") String token,@PathVariable String code) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = adminService.deleteMainLayoutInfo(code);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
 
     // ========== 게시글 관리 API ==========
     @PostMapping("/announcements/account")
@@ -136,6 +169,7 @@ public class AdminController {
         AdminDto.PostInfo response = postingService.updateAnnouncement(postId, updateRequest);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/tags/search")
     public ResponseEntity<Message> getTagSearch(@RequestHeader("Authorization") String token,
             @RequestParam String keyword) {
@@ -144,6 +178,8 @@ public class AdminController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
 
     }
+
+
     @GetMapping("/posts")
     public ResponseEntity<Message> getAllPosts(@RequestHeader("Authorization") String token,
             @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
@@ -160,8 +196,8 @@ public class AdminController {
     public ResponseEntity<Message> getAllDetailedPosts(@RequestHeader("Authorization") String token,
             @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "createdAt") String sortType,
-            @RequestParam(defaultValue="", required = false) List<String> postTypes,
-            @RequestParam(defaultValue="", required = false) List<Long> tagIds,
+            @RequestParam(defaultValue = "", required = false) List<String> postTypes,
+            @RequestParam(defaultValue = "", required = false) List<Long> tagIds,
             @RequestParam(defaultValue = "false") boolean asc) {
         jwtTokenUtil.getAdminUserByToken(token);
         Page<AdminDto.PostListItem> response =
@@ -271,14 +307,16 @@ public class AdminController {
         }
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
+
     @GetMapping("/content-simulator/users/search")
     public ResponseEntity<Message> createVirtualUsers(@RequestHeader("Authorization") String token,
             @RequestParam String keyword) {
         jwtTokenUtil.getAdminUserByToken(token);
-        List<AdminDto.SearchedUser>  response = adminService.createVirtualUsers(keyword);
+        List<AdminDto.SearchedUser> response = adminService.createVirtualUsers(keyword);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
 
     }
+
     @GetMapping("/content-simulator/users/{userId}/check")
     public ResponseEntity<Message> isVirtualUsers(@PathVariable Long userId,
             @RequestHeader("Authorization") String token) {
@@ -357,7 +395,7 @@ public class AdminController {
         jwtTokenUtil.getAdminUserByToken(token);
         PostDto.FairViewItem response = postingService.updateVirtualFairView(fairViewId, request);
         Long postId = postingService.getPostIdByFairViewId(fairViewId);
-        cacheService.evictFairViewFromCache(postId,fairViewId);
+        cacheService.evictFairViewFromCache(postId, fairViewId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -407,6 +445,14 @@ public class AdminController {
         jwtTokenUtil.getAdminUserByToken(token);
         boolean response = commentService.deleteVirtualComments(commentId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/cache/posts/{postId}")
+    public ResponseEntity<Message> deletePostCache(@RequestHeader("Authorization") String token,
+            @PathVariable Long postId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        cacheService.invalidatePostCache(postId);
+        return new ResponseEntity<>(Message.success(true), HttpStatus.OK);
     }
     // ========== 42번 유저 알림 테스트 기능 ==========
 

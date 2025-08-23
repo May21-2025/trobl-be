@@ -33,4 +33,6 @@ public interface TagMappingRepository extends JpaRepository<TagMapping, Long> {
     @Modifying
     @Transactional
     void deleteAllByPostingInAndAdminIsTrue(Collection<Posting> posting);
+
+    List<TagMapping> findAllByPostingInAndAdminIsFalseOrAdminIsNull(List<Posting> allPost);
 }

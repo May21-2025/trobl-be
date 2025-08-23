@@ -3,6 +3,7 @@ package com.may21.trobl.comment.service;
 import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.comment.dto.CommentDto;
 import com.may21.trobl.post.domain.Posting;
+import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.ReportDto;
 import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,4 +55,5 @@ public interface CommentService {
 
     @Transactional(readOnly = true)
     Map<Long, Integer> getPostCommentMapByPostIds(List<Long> postIdList);
+
 }

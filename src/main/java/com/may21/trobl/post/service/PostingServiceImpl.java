@@ -7,6 +7,8 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
+import com.may21.trobl.admin.domain.MainLayoutGroup;
+import com.may21.trobl.admin.repository.MainLayoutRepository;
 import com.may21.trobl.bookmark.PostBookmark;
 import com.may21.trobl.bookmark.PostBookmarkRepository;
 import com.may21.trobl.comment.service.CommentService;
@@ -27,6 +29,7 @@ import com.may21.trobl.report.ReportDto;
 import com.may21.trobl.report.ReportService;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
+import com.may21.trobl.tag.dto.TagDto;
 import com.may21.trobl.tag.repository.TagMappingRepository;
 import com.may21.trobl.tag.service.TagService;
 import com.may21.trobl.user.domain.User;
@@ -72,6 +75,7 @@ public class PostingServiceImpl implements PostingService {
     private final PostLikeRepository postLikeRepository;
 
     private final TagMappingRepository tagMappingRepository;
+    private final MainLayoutRepository mainLayoutRepository;
 
     public static String ADMIN_USERNAME = "TroblAdmin";
 
@@ -217,6 +221,10 @@ public class PostingServiceImpl implements PostingService {
                 .userId(userId)
                 .build();
         postRepository.save(post);
+
+        Map<Long, User> userMap = new HashMap<>();
+        userMap.put(userId, user);
+
         if (postType == PostingType.POLL) {
             Poll poll = new Poll(profanityFilter.filterProfanity(request.getPollTitle()), post,
                     request.isAllowMultipleVotes());
@@ -264,12 +272,11 @@ public class PostingServiceImpl implements PostingService {
             fairViewRepository.saveAll(fairViews);
             post.addFairView(myFairView);
             post.addFairView(partnerFairView);
+            userMap.put(partnerId, partner);
         }
         Set<Tag> tags = tagService.createTags(request.getTags());
         List<TagMapping> tagResponses = tagService.createTagMapping(tags, post);
         post.setTags(tagResponses);
-        Map<Long, User> userMap = new HashMap<>();
-        userMap.put(userId, user);
         List<Tag> tagList = tags.stream()
                 .toList();
         return new PostDto.Detail(post, user, userMap, tagList, false, false, List.of(), true);
@@ -722,14 +729,14 @@ public class PostingServiceImpl implements PostingService {
         Map<Long, User> userMap = users.stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
         List<TagMapping> tagMappings = tagMappingRepository.findByPostIdInIncludingAdmin(postIds);
-        Map<Long, List<AdminDto.TagInfo>> tagMap = new HashMap<>();
+        Map<Long, List<TagDto.TagMappingInfo>> tagMap = new HashMap<>();
         for (TagMapping tagMapping : tagMappings) {
             Long postId = tagMapping.getPosting()
                     .getId();
-            List<AdminDto.TagInfo> tagInfo = tagMap.getOrDefault(postId, new ArrayList<>());
-            tagInfo.add(new AdminDto.TagInfo(tagMapping.getTag()
-                    .getName(), tagMapping.getAdmin()));
-            tagMap.put(postId, tagInfo);
+            List<TagDto.TagMappingInfo> tagMappingInfo =
+                    tagMap.getOrDefault(postId, new ArrayList<>());
+            tagMappingInfo.add(new TagDto.TagMappingInfo(tagMapping));
+            tagMap.put(postId, tagMappingInfo);
         }
         return postings.map(post -> {
             return new PostDto.AdminListItem(post, userMap.get(post.getUserId()),
@@ -762,7 +769,7 @@ public class PostingServiceImpl implements PostingService {
             pollDto = cacheService.getPollFromCache(postId);
             optionDtoList = cacheService.getPollOptionFromCache(postId);
         }
-        return new AdminDto.PostInfo(postDto, fairViews, pollDto, optionDtoList, userDto);
+        return new AdminDto.PostInfo(postDto, fairViews, pollDto, optionDtoList, userMap);
     }
 
     @Override
@@ -883,6 +890,78 @@ public class PostingServiceImpl implements PostingService {
     @Override
     public Long getPostIdByPollId(Long pollId) {
         return pollRepository.findPostIdById(pollId);
+    }
+
+
+    @Override
+    public Long getPostIdByPollOptionId(Long pollOptionId) {
+        return pollOptionRepository.findPostIdById(pollOptionId);
+    }
+
+    @Override
+    public Page<PostDto.MainLayout> getMainLayoutPostings(Long userId, int size, int page) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("index")
+                .ascending());
+        Page<MainLayoutGroup> groups = mainLayoutRepository.findAll(pageable);
+        Map<String, List<Long>> groupPostIdListMap = new HashMap<>();
+        Set<Long> allPostIds = new HashSet<>();
+        for (MainLayoutGroup group : groups) {
+            List<Long> postIds = cacheService.getPostIdsFromMainLayoutCache(group)
+                    .stream()
+                    .toList();
+            groupPostIdListMap.putIfAbsent(group.getCode(), postIds);
+            allPostIds.addAll(postIds);
+        }
+        List<Long> blockedPostIds =
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.POST) :
+                        List.of();
+        List<Long> blockedUserIds =
+                userId != null ? reportService.getBlockedTargetIds(userId, ItemType.USER) :
+                        List.of();
+
+        List<Long> postIdList = allPostIds.stream()
+                .filter(postId -> !blockedPostIds.contains(postId))
+                .toList();
+        List<RedisDto.PostDto> postDtos = cacheService.getMultiplePostsFromCache(postIdList);
+        postIdList = postDtos.stream()
+                .filter(postDto -> !blockedPostIds.contains(postDto.getPostId()) &&
+                        !blockedUserIds.contains(postDto.getUserId()))
+                .map(RedisDto.PostDto::getPostId)
+                .toList();
+        Map<Long, RedisDto.PostDto> postDtoMap = postDtos.stream()
+                .filter(postDto -> !blockedPostIds.contains(postDto.getPostId()) &&
+                        !blockedUserIds.contains(postDto.getUserId()))
+                .collect(Collectors.toMap(RedisDto.PostDto::getPostId, Function.identity()));
+        Map<Long, Integer> commentMaps = commentService.getPostCommentMapByPostIds(postIdList);
+        Map<Long, Integer> postLikeMap = postLikeMap(postIdList);
+        Map<Long, User> userMap = userRepository.findAllById(postDtos.stream()
+                        .map(RedisDto.PostDto::getUserId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        return groups.map(group -> {
+            List<Long> postIds = groupPostIdListMap.getOrDefault(group.getCode(), List.of());
+            List<PostDto.Card> cards = new ArrayList<>();
+            for (Long postId : postIds) {
+                RedisDto.PostDto postDto = postDtoMap.get(postId);
+                if (postDto != null) {
+                    cards.add(new PostDto.Card(postDto, commentMaps.get(postDto.getPostId()),
+                            postLikeMap.getOrDefault(postDto.getPostId(), 0),
+                            userMap.get(postDto.getUserId())));
+                }
+            }
+            return new PostDto.MainLayout(group, cards);
+        });
+    }
+
+    private Map<Long, Integer> postLikeMap(List<Long> postIdList) {
+        List<PostLike> likes = likeRepository.findAllByPostingIdIn(postIdList);
+        Map<Long, Integer> postLikeMap = new HashMap<>();
+        for (PostLike like : likes) {
+            postLikeMap.merge(like.getPosting()
+                    .getId(), 1, Integer::sum);
+        }
+        return postLikeMap;
     }
 
     @Override
@@ -1500,7 +1579,7 @@ public class PostingServiceImpl implements PostingService {
         Long userId = request.getUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ExceptionCode.USER_NOT_FOUND));
-
+        Long partnerId = user.getPartnerId();
         Posting post = Posting.builder()
                 .title(request.getTitle())
                 .postType(postType)
@@ -1511,13 +1590,15 @@ public class PostingServiceImpl implements PostingService {
         postRepository.save(post);
 
         List<FairView> fairViews = new ArrayList<>();
+        boolean isMine = true;
         for (AdminDto.FairViewRequest fairViewRequest : request.getFairViewItem()) {
             FairView fairView = FairView.builder()
                     .title(fairViewRequest.getTitle())
                     .content(fairViewRequest.getContent())
                     .post(post)
-                    .userId(fairViewRequest.getUserId())
+                    .userId(isMine ? fairViewRequest.getUserId() : partnerId)
                     .build();
+            if (isMine) {isMine = false;}
             fairView.setConfirmed(true);
             fairViews.add(fairView);
         }

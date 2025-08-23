@@ -3,8 +3,9 @@ package com.may21.trobl.post.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.may21.trobl._global.enums.FairViewStatus;
+import com.may21.trobl._global.enums.LayoutType;
 import com.may21.trobl._global.enums.PostingType;
-import com.may21.trobl.admin.AdminDto;
+import com.may21.trobl.admin.domain.MainLayoutGroup;
 import com.may21.trobl.notification.dto.NotificationDto;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
@@ -31,32 +32,57 @@ import static com.may21.trobl._global.utility.SecurityUtils.escapeHtml;
 public class PostDto {
 
     @Getter
-    @AllArgsConstructor
-    public static class BasePostDto {
-        private final Long postId;
-        private final UserDto.Info user;
-        private final String title;
-        private final List<TagDto.Response> tags;
+    public static class BasePostDto extends PostTitleItem {
         private final int viewCount;
 
         public BasePostDto(Posting post, User user, List<Tag> tags) {
-            this.postId = post.getId();
-            this.user = user == null ? null : new UserDto.Info(user);
+            super(post, user, tags);
             this.viewCount = post.getAllViewCount();
-            this.title = decodeHtml(post.getTitle());
-            this.tags = TagDto.Response.fromTagList(tags);
         }
 
         public BasePostDto(RedisDto.PostDto postDto, RedisDto.UserDto userDto, List<Tag> tags,
                 int view) {
+            super(postDto, userDto, tags);
+            this.viewCount = postDto.getViewCount() + view;
+        }
+    }
+
+    @Getter
+    public static class PostTitleItem {
+        private final Long postId;
+        private final UserDto.Info user;
+        private final String title;
+        private final List<TagDto.Response> tags;
+
+        public PostTitleItem(Posting post, User user, List<Tag> tags) {
+            this.postId = post.getId();
+            this.user = user == null ? null : new UserDto.Info(user);
+            this.title = decodeHtml(post.getTitle());
+            this.tags = TagDto.Response.fromTagList(tags);
+        }
+
+        public PostTitleItem(RedisDto.PostDto postDto, RedisDto.UserDto userDto, List<Tag> tags) {
             this.postId = postDto.getPostId();
             this.user = userDto == null ? null : new UserDto.Info(userDto);
-            this.viewCount = postDto.getViewCount() + view;
             this.title = decodeHtml(postDto.getTitle());
             this.tags = TagDto.Response.fromTagList(tags);
         }
     }
 
+    @Getter
+    public static class MainLayout {
+        private final String code;
+        private final String name;
+        private final LayoutType layoutType;
+        private final List<Card> posts;
+
+        public MainLayout(MainLayoutGroup mainLayout, List<Card> posts) {
+            this.code = mainLayout.getCode();
+            this.name = mainLayout.getName();
+            this.layoutType = mainLayout.getLayoutType();
+            this.posts = posts;
+        }
+    }
 
     @Getter
     public static class Card {
@@ -88,6 +114,15 @@ public class PostDto {
 
             this.commentCount = commentCount;
             this.likeCount = post.getLikeCount();
+        }
+
+        public Card(RedisDto.PostDto postDto, Integer commentCount, Integer likeCount, User user) {
+            this.postId = postDto.getPostId();
+            this.user = user == null ? null : new UserDto.Info(user);
+            this.viewCount = postDto.getViewCount();
+            this.title = decodeHtml(postDto.getTitle());
+            this.commentCount = commentCount == null ? 0 : commentCount;
+            this.likeCount = likeCount;
         }
     }
 
@@ -286,9 +321,7 @@ public class PostDto {
 
             // FairViewItems 생성
             this.fairViewItems = fairViews == null ? null : fairViews.stream()
-                    .map(fairView -> new FairViewItem(fairView.getFairViewId(),
-                            fairView.getUserId(), fairView.getTitle(), fairView.getNickname(),
-                            decodeHtml(fairView.getContent())))
+                    .map(fairView -> new FairViewItem(fairView, userMap.get(fairView.getUserId())))
                     .toList();
 
             this.shareCount = postDto.getShareCount();
@@ -425,6 +458,16 @@ public class PostDto {
         public FairViewItem(FairView fairView, User user) {
             String nickname = user == null ? fairView.getNickname() : user.getNickname();
             this.fairViewId = fairView.getId();
+            this.userId = fairView.getUserId();
+            this.content = decodeHtml(fairView.getContent());
+            this.title = decodeHtml(fairView.getTitle());
+            this.nickname = nickname;
+            this.confirmed = fairView.isConfirmed();
+        }
+
+        public FairViewItem(RedisDto.FairViewDto fairView, RedisDto.UserDto userDto) {
+            String nickname = userDto == null ? fairView.getNickname() : userDto.getNickname();
+            this.fairViewId = fairView.getFairViewId();
             this.userId = fairView.getUserId();
             this.content = decodeHtml(fairView.getContent());
             this.title = decodeHtml(fairView.getTitle());
@@ -594,7 +637,7 @@ public class PostDto {
         private final UserDto.Info user;
 
 
-        public AdminListItem(Posting post, User user, List<AdminDto.TagInfo> tags) {
+        public AdminListItem(Posting post, User user, List<TagDto.TagMappingInfo> tags) {
             this.postId = post.getId();
             this.postType = post.getPostType();
             this.title = decodeHtml(post.getTitle());
