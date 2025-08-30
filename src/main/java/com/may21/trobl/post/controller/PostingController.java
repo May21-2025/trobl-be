@@ -129,7 +129,14 @@ public class PostingController {
         cacheService.evictPostFromCache(postId);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-
+    @GetMapping("/main-layout")
+    public ResponseEntity<Message> getMainLayouts(@AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "3") int size,
+            @RequestParam(defaultValue = "0") int page) {
+        Long userId = user != null ? user.getId() : null;
+        Page<PostDto.MainLayout> response = postingService.getMainLayoutPostings(userId ,size, page);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
     @GetMapping("/all")
     public ResponseEntity<Message> getAllPostsList(@AuthenticationPrincipal User user,
             @RequestParam(defaultValue = "0") int page,

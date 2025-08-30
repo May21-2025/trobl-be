@@ -71,11 +71,34 @@ public class TagDto {
             this.tagPoolId = tagPool != null ? tagPool.getId() : null;
             this.tagPoolName = tagPool != null ? tagPool.getName() : null;
         }
+        public TagInfo(Tag tag, TagPool tagPool) {
+            this.tagId = tag.getId();
+            this.title = tag.getName();
+            this.tagPoolId = tagPool != null ? tagPool.getId() : null;
+            this.tagPoolName = tagPool != null ? tagPool.getName() : null;
+        }
+        public static List<TagInfo> fromTags(List<Tag> tags, TagPool tagPool) {
+            return tags.stream()
+                    .map(tag -> new TagInfo(tag, tagPool))
+                    .toList();
+        }
 
         public static List<TagInfo> fromTags(List<Tag> tags) {
             return tags.stream()
                     .map(TagInfo::new)
                     .toList();
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class TagPoolDto {
+        private final Long tagPoolId;
+        private final String name;
+
+        public TagPoolDto(TagPool tagPool) {
+            this.tagPoolId = tagPool.getId();
+            this.name = tagPool.getName();
         }
     }
 }

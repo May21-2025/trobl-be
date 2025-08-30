@@ -10,6 +10,7 @@ import com.may21.trobl._global.security.JwtTokenUtil;
 import com.may21.trobl._global.utility.Utility;
 import com.may21.trobl.admin.AdminDto;
 import com.may21.trobl.admin.service.AdminService;
+import com.may21.trobl.admin.service.MainLayoutService;
 import com.may21.trobl.auth.AuthDto;
 import com.may21.trobl.auth.jwt.TokenInfo;
 import com.may21.trobl.comment.dto.CommentDto;
@@ -32,7 +33,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,6 +57,7 @@ public class AdminController {
     private final ContentUpdateService contentUpdateService;
     private final CacheService cacheService;
     private final CommentService commentService;
+    private final MainLayoutService mainLayoutService;
 
     // ========== 대시보드 API ==========
 
@@ -114,28 +115,56 @@ public class AdminController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "0") int page) {
         jwtTokenUtil.getAdminUserByToken(token);
-        Page<AdminDto.MainLayoutInfo> response = adminService.getMainLayoutInfo(size, page);
+        Page<AdminDto.MainLayoutInfo> response = mainLayoutService.getMainLayoutInfo(size, page);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
     @PostMapping("/layout/main")
     public ResponseEntity<Message> createMainLayoutInfo(@RequestHeader("Authorization") String token,@RequestBody AdminDto.MainLayoutRequest request) {
         jwtTokenUtil.getAdminUserByToken(token);
-        AdminDto.MainLayoutInfo response = adminService.createMainLayoutInfo(request);
+        AdminDto.MainLayoutInfo response = mainLayoutService.createMainLayoutInfo(request);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
-    @PatchMapping("/layout/main/{code}/index")
+    @PatchMapping("/layout/main/{mainLayoutId}/index")
     public ResponseEntity<Message> changeIndex(@RequestHeader("Authorization") String token,
-            @RequestParam int index, @PathVariable String code) {
+            @RequestParam int index, @PathVariable Long mainLayoutId) {
         jwtTokenUtil.getAdminUserByToken(token);
-        boolean response = adminService.changeIndex(code, index);
+        boolean response = mainLayoutService.changeIndex(mainLayoutId, index);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
-    @DeleteMapping("/layout/main/{code}")
-    public ResponseEntity<Message> deleteMainLayoutInfo(@RequestHeader("Authorization") String token,@PathVariable String code) {
+    @GetMapping("/layout/main/{mainLayoutId}/posts")
+    public ResponseEntity<Message> getMainLayoutPosts(@RequestHeader("Authorization") String token, @PathVariable Long mainLayoutId) {
         jwtTokenUtil.getAdminUserByToken(token);
-        boolean response = adminService.deleteMainLayoutInfo(code);
+        List<PostDto.PostTitleItem> response = mainLayoutService.getMainLayoutPosts(mainLayoutId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/layout/main/{mainLayoutId}/posts/{postId}")
+    public ResponseEntity<Message> deleteMainLayoutPosts(@RequestHeader("Authorization") String token, @PathVariable Long mainLayoutId, @PathVariable Long postId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = mainLayoutService.deleteMainLayoutPosts(mainLayoutId,postId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @DeleteMapping("/layout/main/{mainLayoutId}")
+    public ResponseEntity<Message> deleteMainLayoutInfo(@RequestHeader("Authorization") String token,@PathVariable Long mainLayoutId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = mainLayoutService.deleteMainLayoutInfo(mainLayoutId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PatchMapping("/layout/main/{mainLayoutId}/activation")
+    public ResponseEntity<Message> activateLayout(@RequestHeader("Authorization") String token,
+            @PathVariable Long mainLayoutId,  @RequestParam boolean activation) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = mainLayoutService.activateLayout(mainLayoutId, activation);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+    @PatchMapping("/layout/main/{mainLayoutId}/schedule-type")
+    public ResponseEntity<Message> updateScheduleType(@RequestHeader("Authorization") String token,
+            @PathVariable Long mainLayoutId,  @RequestParam String scheduleType) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response = mainLayoutService.updateScheduleType(mainLayoutId, scheduleType);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 

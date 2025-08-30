@@ -610,7 +610,8 @@ public class AdminDto {
 
     @Getter
     public static class MainLayoutInfo {
-        private final String code;
+        private final Long layoutId;
+        private final int index;
         private final String name;
         private final String description;
         private final LayoutType layoutType;
@@ -620,9 +621,11 @@ public class AdminDto {
         private final List<TagDto.TagInfo> tags;
 
         private final PostSortType sortType;
+        private final ScheduleType scheduleType;
 
         public MainLayoutInfo(MainLayoutGroup group, List<Tag> tags) {
-            this.code = group.getCode();
+            this.layoutId = group.getId();
+            this.index = group.getIndex();
             this.name = group.getName();
             this.sortType = group.getSortType();
             this.layoutType = group.getLayoutType();
@@ -631,6 +634,7 @@ public class AdminDto {
             this.dateType = group.getDateType();
             this.address = group.getAddress();
             this.tags = TagDto.TagInfo.fromTags(tags);
+            this.scheduleType = group.getScheduleType();
         }
     }
 
@@ -638,7 +642,6 @@ public class AdminDto {
     @Getter
     @AllArgsConstructor
     public static class MainLayoutRequest {
-        private final String code;
         private final PostSortType sortType;
         private final String name;
         private final String description;
@@ -647,6 +650,10 @@ public class AdminDto {
         private final Integer dateInt;
         private final String address;
         private final List<Long> tagIds;
+        private final String scheduleType;
 
+        public ScheduleType getScheduleType() {
+            return ScheduleType.fromString(scheduleType);
+        }
     }
 }

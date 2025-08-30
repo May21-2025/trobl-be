@@ -1,13 +1,21 @@
 package com.may21.trobl.tag.service;
 
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl._global.utility.ProfanityFilter;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.tag.domain.Tag;
 import com.may21.trobl.tag.domain.TagMapping;
+import com.may21.trobl.tag.domain.TagPool;
 import com.may21.trobl.tag.dto.TagDto;
 import com.may21.trobl.tag.repository.TagMappingRepository;
+import com.may21.trobl.tag.repository.TagPoolRepository;
 import com.may21.trobl.tag.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,6 +27,7 @@ public class TagServiceImpl implements TagService {
     private final TagRepository tagRepository;
     private final TagMappingRepository tagMappingRepository;
     private final ProfanityFilter profanityFilter;
+    private final TagPoolRepository tagPoolRepository;
 
     @Override
     public Set<Tag> createTags(List<TagDto.Request> tagRequests) {
@@ -122,7 +131,8 @@ public class TagServiceImpl implements TagService {
         }
         List<TagMapping> onesToSave = new ArrayList<>();
         for (Tag tagToDelete : tagsToDelete) {
-            List<TagMapping> tagMappings = tagMappingRepository.findByTagAndAdminIsFalseOrAdminIsNull(tagToDelete);
+            List<TagMapping> tagMappings =
+                    tagMappingRepository.findByTagAndAdminIsFalseOrAdminIsNull(tagToDelete);
             if (!tagMappings.isEmpty()) {
                 Tag remainingTag = uniqueTagNames.get(tagToDelete.getName());
                 for (TagMapping tagMapping : tagMappings) {
@@ -142,7 +152,8 @@ public class TagServiceImpl implements TagService {
             return Map.of();
         }
         Map<Long, List<Tag>> postTagsMap = new HashMap<>();
-        List<TagMapping> tagMappings = tagMappingRepository.findByPostingInAndAdminIsFalseOrAdminIsNull(postList);
+        List<TagMapping> tagMappings =
+                tagMappingRepository.findByPostingInAndAdminIsFalseOrAdminIsNull(postList);
         for (TagMapping tagMapping : tagMappings) {
             Long postId = tagMapping.getPosting()
                     .getId();
@@ -153,7 +164,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
-    public Map<Long, Tag> getLayoutTagMap(Set<Long> tagIds, Map<String, List<Long>> tagIdMap) {
+    public Map<Long, Tag> getLayoutTagMap(Set<Long> tagIds, Map<Long, List<Long>> tagIdMap) {
         if (tagIds != null && !tagIds.isEmpty() && tagIdMap != null && !tagIdMap.isEmpty()) {
             List<Tag> tags = tagRepository.findAllById(tagIds);
             Map<Long, Tag> tagMap = new HashMap<>();
@@ -171,6 +182,78 @@ public class TagServiceImpl implements TagService {
             return tagRepository.findAllById(longs);
         }
         return List.of();
+    }
+
+    @Override
+    public Page<TagDto.TagPoolDto> getTagPools(int page, int size, String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+        Page<TagPool> tagPools = tagPoolRepository.findAll(pageable);
+        return tagPools.map(TagDto.TagPoolDto::new);
+    }
+
+    @Override
+    public List<TagDto.TagInfo> getTagsInfoByTagPoolId(Long tagPoolId) {
+        List<Tag> tags = tagPoolId == null ? tagRepository.findByTagPoolIsNull() :
+                tagRepository.findByTagPoolId(tagPoolId);
+        TagPool tagPool = tagPoolId == null ? null : tagPoolRepository.findById(tagPoolId)
+                .orElse(null);
+        return TagDto.TagInfo.fromTags(tags, tagPool);
+    }
+
+    @Override
+    public TagDto.TagInfo createTag(String tagName, Long tagPoolId) {
+        if (tagRepository.existsByName(tagName)) {
+            throw new BusinessException(ExceptionCode.TAG_EXISTS);
+        }
+        if (profanityFilter.containsProfanity(tagName)) {
+            throw new BusinessException(ExceptionCode.TAG_PROFANITY);
+        }
+        TagPool tagPool = tagPoolId != null ? tagPoolRepository.findById(tagPoolId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.TAG_POOL_NOT_FOUND)) : null;
+        Tag tag = new Tag(tagName, tagPool);
+        tagRepository.save(tag);
+        return new TagDto.TagInfo(tag);
+    }
+
+    @Override
+    public TagDto.TagInfo updateTagPoolOfTag(Long tagId, Long tagPoolId) {
+        Tag tag = tagRepository.findById(tagId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.TAG_NOT_FOUND));
+        if (tagPoolId == null) {
+            tag.setTagPool(null);
+            return new TagDto.TagInfo(tag);
+        }
+        if (tag.getTagPool() != null && tag.getTagPool()
+                .getId()
+                .equals(tagPoolId)) {return new TagDto.TagInfo(tag);}
+        TagPool tagPool = tagPoolRepository.findById(tagPoolId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.TAG_POOL_NOT_FOUND));
+        tag.setTagPool(tagPool);
+        return new TagDto.TagInfo(tag);
+    }
+
+    @Override
+    public TagDto.TagPoolDto createTagPool(String tagPoolName) {
+        if (tagPoolRepository.existsByName(tagPoolName)) {
+            throw new BusinessException(ExceptionCode.TAG_POOL_EXISTS);
+        }
+        TagPool tagPool = new TagPool(tagPoolName);
+        tagPoolRepository.save(tagPool);
+        return new TagDto.TagPoolDto(tagPool);
+    }
+
+    @Override
+    public boolean deleteTagPool(Long tagPoolId) {
+        TagPool tagPool = tagPoolRepository.findById(tagPoolId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.TAG_POOL_NOT_FOUND));
+        List<Tag> tags = tagRepository.findByTagPoolId(tagPoolId);
+        if (!tags.isEmpty()) {
+            for(Tag tag : tags) {
+                tag.setTagPool(null);
+            }
+        }
+        tagPoolRepository.delete(tagPool);
+        return true;
     }
 
 }

@@ -71,13 +71,13 @@ public class PostDto {
 
     @Getter
     public static class MainLayout {
-        private final String code;
+        private final Long id;
         private final String name;
         private final LayoutType layoutType;
         private final List<Card> posts;
 
         public MainLayout(MainLayoutGroup mainLayout, List<Card> posts) {
-            this.code = mainLayout.getCode();
+            this.id = mainLayout.getId();
             this.name = mainLayout.getName();
             this.layoutType = mainLayout.getLayoutType();
             this.posts = posts;

@@ -25,6 +25,7 @@ public interface TagMappingRepository extends JpaRepository<TagMapping, Long> {
     @Query("SELECT tm FROM TagMapping tm WHERE tm.posting.id IN :postIds AND (tm.admin = false " +
             "           OR tm.admin IS NULL)")
     List<TagMapping> findByPostIdIn(List<Long> postIds);
+
     @Query("SELECT tm FROM TagMapping tm WHERE tm.posting.id IN :postIds")
     List<TagMapping> findByPostIdInIncludingAdmin(List<Long> postIds);
 
@@ -35,4 +36,7 @@ public interface TagMappingRepository extends JpaRepository<TagMapping, Long> {
     void deleteAllByPostingInAndAdminIsTrue(Collection<Posting> posting);
 
     List<TagMapping> findAllByPostingInAndAdminIsFalseOrAdminIsNull(List<Posting> allPost);
+
+    @Query("SELECT DISTINCT tm.posting.id FROM TagMapping tm WHERE tm.tag.id IN :tagIds")
+    List<Long> findPostIdsByTagIds(List<Long> tagIds);
 }

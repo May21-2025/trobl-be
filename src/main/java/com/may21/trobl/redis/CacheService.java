@@ -5,6 +5,7 @@ import com.may21.trobl._global.enums.PostSortType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.domain.MainLayoutGroup;
+import com.may21.trobl.admin.repository.LayoutPostMappingRepository;
 import com.may21.trobl.admin.repository.PostDetailInfoRepository;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
@@ -43,7 +44,6 @@ public class CacheService {
     private final PollRepository pollRepository;
     private final PollOptionRepository pollOptionRepository;
     private final FairViewRepository fairViewRepository;
-    private final PostDetailInfoRepository postDetailInfoRepository;
 
     private static final String POST_CACHE_KEY = "post:";
     private static final String USER_CACHE_KEY = "user:";
@@ -56,6 +56,7 @@ public class CacheService {
     private static final String POLL_OPTION_LIST_KEY = "poll_option_list:";
     private static final String FAIR_VIEW_LIST_KEY = "fair_view_list:";
     private static final Duration DEFAULT_TTL = Duration.ofHours(1);
+    private final LayoutPostMappingRepository layoutPostMappingRepository;
 
     /**
      * 포스트 정보를 Redis에서 가져오거나, 없으면 DB에서 가져와서 Redis에 저장
@@ -770,8 +771,8 @@ public class CacheService {
 
     public Collection<Long> getPostIdsFromMainLayoutCache(MainLayoutGroup group) {
         try {
-            String code = group.getCode();
-            String key = "main_layout:" + code;
+            Long id = group.getId();
+            String key = "main_layout:" + id;
 
             @SuppressWarnings("unchecked")
             Collection<Long> postIds = (Collection<Long>) redisTemplate.opsForValue().get(key);
@@ -781,15 +782,15 @@ public class CacheService {
             }
 
             // 캐시에 없으면 DB에서 가져오고 캐싱
-            return cachePostIds(group, key);
+            return cacheLayoutPostIds(group, key);
         } catch (Exception e) {
             log.error("Error getting main layout post IDs from cache: {}", e.getMessage());
-            String key = "main_layout:" + group.getCode();
-            return cachePostIds(group, key);
+            String key = "main_layout:" + group.getId();
+            return cacheLayoutPostIds(group, key);
         }
     }
 
-    private Collection<Long> cachePostIds(MainLayoutGroup group, String key) {
+    private Collection<Long> cacheLayoutPostIds(MainLayoutGroup group, String key) {
         Collection<Long> postIds = fetchAllMainLayoutPostIdsFromDB(group);
         if (postIds != null && !postIds.isEmpty()) {
             redisTemplate.opsForValue().set(key, postIds,Duration.ofHours(24));
@@ -798,106 +799,7 @@ public class CacheService {
     }
 
     private Collection<Long> fetchAllMainLayoutPostIdsFromDB(MainLayoutGroup group) {
-        PostSortType sortType = group.getSortType();
-        DateType dateType = group.getDateType();
-        Integer dateInt = group.getDateInt();
-        String address = group.getAddress();
-        List<Long> tagIds = group.getTagIds();
-        String code = group.getCode();
-        boolean timeLimited = dateType != DateType.NONE && dateInt != null && dateInt > 0;
-        boolean hasTags = tagIds != null && !tagIds.isEmpty();
-        boolean hasAddress = address != null && !address.isEmpty();
-        List<Long> postIds = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-        if (!timeLimited && !hasTags && !hasAddress) {
-            postIds = switch (sortType) {
-                case TOTAL_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsOrderByTotalEngagementDesc();
-                case VIEW_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByViewCountDesc();
-                case LIKE_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByLikeCountDesc();
-                case PARTICIPANT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsOrderByParticipantCountDesc();
-                case LIKE_COMMENT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsOrderByLikeCommentCountDesc();
-            };
-        }
-        else if (timeLimited && !hasTags && !hasAddress) {
-            LocalDateTime fromDate = switch (dateType) {
-                case DAY -> now.minusDays(dateInt);
-                case WEEK -> now.minusWeeks(dateInt);
-                case MONTH -> now.minusMonths(dateInt);
-                case YEAR -> now.minusYears(dateInt);
-                default -> LocalDateTime.now()
-                        .minusYears(10);
-            };
-            postIds = switch (sortType) {
-                case TOTAL_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByTotalEngagementDesc(
-                                fromDate);
-                case VIEW_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByViewCountDesc(
-                                fromDate);
-                case LIKE_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCountDesc(
-                                fromDate);
-                case PARTICIPANT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByParticipantCountDesc(
-                                fromDate);
-                case LIKE_COMMENT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCommentCountDesc(
-                                fromDate);
-            };
-        }
-        else if (!timeLimited && !hasTags) {
-            postIds = switch (sortType) {
-                case TOTAL_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressOrderByTotalEngagementDesc(address);
-                case VIEW_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressOrderByViewCountDesc(address);
-                case LIKE_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCountDesc(address);
-                case PARTICIPANT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressOrderByParticipantCountDesc(address);
-                case LIKE_COMMENT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCommentCountDesc(address);
-            };
-        }
-        else if (timeLimited && !hasTags) {
-            LocalDateTime fromDate = switch (dateType) {
-                case DAY -> now.minusDays(dateInt);
-                case WEEK -> now.minusWeeks(dateInt);
-                case MONTH -> now.minusMonths(dateInt);
-                case YEAR -> now.minusYears(dateInt);
-                default -> LocalDateTime.now()
-                        .minusYears(10);
-            };
-            postIds = switch (sortType) {
-                case TOTAL_ENGAGEMENT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByTotalEngagementDesc(
-                                address, fromDate);
-                case VIEW_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByViewCountDesc(
-                                address, fromDate);
-                case LIKE_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCountDesc(
-                                address, fromDate);
-                case PARTICIPANT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByParticipantCountDesc(
-                                address, fromDate);
-                case LIKE_COMMENT_COUNT ->
-                        postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCommentCountDesc(
-                                address, fromDate);
-            };
-        }
-        else if (!timeLimited && hasAddress){}
-        else if (timeLimited && !hasAddress){}
-        else if (!timeLimited){}
-        else
-            log.warn("Invalid MainLayoutGroup configuration for code {}: timeLimited={}, hasTags={}, hasAddress={}",
-                    code, timeLimited, hasTags, hasAddress);
-        return postIds;
-
-
+        return layoutPostMappingRepository.findPostIdsByMainLayoutGroup(group);
     }
 
 }
