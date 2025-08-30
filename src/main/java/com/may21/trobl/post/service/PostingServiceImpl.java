@@ -910,7 +910,7 @@ public class PostingServiceImpl implements PostingService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("index")
                 .ascending());
-        Page<MainLayoutGroup> groups = mainLayoutRepository.findAll(pageable);
+        Page<MainLayoutGroup> groups = mainLayoutRepository.findAllActivated(pageable);
         Map<Long, List<Long>> groupPostIdListMap = new HashMap<>();
         Set<Long> allPostIds = new HashSet<>();
         for (MainLayoutGroup group : groups) {
