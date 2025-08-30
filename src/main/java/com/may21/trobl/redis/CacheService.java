@@ -1,12 +1,9 @@
 package com.may21.trobl.redis;
 
-import com.may21.trobl._global.enums.DateType;
-import com.may21.trobl._global.enums.PostSortType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.domain.MainLayoutGroup;
 import com.may21.trobl.admin.repository.LayoutPostMappingRepository;
-import com.may21.trobl.admin.repository.PostDetailInfoRepository;
 import com.may21.trobl.poll.domain.Poll;
 import com.may21.trobl.poll.domain.PollOption;
 import com.may21.trobl.poll.repository.PollOptionRepository;
@@ -26,7 +23,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -774,8 +770,9 @@ public class CacheService {
             Long id = group.getId();
             String key = "main_layout:" + id;
 
-            @SuppressWarnings("unchecked")
-            Collection<Long> postIds = (Collection<Long>) redisTemplate.opsForValue().get(key);
+            @SuppressWarnings("unchecked") Collection<Long> postIds =
+                    (Collection<Long>) redisTemplate.opsForValue()
+                            .get(key);
 
             if (postIds != null) {
                 return postIds;
@@ -793,7 +790,8 @@ public class CacheService {
     private Collection<Long> cacheLayoutPostIds(MainLayoutGroup group, String key) {
         Collection<Long> postIds = fetchAllMainLayoutPostIdsFromDB(group);
         if (postIds != null && !postIds.isEmpty()) {
-            redisTemplate.opsForValue().set(key, postIds,Duration.ofHours(24));
+            redisTemplate.opsForValue()
+                    .set(key, postIds, Duration.ofHours(24));
         }
         return postIds;
     }
@@ -802,4 +800,20 @@ public class CacheService {
         return layoutPostMappingRepository.findPostIdsByMainLayoutGroup(group);
     }
 
+    public void evictLayoutCache() {
+        try {
+            String pattern = "main_layout:*";
+            Set<String> keys = redisTemplate.keys(pattern);
+            if (!keys.isEmpty()) {
+                redisTemplate.delete(keys);
+                log.info("Deleted {} layout cache keys with pattern {}", keys.size(), pattern);
+            }
+            else {
+                log.info("No layout cache keys found for pattern {}", pattern);
+            }
+        } catch (Exception e) {
+            log.error("Error evicting layout cache: {}", e.getMessage(), e);
+        }
+
+    }
 }

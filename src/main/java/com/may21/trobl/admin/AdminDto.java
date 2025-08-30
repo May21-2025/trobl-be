@@ -618,6 +618,7 @@ public class AdminDto {
         private final Integer dateInt;
         private final DateType dateType;
         private final String address;
+        private final boolean active;
         private final List<TagDto.TagInfo> tags;
 
         private final PostSortType sortType;
@@ -633,6 +634,7 @@ public class AdminDto {
             this.dateInt = group.getDateInt();
             this.dateType = group.getDateType();
             this.address = group.getAddress();
+            this.active = group.isActive();
             this.tags = TagDto.TagInfo.fromTags(tags);
             this.scheduleType = group.getScheduleType();
         }

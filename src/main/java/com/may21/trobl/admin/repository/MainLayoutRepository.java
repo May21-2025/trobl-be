@@ -2,6 +2,8 @@ package com.may21.trobl.admin.repository;
 
 import com.may21.trobl._global.enums.ScheduleType;
 import com.may21.trobl.admin.domain.MainLayoutGroup;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -23,4 +25,7 @@ public interface MainLayoutRepository extends JpaRepository<MainLayoutGroup, Lon
     void deleteById(Long id);
 
     List<MainLayoutGroup> findByScheduleType(ScheduleType scheduleType);
+
+    @Query("SELECT m FROM MainLayoutGroup m WHERE m.active = true ORDER BY m.index ASC")
+    Page<MainLayoutGroup> findAllActivated(Pageable pageable);
 }

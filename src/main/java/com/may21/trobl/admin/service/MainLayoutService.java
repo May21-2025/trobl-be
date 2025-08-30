@@ -352,6 +352,7 @@ public class MainLayoutService {
         for (MainLayoutGroup layout : scheduledLayouts) {
             setLayoutPosts(layout);
         }
+        cacheService.evictLayoutCache();
     }
 
     @Transactional
@@ -361,6 +362,7 @@ public class MainLayoutService {
         for (MainLayoutGroup layout : scheduledLayouts) {
             setLayoutPosts(layout);
         }
+        cacheService.evictLayoutCache();
     }
 
     @Transactional
@@ -370,6 +372,7 @@ public class MainLayoutService {
         for (MainLayoutGroup layout : scheduledLayouts) {
             setLayoutPosts(layout);
         }
+        cacheService.evictLayoutCache();
     }
 
     @Transactional
@@ -379,6 +382,7 @@ public class MainLayoutService {
         for (MainLayoutGroup layout : scheduledLayouts) {
             setLayoutPosts(layout);
         }
+        cacheService.evictLayoutCache();
     }
 
     @Transactional(readOnly = true)
