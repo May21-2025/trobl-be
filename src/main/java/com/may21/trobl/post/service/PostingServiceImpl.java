@@ -900,24 +900,27 @@ public class PostingServiceImpl implements PostingService {
 
     @Override
     public Page<PostDto.MainLayout> getMainLayoutPostings(Long userId, int size, int page) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("index")
-                .ascending());
-        Page<MainLayoutGroup> groups = mainLayoutRepository.findAll(pageable);
-        Map<String, List<Long>> groupPostIdListMap = new HashMap<>();
-        Set<Long> allPostIds = new HashSet<>();
-        for (MainLayoutGroup group : groups) {
-            List<Long> postIds = cacheService.getPostIdsFromMainLayoutCache(group)
-                    .stream()
-                    .toList();
-            groupPostIdListMap.putIfAbsent(group.getCode(), postIds);
-            allPostIds.addAll(postIds);
-        }
+        //최대 10개만
         List<Long> blockedPostIds =
                 userId != null ? reportService.getBlockedTargetIds(userId, ItemType.POST) :
                         List.of();
         List<Long> blockedUserIds =
                 userId != null ? reportService.getBlockedTargetIds(userId, ItemType.USER) :
                         List.of();
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("index")
+                .ascending());
+        Page<MainLayoutGroup> groups = mainLayoutRepository.findAll(pageable);
+        Map<Long, List<Long>> groupPostIdListMap = new HashMap<>();
+        Set<Long> allPostIds = new HashSet<>();
+        for (MainLayoutGroup group : groups) {
+            List<Long> postIds = cacheService.getPostIdsFromMainLayoutCache(group)
+                    .stream()
+                    .filter(postId -> !blockedPostIds.contains(postId))
+                    .toList();
+            groupPostIdListMap.putIfAbsent(group.getId(), postIds);
+            allPostIds.addAll(postIds);
+        }
 
         List<Long> postIdList = allPostIds.stream()
                 .filter(postId -> !blockedPostIds.contains(postId))
@@ -940,9 +943,9 @@ public class PostingServiceImpl implements PostingService {
                 .stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
         return groups.map(group -> {
-            List<Long> postIds = groupPostIdListMap.getOrDefault(group.getCode(), List.of());
+            List<Long> postIds = groupPostIdListMap.getOrDefault(group.getId(), List.of());
             List<PostDto.Card> cards = new ArrayList<>();
-            for (Long postId : postIds) {
+            for (Long postId : postIds.stream().limit(10).toList()) {
                 RedisDto.PostDto postDto = postDtoMap.get(postId);
                 if (postDto != null) {
                     cards.add(new PostDto.Card(postDto, commentMaps.get(postDto.getPostId()),

@@ -75,8 +75,15 @@ public enum ExceptionCode {
     //REPORT R000
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "R000", "신고를 찾을 수 없습니다."),
 
-    // TEST T000
-    TEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T000", "테스트가 실패했습니다."),
+    //TAG T000
+    TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "T000", "태그를 찾을 수 없습니다."),
+    TAG_EXISTS(HttpStatus.BAD_REQUEST, "T001", "이미 존재하는 태그입니다."),
+    TAG_PROFANITY(HttpStatus.BAD_REQUEST, "T002", "태그에 욕설/비방어를 포함 할 수 없습니다."),
+    TAG_POOL_NOT_FOUND(HttpStatus.NOT_FOUND, "T003", "태그풀을 찾을 수 없습니다."),
+    TAG_POOL_EXISTS(HttpStatus.BAD_REQUEST, "T004", "이미 존재하는 태그풀입니다."),
+
+    // TEST T100
+    TEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T100", "테스트가 실패했습니다."),
 
     // Other Z000
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Z000", "UNAUTHORIZED"),

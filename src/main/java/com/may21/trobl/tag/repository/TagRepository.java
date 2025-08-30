@@ -1,7 +1,6 @@
 package com.may21.trobl.tag.repository;
 
 import com.may21.trobl.tag.domain.Tag;
-import org.checkerframework.common.aliasing.qual.Unique;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -21,4 +20,10 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     List<Tag> findDistinctTagsByNameContaining(String keyword);
 
     List<Tag> findAllByTagPoolIsNotNull();
+
+    List<Tag> findByTagPoolId(Long tagPoolId);
+
+    List<Tag> findByTagPoolIsNull();
+
+    boolean existsByName(String tagName);
 }

@@ -3,6 +3,7 @@ package com.may21.trobl.admin.domain;
 import com.may21.trobl._global.enums.DateType;
 import com.may21.trobl._global.enums.LayoutType;
 import com.may21.trobl._global.enums.PostSortType;
+import com.may21.trobl._global.enums.ScheduleType;
 import com.may21.trobl.admin.AdminDto;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -16,18 +17,26 @@ import java.util.List;
 @NoArgsConstructor
 public class MainLayoutGroup {
     @Id
-    private String code;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private String name;
     private String description;
 
     private PostSortType sortType;
     private LayoutType layoutType;
-    private Integer dateInt;
     private DateType dateType;
+    private Integer dateInt;
 
     private String address;
     @Setter
     private int index;
+
+    @Setter
+    private ScheduleType scheduleType = ScheduleType.NONE;
+
+    @Setter
+    private boolean active = true;
+
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "main_layout_group_tag_ids", joinColumns = @JoinColumn(name = "code"))
@@ -36,7 +45,6 @@ public class MainLayoutGroup {
 
 
     public MainLayoutGroup(AdminDto.MainLayoutRequest request, int maxIndex) {
-        this.code = request.getCode();
         this.name = request.getName();
         this.description = request.getDescription();
         this.sortType = request.getSortType();
@@ -46,5 +54,6 @@ public class MainLayoutGroup {
         this.address = request.getAddress();
         this.index = maxIndex;
         this.tagIds = request.getTagIds();
+        this.scheduleType = request.getScheduleType();
     }
 }

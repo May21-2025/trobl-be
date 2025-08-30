@@ -3,6 +3,7 @@ package com.may21.trobl.admin.service;
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.RoleType;
+import com.may21.trobl._global.enums.ScheduleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
@@ -71,7 +72,6 @@ public class AdminService {
     private final PostDetailInfoRepository postDetailInfoRepository;
     private final CommentService commentService;
     private final TagRepository tagRepository;
-    private final MainLayoutRepository mainLayoutRepository;
 
 
     @Transactional
@@ -788,88 +788,4 @@ public class AdminService {
         return AdminDto.SearchedUser.fromUserList(searchedUsers);
     }
 
-    @Transactional(readOnly = true)
-    public Page<AdminDto.MainLayoutInfo> getMainLayoutInfo(int size, int page) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("index")
-                .ascending());
-        Page<MainLayoutGroup> layouts = mainLayoutRepository.findAll(pageable);
-        Set<Long> tagIds = new HashSet<>();
-        Map<String, List<Long>> tagIdMap = new HashMap<>();
-        for (MainLayoutGroup layout : layouts) {
-            List<Long> tagIdList = layout.getTagIds();
-            tagIdMap.putIfAbsent(layout.getCode(), tagIdList);
-            tagIds.addAll(tagIdList);
-        }
-        Map<Long, Tag> tagMap  = tagService.getLayoutTagMap(tagIds, tagIdMap);
-        Map<String,List<Tag>> layoutTagMap = new HashMap<>();
-        for (MainLayoutGroup layout : layouts) {
-            String code =layout.getCode();
-            List<Tag> tags = new ArrayList<>();
-            for (Long tagId : tagIdMap.get(code)) {
-                if (tagMap.containsKey(tagId)) {
-                    tags.add(tagMap.get(tagId));
-                }
-            }
-            layoutTagMap.put(code, tags);
-        }
-        return layouts.map(layout -> {
-            return new AdminDto.MainLayoutInfo(layout, layoutTagMap.get(layout.getCode()));
-        });
-    }
-
-    @Transactional
-    public AdminDto.MainLayoutInfo createMainLayoutInfo(AdminDto.MainLayoutRequest request) {
-        if (mainLayoutRepository.existsByCode(request.getCode())) {
-            throw new BusinessException(ExceptionCode.LAYOUT_ALREADY_EXISTS);
-        }
-        int maxIndex = mainLayoutRepository.findMaxIndex();
-        MainLayoutGroup layout = new MainLayoutGroup(request, maxIndex);
-        layout = mainLayoutRepository.save(layout);
-        List<Tag> tags = tagService.getTagsByIds(new HashSet<>(request.getTagIds()));
-        return new AdminDto.MainLayoutInfo(layout, tags);
-    }
-
-    public boolean deleteMainLayoutInfo(String code) {
-        if (!mainLayoutRepository.existsByCode(code)) {
-            throw new BusinessException(ExceptionCode.LAYOUT_NOT_FOUND);
-        }
-        mainLayoutRepository.deleteByCode(code);
-        return true;
-    }
-
-    public boolean changeIndex(String code, int index) {
-        MainLayoutGroup layout = mainLayoutRepository.findByCode(code)
-                .orElseThrow(() -> new BusinessException(ExceptionCode.LAYOUT_NOT_FOUND));
-        int currentIndex = layout.getIndex();
-        if (currentIndex == index) {
-            return true; // 변경할 필요 없음
-        }
-        int maxIndex = mainLayoutRepository.findMaxIndex();
-        if (index < 0 || index > maxIndex) {
-            throw new BusinessException(ExceptionCode.INVALID_LAYOUT_INDEX);
-        }
-
-        if (currentIndex < index) {
-            // 아래로 이동: 현재 인덱스보다 크고, 목표 인덱스 이하인 항목들의 인덱스를 -1
-            List<MainLayoutGroup> affectedLayouts = mainLayoutRepository.findByIndexBetween(currentIndex + 1, index);
-            for (MainLayoutGroup l : affectedLayouts) {
-                l.setIndex(l.getIndex() - 1);
-            }
-            mainLayoutRepository.saveAll(affectedLayouts);
-        } else {
-            // 위로 이동: 현재 인덱스보다 작고, 목표 인덱스 이상인 항목들의 인덱스를 +1
-            List<MainLayoutGroup> affectedLayouts = mainLayoutRepository.findByIndexBetween(index, currentIndex - 1);
-            for (MainLayoutGroup l : affectedLayouts) {
-                l.setIndex(l.getIndex() + 1);
-            }
-            mainLayoutRepository.saveAll(affectedLayouts);
-        }
-
-        // 대상 항목의 인덱스를 목표 인덱스로 설정
-        layout.setIndex(index);
-        mainLayoutRepository.save(layout);
-
-        return true;
-
-    }
 }
