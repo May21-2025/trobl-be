@@ -814,6 +814,14 @@ public class CacheService {
         } catch (Exception e) {
             log.error("Error evicting layout cache: {}", e.getMessage(), e);
         }
-
+    }
+    public void evictLayoutCache(Long layoutId) {
+        try {
+            String key = "main_layout:" + layoutId;
+            redisTemplate.delete(key);
+            log.info("Deleted layout cache key {}", key);
+        } catch (Exception e) {
+            log.error("Error evicting layout cache for id {}: {}", layoutId, e.getMessage(), e);
+        }
     }
 }

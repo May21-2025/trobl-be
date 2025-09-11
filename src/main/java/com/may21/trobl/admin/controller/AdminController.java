@@ -126,6 +126,24 @@ public class AdminController {
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
+    @PutMapping("/layout/main/{mainLayoutId}")
+    public ResponseEntity<Message> updateMainLayoutInfo(@RequestHeader("Authorization") String token,
+            @PathVariable Long mainLayoutId, @RequestBody AdminDto.MainLayoutRequest request)  {
+        jwtTokenUtil.getAdminUserByToken(token);
+        AdminDto.MainLayoutInfo response =
+                mainLayoutService.updateMainLayoutInfo(mainLayoutId,request);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
+    @PutMapping("/layout/main/{mainLayoutId}/refresh")
+    public ResponseEntity<Message> refreshMainLayoutInfo(@RequestHeader("Authorization") String token,
+            @PathVariable Long mainLayoutId) {
+        jwtTokenUtil.getAdminUserByToken(token);
+        boolean response =
+                mainLayoutService.refreshMainLayoutPostsData(mainLayoutId);
+        return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
+    }
+
     @PatchMapping("/layout/main/{mainLayoutId}/index")
     public ResponseEntity<Message> changeIndex(@RequestHeader("Authorization") String token,
             @RequestParam int index, @PathVariable Long mainLayoutId) {

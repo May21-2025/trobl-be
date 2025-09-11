@@ -1,6 +1,7 @@
 package com.may21.trobl.post.service;
 
 import com.may21.trobl._global.enums.ItemType;
+import com.may21.trobl._global.enums.LayoutType;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
@@ -944,8 +945,9 @@ public class PostingServiceImpl implements PostingService {
                 .collect(Collectors.toMap(User::getId, Function.identity()));
         return groups.map(group -> {
             List<Long> postIds = groupPostIdListMap.getOrDefault(group.getId(), List.of());
-            List<PostDto.Card> cards = new ArrayList<>();
-            for (Long postId : postIds.stream().limit(10).toList()) {
+            int count =group.getLayoutType() == LayoutType.CARD ? 10 : 30;
+                    List<PostDto.Card> cards = new ArrayList<>();
+            for (Long postId : postIds.stream().limit(count).toList()) {
                 RedisDto.PostDto postDto = postDtoMap.get(postId);
                 if (postDto != null) {
                     cards.add(new PostDto.Card(postDto, commentMaps.get(postDto.getPostId()),

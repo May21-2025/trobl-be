@@ -1,9 +1,6 @@
 package com.may21.trobl.admin.service;
 
-import com.may21.trobl._global.enums.DateType;
-import com.may21.trobl._global.enums.PostSortType;
-import com.may21.trobl._global.enums.PostingType;
-import com.may21.trobl._global.enums.ScheduleType;
+import com.may21.trobl._global.enums.*;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
@@ -83,6 +80,14 @@ public class MainLayoutService {
         setLayoutPosts(layout);
         return new AdminDto.MainLayoutInfo(layout, tags);
     }
+    @Transactional
+    public boolean refreshMainLayoutPostsData(Long layoutId) {
+        MainLayoutGroup layout = mainLayoutRepository.findById(layoutId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.LAYOUT_NOT_FOUND));
+        setLayoutPosts(layout);
+        cacheService.evictLayoutCache(layoutId);
+        return true;
+    }
 
     public boolean deleteMainLayoutInfo(Long id) {
         if (!mainLayoutRepository.existsById(id)) {
@@ -159,6 +164,7 @@ public class MainLayoutService {
         List<Long> tagIds = mainLayoutGroup.getTagIds();
         Long mainLayoutGroupId = mainLayoutGroup.getId();
         PostingType announcementType = PostingType.ANNOUNCEMENT;
+        int limitCount = mainLayoutGroup.getLayoutType() == LayoutType.CARD ? 20 : 50;
         List<LayoutPostMapping> newLayoutPosts = new ArrayList<>();
         boolean timeLimited = dateType != DateType.NONE && dateInt != null && dateInt > 0;
         boolean hasTags = tagIds != null && !tagIds.isEmpty();
@@ -171,19 +177,19 @@ public class MainLayoutService {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
                             postDetailInfoRepository.findAllPostIdsOrderByTotalEngagementDescInPostIds(
-                                    postIdsByTags, announcementType);
+                                    postIdsByTags, announcementType, limitCount);
                     case VIEW_COUNT ->
                             postDetailInfoRepository.findAllPostIdsOrderByViewCountDescInPostIds(
-                                    postIdsByTags, announcementType);
+                                    postIdsByTags, announcementType, limitCount);
                     case LIKE_COUNT ->
                             postDetailInfoRepository.findAllPostIdsOrderByLikeCountDescInPostIds(
-                                    postIdsByTags, announcementType);
+                                    postIdsByTags, announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsOrderByParticipantCountDescInPostIds(
-                                    postIdsByTags, announcementType);
+                                    postIdsByTags, announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsOrderByLikeCommentCountDescInPostIds(
-                                    postIdsByTags, announcementType);
+                                    postIdsByTags, announcementType, limitCount);
                 };
             }
             else if (timeLimited && !hasAddress) {
@@ -191,38 +197,38 @@ public class MainLayoutService {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByTotalEngagementDescInPostIds(
-                                    fromDate, postIdsByTags, announcementType);
+                                    fromDate, postIdsByTags, announcementType, limitCount);
                     case VIEW_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByViewCountDescInPostIds(
-                                    fromDate, postIdsByTags, announcementType);
+                                    fromDate, postIdsByTags, announcementType, limitCount);
                     case LIKE_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCountDescInPostIds(
-                                    fromDate, postIdsByTags, announcementType);
+                                    fromDate, postIdsByTags, announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByParticipantCountDescInPostIds(
-                                    fromDate, postIdsByTags, announcementType);
+                                    fromDate, postIdsByTags, announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCommentCountDescInPostIds(
-                                    fromDate, postIdsByTags, announcementType);
+                                    fromDate, postIdsByTags, announcementType, limitCount);
                 };
             }
             else if (!timeLimited) {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByTotalEngagementDescInPostIds(
-                                    address, postIdsByTags, announcementType);
+                                    address, postIdsByTags, announcementType, limitCount);
                     case VIEW_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByViewCountDescInPostIds(
-                                    address, postIdsByTags, announcementType);
+                                    address, postIdsByTags, announcementType, limitCount);
                     case LIKE_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCountDescInPostIds(
-                                    address, postIdsByTags, announcementType);
+                                    address, postIdsByTags, announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByParticipantCountDescInPostIds(
-                                    address, postIdsByTags, announcementType);
+                                    address, postIdsByTags, announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCommentCountDescInPostIds(
-                                    address, postIdsByTags, announcementType);
+                                    address, postIdsByTags, announcementType, limitCount);
                 };
             }
             else {
@@ -230,19 +236,19 @@ public class MainLayoutService {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByTotalEngagementDescInPostIds(
-                                    address, fromDate, postIdsByTags, announcementType);
+                                    address, fromDate, postIdsByTags, announcementType, limitCount);
                     case VIEW_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByViewCountDescInPostIds(
-                                    address, fromDate, postIdsByTags, announcementType);
+                                    address, fromDate, postIdsByTags, announcementType, limitCount);
                     case LIKE_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCountDescInPostIds(
-                                    address, fromDate, postIdsByTags, announcementType);
+                                    address, fromDate, postIdsByTags, announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByParticipantCountDescInPostIds(
-                                    address, fromDate, postIdsByTags, announcementType);
+                                    address, fromDate, postIdsByTags, announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCommentCountDescInPostIds(
-                                    address, fromDate, postIdsByTags, announcementType);
+                                    address, fromDate, postIdsByTags, announcementType, limitCount);
                 };
             }
         }
@@ -250,15 +256,18 @@ public class MainLayoutService {
             if (!timeLimited && !hasAddress) {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
-                            postDetailInfoRepository.findAllPostIdsOrderByTotalEngagementDesc(announcementType);
-                    case VIEW_COUNT ->
-                            postDetailInfoRepository.findAllPostIdsOrderByViewCountDesc(announcementType);
-                    case LIKE_COUNT ->
-                            postDetailInfoRepository.findAllPostIdsOrderByLikeCountDesc( announcementType);
+                            postDetailInfoRepository.findAllPostIdsOrderByTotalEngagementDesc(
+                                    announcementType, limitCount);
+                    case VIEW_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByViewCountDesc(
+                            announcementType, limitCount);
+                    case LIKE_COUNT -> postDetailInfoRepository.findAllPostIdsOrderByLikeCountDesc(
+                            announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
-                            postDetailInfoRepository.findAllPostIdsOrderByParticipantCountDesc(announcementType);
+                            postDetailInfoRepository.findAllPostIdsOrderByParticipantCountDesc(
+                                    announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
-                            postDetailInfoRepository.findAllPostIdsOrderByLikeCommentCountDesc(announcementType);
+                            postDetailInfoRepository.findAllPostIdsOrderByLikeCommentCountDesc(
+                                    announcementType, limitCount);
                 };
             }
             else if (timeLimited && !hasAddress) {
@@ -267,38 +276,38 @@ public class MainLayoutService {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByTotalEngagementDesc(
-                                    fromDate, announcementType);
+                                    fromDate, announcementType, limitCount);
                     case VIEW_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByViewCountDesc(
-                                    fromDate, announcementType);
+                                    fromDate, announcementType, limitCount);
                     case LIKE_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCountDesc(
-                                    fromDate, announcementType);
+                                    fromDate, announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByParticipantCountDesc(
-                                    fromDate, announcementType);
+                                    fromDate, announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByCreatedAtAfterOrderByLikeCommentCountDesc(
-                                    fromDate, announcementType);
+                                    fromDate, announcementType, limitCount);
                 };
             }
             else if (!timeLimited) {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByTotalEngagementDesc(
-                                    address, announcementType);
+                                    address, announcementType, limitCount);
                     case VIEW_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByViewCountDesc(
-                                    address, announcementType);
+                                    address, announcementType, limitCount);
                     case LIKE_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCountDesc(
-                                    address, announcementType);
+                                    address, announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByParticipantCountDesc(
-                                    address, announcementType);
+                                    address, announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressOrderByLikeCommentCountDesc(
-                                    address, announcementType);
+                                    address, announcementType, limitCount);
                 };
             }
             else {
@@ -306,19 +315,19 @@ public class MainLayoutService {
                 postIds = switch (sortType) {
                     case TOTAL_ENGAGEMENT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByTotalEngagementDesc(
-                                    address, fromDate, announcementType);
+                                    address, fromDate, announcementType, limitCount);
                     case VIEW_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByViewCountDesc(
-                                    address, fromDate, announcementType);
+                                    address, fromDate, announcementType, limitCount);
                     case LIKE_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCountDesc(
-                                    address, fromDate, announcementType);
+                                    address, fromDate, announcementType, limitCount);
                     case PARTICIPANT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByParticipantCountDesc(
-                                    address, fromDate, announcementType);
+                                    address, fromDate, announcementType, limitCount);
                     case LIKE_COMMENT_COUNT ->
                             postDetailInfoRepository.findAllPostIdsByAddressCreatedAtAfterOrderByLikeCommentCountDesc(
-                                    address, fromDate, announcementType);
+                                    address, fromDate, announcementType, limitCount);
                 };
             }
         }
@@ -329,7 +338,8 @@ public class MainLayoutService {
             LayoutPostMapping mapping = new LayoutPostMapping(mainLayoutGroup, postId);
             newLayoutPosts.add(mapping);
         }
-        if(mainLayoutGroupId !=null)layoutPostMappingRepository.deleteAllByMainLayoutGroup(mainLayoutGroup);
+        if (mainLayoutGroupId != null)
+            layoutPostMappingRepository.deleteAllByMainLayoutGroup(mainLayoutGroup);
         layoutPostMappingRepository.saveAll(newLayoutPosts);
     }
 
@@ -433,5 +443,16 @@ public class MainLayoutService {
         }
         layoutPostMappingRepository.deleteByMainLayoutGroupAndPostId(layout, postId);
         return true;
+    }
+
+    @Transactional
+    public AdminDto.MainLayoutInfo updateMainLayoutInfo(Long mainLayoutId, AdminDto.MainLayoutRequest request) {
+        MainLayoutGroup layout = mainLayoutRepository.findById(mainLayoutId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.LAYOUT_NOT_FOUND));
+        layout.update(request);
+        layout = mainLayoutRepository.save(layout);
+        List<Tag> tags = tagService.getTagsByIds(new HashSet<>(request.getTagIds()));
+        setLayoutPosts(layout);
+        return new AdminDto.MainLayoutInfo(layout, tags);
     }
 }

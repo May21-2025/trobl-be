@@ -56,4 +56,16 @@ public class MainLayoutGroup {
         this.tagIds = request.getTagIds();
         this.scheduleType = request.getScheduleType();
     }
+
+    public void update(AdminDto.MainLayoutRequest request) {
+        this.name = request.getName() != null ? request.getName() : this.name;
+        this.description = request.getDescription() != null ? request.getDescription() : this.description;
+        this.sortType = request.getSortType() != null ? request.getSortType() : this.sortType;
+        this.layoutType = request.getLayoutType() != null ? request.getLayoutType() : this.layoutType;
+        this.dateInt = request.getDateInt() != null ? request.getDateInt() : this.dateInt;
+        this.dateType = request.getDateType() != null ? request.getDateType() : this.dateType;
+        this.address = request.getAddress() != null ? request.getAddress() : this.address;
+        this.tagIds = request.getTagIds() != null ? request.getTagIds() : this.tagIds;
+        this.scheduleType = request.getScheduleType() != null ? request.getScheduleType() : this.scheduleType;
+    }
 }
