@@ -11,6 +11,9 @@ public enum ExceptionCode {
     // COMMENT C000
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "C000", "댓글을 찾을 수 없습니다."),
 
+    // GenerateAI G000
+    AI_REPORT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "G000", "AI 기록 생성 한도를 초과했습니다."),
+
     // LAYOUT L000
     LAYOUT_NOT_FOUND(HttpStatus.NOT_FOUND, "L000", "레이아웃을 찾을 수 없습니다."),
     LAYOUT_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "L001", "이미 존재하는 레이아웃입니다."),
@@ -42,9 +45,9 @@ public enum ExceptionCode {
     REQUESTED_PARTNER_ALREADY_HAS_PARTNER(HttpStatus.BAD_REQUEST, "U009", "요청한 파트너는 이미 파트너가 있습니다."),
     CANNOT_REQUEST_SELF(HttpStatus.BAD_REQUEST, "U010", "자기 자신에게 파트너 요청을 할 수 없습니다."),
     MARRIAGE_DATE_IS_NOT_SAME(HttpStatus.BAD_REQUEST, "U011", "결혼 날짜가 서로 다릅니다."),
-    NICKNAME_CANNOT_CONTAIN_PROFANITY(HttpStatus.BAD_REQUEST,"U012", "닉네임에 욕설/비방어를 포함 할 수 없습니다"),
+    NICKNAME_CANNOT_CONTAIN_PROFANITY(HttpStatus.BAD_REQUEST, "U012", "닉네임에 욕설/비방어를 포함 할 수 없습니다"),
 
-            // OAUTH O000
+    // OAUTH O000
     OAUTH2_AUTHORIZATION_NOT_FOUND(HttpStatus.NOT_FOUND, "O000", "OAuth2 인증 정보를 찾을 수 없습니다."),
     OAUTH2_AUTHORIZATION_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "O001", "이미 존재하는 OAuth2 인증 정보입니다."),
     OAUTH2_AUTHORIZATION_INVALID(HttpStatus.BAD_REQUEST, "O002", "유효하지 않은 OAuth2 인증 정보입니다."),
@@ -53,7 +56,7 @@ public enum ExceptionCode {
     GOOGLE_LOGIN_FAILED(HttpStatus.BAD_REQUEST, "O005", "구글 로그인에 실패했습니다."),
     GOOGLE_CODE_INVALID(HttpStatus.BAD_REQUEST, "O006", "구글 코드가 유효하지 않습니다."),
     GOOGLE_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "O007", "구글 사용자 정보를 찾을 수 없습니다."),
-    AUTHENTICATION_FAILED (HttpStatus.UNAUTHORIZED, "O008", "인증에 실패했습니다."),
+    AUTHENTICATION_FAILED(HttpStatus.UNAUTHORIZED, "O008", "인증에 실패했습니다."),
     INVALID_USER_OAUTH_INFO(HttpStatus.BAD_REQUEST, "O009", "유효하지 않은 사용자 OAuth 정보입니다."),
     OAUTH_MISMATCH(HttpStatus.BAD_REQUEST, "O010", "OAuth 제공자와 일치하지 않습니다."),
 

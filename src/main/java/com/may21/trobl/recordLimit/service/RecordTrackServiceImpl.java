@@ -1,5 +1,7 @@
 package com.may21.trobl.recordLimit.service;
 
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.recordLimit.domain.RecordLimit;
 import com.may21.trobl.recordLimit.domain.RecordTrack;
 import com.may21.trobl.recordLimit.dto.RecordDto;
@@ -63,16 +65,19 @@ public class RecordTrackServiceImpl implements RecordTrackService {
 
     @Override
     public RecordDto.Usage trackAiGeneration(Long userId, String recordId) {
-        RecordTrack recordTrack = recordTrackRepository.findByRecordId(recordId)
-                .orElse(null);
-        if (recordTrack == null) {
-            log.error("not exist");
-            return null;
-        }
-        recordTrack.setAiGenerated(true);
         int usage = getUsage(userId);
         int aiLimit = getAiLimit(userId);
-        return new RecordDto.Usage(userId, aiLimit, usage);
+        if (usage >= aiLimit) {
+            throw new BusinessException(ExceptionCode.AI_REPORT_LIMIT_EXCEEDED);
+        }
+        RecordTrack recordTrack = recordTrackRepository.findByRecordId(recordId)
+                .orElse(null);
+        if (recordTrack == null || recordTrack.isAiGenerated()) {
+            log.error("already reported");
+            new RecordDto.Usage(userId, aiLimit, usage);
+        }
+        else recordTrack.setAiGenerated(true);
+        return new RecordDto.Usage(userId, aiLimit, usage + 1);
     }
 
     @Override
