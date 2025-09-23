@@ -3,23 +3,20 @@ package com.may21.trobl.admin.service;
 import com.may21.trobl._global.enums.ItemType;
 import com.may21.trobl._global.enums.PostingType;
 import com.may21.trobl._global.enums.RoleType;
-import com.may21.trobl._global.enums.ScheduleType;
 import com.may21.trobl._global.exception.BusinessException;
 import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.admin.AdminDto;
-import com.may21.trobl.admin.domain.MainLayoutGroup;
 import com.may21.trobl.admin.domain.PostDetailInfo;
-import com.may21.trobl.admin.repository.MainLayoutRepository;
 import com.may21.trobl.admin.repository.PostDetailInfoRepository;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.comment.domain.CommentRepository;
 import com.may21.trobl.comment.service.CommentService;
 import com.may21.trobl.notification.service.NotificationService;
-import com.may21.trobl.partner.PartnerRequestRepository;
 import com.may21.trobl.poll.domain.PollVote;
 import com.may21.trobl.poll.repository.VoteRepository;
 import com.may21.trobl.post.domain.*;
 import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.recordLimit.repository.RecordTrackRepository;
 import com.may21.trobl.redis.CacheService;
 import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.Report;
@@ -59,7 +56,6 @@ public class AdminService {
     private final PostRepository postRepository;
     private final ReportRepository reportRepository;
     private final CommentRepository commentRepository;
-    private final PartnerRequestRepository partnerRequestRepository;
     private final TagService tagService;
     private final PostViewRepository postViewRepository;
     private final PostLikeRepository postLikeRepository;
@@ -72,6 +68,7 @@ public class AdminService {
     private final PostDetailInfoRepository postDetailInfoRepository;
     private final CommentService commentService;
     private final TagRepository tagRepository;
+    private final RecordTrackRepository recordTrackRepository;
 
 
     @Transactional
@@ -107,75 +104,12 @@ public class AdminService {
         return userRepository.save(user);
     }
 
-    // ========== 대시보드 관련 메서드 ==========
 
-    @Transactional(readOnly = true)
-    public AdminDto.DashboardStats getDashboardStats() {
-        // 기본 통계
-        long totalUsers = userRepository.count();
-        long totalPosts = postRepository.count();
-        long totalReports = reportRepository.count();
 
-        // 활성 사용자 수 (최근 30일 내 로그인)
-        LocalDate thirtyDaysAgo = LocalDate.from(LocalDateTime.now()
-                .minusDays(30));
-        long activeUsers = userRepository.countByLastLoginDateAfter(thirtyDaysAgo);
 
-        // 사용자 세분화
-        long virtualUsers = userRepository.findByTestUserIsTrue(Pageable.unpaged())
-                .getTotalElements();
-        long realUsers =
-                userRepository.findByTestUserIsFalseAndUnregisteredIsFalse(Pageable.unpaged())
-                        .getTotalElements();
-        long oAuthUsers = userRepository.findAllOAuth()
-                .size();
-        long unverifiedUsers = userRepository.countByUnregistered(true);
 
-        // 게시글 상태
-        long reportedPosts = postRepository.findAllByReportedTrue()
-                .size();
-        long pendingPosts = postRepository.findAllUnconfirmedPostsByUserIdIn(
-                        userRepository.findAll()
-                                .stream()
-                                .map(User::getId)
-                                .toList(), Pageable.unpaged())
-                .getTotalElements();
 
-        // 상호작용
-        long totalComments = commentRepository.count();
-        long totalLikes = postRepository.findAll()
-                .stream()
-                .mapToLong(posting -> posting.getPostLikes() != null ? posting.getPostLikes()
-                        .size() : 0)
-                .sum();
-        long views = postViewRepository.count();
-        long totalViews = postRepository.findAll()
-                .stream()
-                .mapToLong(Posting::getViewCount)
-                .sum();
-        totalViews += views;
 
-        // 파트너
-        long totalPartnerRequests = partnerRequestRepository.count();
-        long approvedPartners = partnerRequestRepository.findAll()
-                .stream()
-                .filter(request -> request.getStatus() ==
-                        com.may21.trobl._global.enums.RequestStatus.ACCEPTED)
-                .count();
-
-        // 주간 변화
-        LocalDateTime weekAgo = LocalDateTime.now()
-                .minusWeeks(1);
-        LocalDate weekAgoDate = LocalDate.from(weekAgo);
-        long newUsersThisWeek = userRepository.countBySignUpDateAfter(weekAgoDate);
-        long newPostsThisWeek =
-                postRepository.countByCreatedAtAfter(weekAgo, PostingType.ANNOUNCEMENT);
-
-        return new AdminDto.DashboardStats(totalUsers, totalPosts, totalReports, activeUsers,
-                realUsers, virtualUsers, oAuthUsers, unverifiedUsers, reportedPosts, pendingPosts,
-                totalComments, totalLikes, totalViews, totalPartnerRequests, approvedPartners,
-                newUsersThisWeek, newPostsThisWeek);
-    }
 
     // ========== 사용자 관리 메서드 ==========
 
@@ -213,12 +147,12 @@ public class AdminService {
     public Page<AdminDto.PostItem> getVirtualPosts(Pageable pageable) {
         List<User> testUser = userRepository.findUserByTestUserIsTrue();
         List<Long> testUserIds = testUser.stream()
-                .map(User::getId)
+                .map(user -> user.getId())
                 .toList();
         Page<Posting> postPage = postRepository.findByUserIdIn(testUserIds, pageable);
         Map<Long, User> userMap = userRepository.findByIdIn(testUserIds)
                 .stream()
-                .collect(Collectors.toMap(User::getId, user -> user));
+                .collect(Collectors.toMap(user -> user.getId(), user -> user));
         Map<Long, List<Tag>> tagMap = tagService.getPostTagsMap(postPage.getContent());
 
         return postPage.map(post -> {
@@ -296,18 +230,18 @@ public class AdminService {
                 reportRepository.findAllByItemIdList(ItemType.POST, reportedPostIds,
                         ItemType.COMMENT, reportedCommentIds);
         Set<Long> userIds = reportList.stream()
-                .map(Report::getReportedBy)
+                .map(report -> report.getReportedBy())
                 .collect(Collectors.toSet());
         List<User> reportedUsers = userRepository.findAllById(userIds);
         Map<Long, User> userMap = reportedUsers.stream()
-                .collect(Collectors.toMap(User::getId, user -> user));
+                .collect(Collectors.toMap(user -> user.getId(), user -> user));
         List<AdminDto.ReportedListItem> reportedItems = new ArrayList<>();
         Map<Long, List<Report>> postReportMap = reportList.stream()
                 .filter(report -> report.getTargetType() == ItemType.POST)
-                .collect(Collectors.groupingBy(Report::getTargetId));
+                .collect(Collectors.groupingBy(report -> report.getTargetId()));
         Map<Long, List<Report>> commentReportMap = reportList.stream()
                 .filter(report -> report.getTargetType() == ItemType.COMMENT)
-                .collect(Collectors.groupingBy(Report::getTargetId));
+                .collect(Collectors.groupingBy(report -> report.getTargetId()));
 
         for (Posting post : reportedPosts) {
             List<Report> reports = postReportMap.getOrDefault(post.getId(), new ArrayList<>());
@@ -368,14 +302,15 @@ public class AdminService {
     public Page<AdminDto.CommentItems> getVirtualComments(Pageable pageable) {
         List<User> testUser = userRepository.findUserByTestUserIsTrue();
         List<Long> testUserIds = testUser.stream()
-                .map(User::getId)
+                .map(user -> user.getId())
                 .toList();
         Map<Long, User> userMap = userRepository.findByIdIn(testUserIds)
                 .stream()
-                .collect(Collectors.toMap(User::getId, user -> user));
+                .collect(Collectors.toMap(user -> user.getId(), user -> user));
         Page<Comment> comments = commentRepository.findAllByUserIdsIn(testUserIds, pageable);
         Map<Long, Posting> postMap = comments.stream()
-                .collect(Collectors.toMap(Comment::getId, Comment::getPosting));
+                .collect(Collectors.toMap(comment -> comment.getId(),
+                        comment -> comment.getPosting()));
         return comments.map(comment -> {
             Posting post = postMap.get(comment.getId());
             User user = userMap.get(comment.getUserId());
@@ -754,7 +689,8 @@ public class AdminService {
             Long postId = postDetailInfo.getPostId();
             RedisDto.PostDto postDto = postDtoMap.get(postId);
             List<TagMapping> tagMappingForPost = postTagMappingMap.getOrDefault(postId, List.of());
-            List<TagDto.TagMappingInfo> tagMappingInfos = TagDto.TagMappingInfo.fromTagMappings(tagMappingForPost);
+            List<TagDto.TagMappingInfo> tagMappingInfos =
+                    TagDto.TagMappingInfo.fromTagMappings(tagMappingForPost);
             postListItems.add(new AdminDto.PostListItem(postDetailInfo, postDto,
                     userDtoMap.get(postDto.getUserId()), tagMappingInfos));
         }

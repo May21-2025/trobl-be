@@ -218,4 +218,27 @@ public interface PostRepository extends JpaRepository<Posting, Long> {
             ":localDateTime OR l.createdAt > :localDateTime OR c.createdAt > :localDateTime)")
     List<Long> findIdsByInteractedAtAfter(LocalDateTime localDateTime,
             PostingType postType);
+
+    long countByCreatedAtBetween(LocalDateTime startTime, LocalDateTime endTime);
+
+    long countByCreatedAtBetweenAndPostType(LocalDateTime startTime, LocalDateTime endTime, PostingType postType);
+    
+    // 일별 포스트 통계를 위한 배치 쿼리
+    @Query("SELECT DATE(p.createdAt) as date, COUNT(p) as totalPosts " +
+           "FROM Posting p " +
+           "WHERE p.createdAt BETWEEN :startDate AND :endDate " +
+           "GROUP BY DATE(p.createdAt) " +
+           "ORDER BY DATE(p.createdAt)")
+    List<Object[]> getDailyPostStatsBetween(@Param("startDate") LocalDateTime startDate, 
+                                           @Param("endDate") LocalDateTime endDate);
+    
+    // 일별 공정시청 포스트 통계
+    @Query("SELECT DATE(p.createdAt) as date, COUNT(p) as fairViewPosts " +
+           "FROM Posting p " +
+           "WHERE p.createdAt BETWEEN :startDate AND :endDate " +
+           "AND p.postType = :postType " +
+           "GROUP BY DATE(p.createdAt) " +
+           "ORDER BY DATE(p.createdAt)")
+    List<Object[]> getDailyPostStatsBetween(@Param("startDate") LocalDateTime startDate,
+                                                    @Param("endDate") LocalDateTime endDate, PostingType postType);
 }

@@ -6,6 +6,7 @@ import com.may21.trobl.admin.domain.PostDetailInfo;
 import com.may21.trobl.comment.domain.Comment;
 import com.may21.trobl.post.domain.Posting;
 import com.may21.trobl.post.dto.PostDto;
+import com.may21.trobl.recordLimit.domain.RecordTrack;
 import com.may21.trobl.redis.RedisDto;
 import com.may21.trobl.report.Report;
 import com.may21.trobl.tag.domain.Tag;
@@ -25,52 +26,7 @@ import static com.may21.trobl._global.utility.SecurityUtils.decodeHtml;
 
 public class AdminDto {
 
-    // ========== 대시보드 관련 DTO ==========
 
-    @Getter
-    @AllArgsConstructor
-    public static class DashboardStats {
-        // 기본 통계
-        private final Long totalUsers;
-        private final Long totalPosts;
-        private final Long totalReports;
-        private final Long activeUsers;
-
-        // 사용자 세분화
-        private final Long realUsers;        // 실제 사용자
-        private final Long virtualUsers;     // 가상유저
-        private final Long oAuthUsers;       // 소셜 로그인 사용자
-        private final Long unverifiedUsers;  // 미인증 사용자
-
-        // 게시글 상태
-        private final Long reportedPosts;    // 신고된 게시글
-        private final Long pendingPosts;     // 승인 대기 게시글
-
-        // 상호작용
-        private final Long totalComments;    // 총 댓글
-        private final Long totalLikes;       // 총 좋아요
-        private final Long totalViews;       // 총 조회수
-
-        // 파트너
-        private final Long totalPartnerRequests;  // 총 파트너 요청
-        private final Long approvedPartners;      // 승인된 파트너
-
-        // 주간 변화
-        private final Long newUsersThisWeek;
-        private final Long newPostsThisWeek;
-    }
-
-    // ========== 사용자 관리 관련 DTO ==========
-
-    @Getter
-    @AllArgsConstructor
-    public static class UserListResponse {
-        private final List<UserDto.Info> content;
-        private final Long totalElements;
-        private final Integer totalPages;
-        private final Integer currentPage;
-        private final Integer size;
-    }
 
 
     @Getter

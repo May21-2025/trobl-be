@@ -61,7 +61,6 @@ public class AdminController {
 
     // ========== 대시보드 API ==========
 
-
     @GetMapping("/authenticate")
     public ResponseEntity<Message> authenticateAdmin(@RequestHeader("Authorization") String token) {
         Long userId = jwtTokenUtil.getUserFromValidateAccessToken(token)

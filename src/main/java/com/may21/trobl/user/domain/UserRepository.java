@@ -1,6 +1,7 @@
 package com.may21.trobl.user.domain;
 
 import com.may21.trobl._global.enums.OAuthProvider;
+import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -76,4 +77,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "SELECT MIN(u2.id) FROM User u2 WHERE u.testUser = true AND LOWER(u2.nickname) LIKE " +
             "LOWER(CONCAT('%', " + ":keyword, '%')) GROUP BY u2.nickname" + ")")
     List<User> searchUsersByKeywordTestUserIsTrue(String keyword);
+
+    long countBySignUpDateBetweenAndTestUserIsFalse(LocalDate startDate, LocalDate endDate);
+
+    long countBySignUpDateBetweenAndTestUserIsTrue(LocalDate startDate, LocalDate endDate);
+    
+    // 일별 사용자 통계를 위한 배치 쿼리
+    @Query("SELECT DATE(u.signUpDate) as date, " +
+           "SUM(CASE WHEN u.testUser = false AND u.unregistered = false THEN 1 ELSE 0 END) as realUsers, " +
+           "SUM(CASE WHEN u.testUser = true THEN 1 ELSE 0 END) as virtualUsers " +
+           "FROM User u " +
+           "WHERE u.signUpDate BETWEEN :startDate AND :endDate " +
+           "GROUP BY DATE(u.signUpDate) " +
+           "ORDER BY DATE(u.signUpDate)")
+    List<Object[]> getDailyUserStatsBetween(@Param("startDate") LocalDate startDate,
+                                           @Param("endDate") LocalDate endDate);
 }

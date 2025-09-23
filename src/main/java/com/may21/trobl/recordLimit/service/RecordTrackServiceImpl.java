@@ -5,6 +5,8 @@ import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.recordLimit.domain.RecordLimit;
 import com.may21.trobl.recordLimit.domain.RecordTrack;
 import com.may21.trobl.recordLimit.dto.RecordDto;
+import com.may21.trobl.recordLimit.repository.RecordLimitRepository;
+import com.may21.trobl.recordLimit.repository.RecordTrackRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
