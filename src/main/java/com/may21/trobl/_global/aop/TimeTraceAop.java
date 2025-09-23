@@ -3,7 +3,6 @@ package com.may21.trobl._global.aop;
 import com.may21.trobl._global.component.GlobalValues;
 import com.may21.trobl._global.component.PerformanceMetrics;
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.List;
 import java.util.UUID;
 
 import static com.may21.trobl._global.component.AnsiColorCode.*;
@@ -31,9 +29,6 @@ public class TimeTraceAop {
 
     @Value("${STAGE}")
     private String stage;
-
-    @Value("${performance.monitor.detailed:true}")
-    private boolean detailedLogging;
 
     @Value("${performance.monitor.simple-threshold:50}")
     private int simpleThreshold;
@@ -80,15 +75,9 @@ public class TimeTraceAop {
             long execTimeNanos = System.nanoTime() - startTime;
             long execTimeMillis = execTimeNanos / 1_000_000;
             int queryCount = apiQueryCounter.getCount();
-            List<ApiQueryCounter.QueryTrace> queryTraces = apiQueryCounter.getQueryTraces();
             
-            // 디버깅: 쿼리 추적 정보 확인
-            log.info("[DEBUG] " + fullMethodName + " - Queries: " + queryCount + ", Traces: " + queryTraces.size());
-            if (!queryTraces.isEmpty()) {
-                log.info("[DEBUG] Sample traces:");
-                queryTraces.stream().limit(3).forEach(trace ->
-                        log.info("[DEBUG]   " + trace.toString()));
-            }
+            // API별 성능 요약 로그 출력
+            logApiPerformanceSummary(requestURI, fullMethodName, execTimeMillis, queryCount, requestId);
             
             apiQueryCounter.reset();
 
@@ -99,17 +88,9 @@ public class TimeTraceAop {
             Threshold queryThreshold = Thresholds.evaluateQuery(queryCount);
             Threshold timeThreshold = Thresholds.evaluateTime(execTimeMillis);
 
-            // 로깅 전략 결정
-            boolean shouldLog = shouldLogPerformance(execTimeMillis, queryCount, queryThreshold, timeThreshold);
-
-            if (shouldLog) {
-                logPerformanceMetrics(requestURI, fullMethodName, execTimeMillis, queryCount,
-                        queryThreshold, timeThreshold, requestId);
-            }
-
             // 심각한 성능 이슈 별도 경고
             if (isCritical(queryThreshold, timeThreshold)) {
-                log.info("🚨 CRITICAL PERFORMANCE ISSUE: [{}] Request ID: {} | " +
+                log.warn("🚨 CRITICAL PERFORMANCE ISSUE: [{}] Request ID: {} | " +
                                 "Time: {}ms | Queries: {} | URI: {}",
                         fullMethodName, requestId, execTimeMillis, queryCount, requestURI);
             }
@@ -121,38 +102,52 @@ public class TimeTraceAop {
         }
     }
 
-    private boolean shouldLogPerformance(long execTime, int queryCount,
-                                         Threshold queryThreshold, Threshold timeThreshold) {
-        // 임계값을 초과하거나 설정된 값보다 높은 경우 로깅
-        return queryThreshold != null || timeThreshold != null ||
-                queryCount > simpleThreshold || execTime > 100;
-    }
-
-    private void logPerformanceMetrics(String requestURI, String methodName, long execTime,
-                                       int queryCount, Threshold queryThreshold,
-                                       Threshold timeThreshold, String requestId) {
-
-        StringBuilder warnings = new StringBuilder();
-
-        if (queryThreshold != null) {
-            warnings.append(formatWarning(methodName, "QUERY", queryThreshold));
-        }
-        if (timeThreshold != null) {
-            warnings.append(formatWarning(methodName, "EXECUTION TIME", timeThreshold));
-        }
-
-        // 상세 로깅 vs 간단 로깅
-        if (detailedLogging && (queryThreshold != null || timeThreshold != null)) {
-            // 상세한 성능 로그
-            log.debug(formatPerformanceLog(requestURI, methodName, execTime, queryCount,
-                    queryThreshold, timeThreshold, warnings.toString()));
+    /**
+     * API별 성능 요약 로그 출력
+     */
+    private void logApiPerformanceSummary(String requestURI, String methodName, long execTime, 
+                                        int queryCount, String requestId) {
+        // 기본 성능 요약 로그
+        String performanceLog = String.format(
+            "📊 API Performance: [%s] | Time: %dms | Queries: %d | URI: %s | Request ID: %s",
+            methodName, execTime, queryCount, requestURI, requestId
+        );
+        
+        // 임계값에 따른 로그 레벨 결정
+        Threshold queryThreshold = Thresholds.evaluateQuery(queryCount);
+        Threshold timeThreshold = Thresholds.evaluateTime(execTime);
+        
+        if (queryThreshold != null || timeThreshold != null) {
+            // 임계값 초과 시 경고 로그
+            String warningMessage = buildWarningMessage(queryThreshold, timeThreshold);
+            log.warn("{} | {}", performanceLog, warningMessage);
+        } else if (queryCount > simpleThreshold || execTime > 100) {
+            // 설정된 임계값 초과 시 정보 로그
+            log.info(performanceLog);
         } else {
-            // 간단한 한 줄 로그
-            log.debug("{} | Request ID: {}",
-                    formatSimplePerformanceLog(methodName, execTime, queryCount,
-                            queryThreshold, timeThreshold),
-                    requestId);
+            // 정상 범위 내에서도 디버그 로그로 기록
+            log.debug(performanceLog);
         }
+    }
+    
+    /**
+     * 경고 메시지 구성
+     */
+    private String buildWarningMessage(Threshold queryThreshold, Threshold timeThreshold) {
+        StringBuilder warnings = new StringBuilder();
+        
+        if (queryThreshold != null) {
+            warnings.append(String.format("⚠️  QUERY WARNING: %s (Count: %d)", 
+                queryThreshold.message(), queryThreshold.limit()));
+        }
+        
+        if (timeThreshold != null) {
+            if (warnings.length() > 0) warnings.append(" | ");
+            warnings.append(String.format("⏱️  TIME WARNING: %s (Time: %dms)", 
+                timeThreshold.message(), timeThreshold.limit()));
+        }
+        
+        return warnings.toString();
     }
 
     private boolean isCritical(Threshold queryThreshold, Threshold timeThreshold) {
