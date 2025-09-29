@@ -23,15 +23,6 @@ public enum ExceptionCode {
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N000", "알림을 찾을 수 없습니다."),
     NOTIFICATION_TYPE_NOT_BLOCKABLE(HttpStatus.BAD_REQUEST, "N001", "차단할 수 없는 알림 유형입니다."),
 
-    // TOKEN T000
-    TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "T000", "토큰이 없습니다."),
-    ACCESS_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "T001", "토큰이 만료되었습니다."),
-    REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "T002", "리프레시 토큰이 만료되었습니다."),
-    INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "T003", "유효하지 않은 토큰입니다."),
-    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "T004", "리프레시 토큰이 유효하지 않습니다."),
-    TOKEN_PARSE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T005", "토큰 파싱에 실패했습니다."),
-    MALFORMED_TOKEN(HttpStatus.UNAUTHORIZED, "T006", "잘못된 토큰입니다."),
-
     // USER U000
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U000", "사용자를 찾을 수 없습니다."),
     USERNAME_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "U001", "이미 존재하는 아이디입니다."),
@@ -78,17 +69,26 @@ public enum ExceptionCode {
     //REPORT R000
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "R000", "신고를 찾을 수 없습니다."),
 
-    //TAG T000
-    TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "T000", "태그를 찾을 수 없습니다."),
-    TAG_EXISTS(HttpStatus.BAD_REQUEST, "T001", "이미 존재하는 태그입니다."),
-    TAG_PROFANITY(HttpStatus.BAD_REQUEST, "T002", "태그에 욕설/비방어를 포함 할 수 없습니다."),
-    TAG_POOL_NOT_FOUND(HttpStatus.NOT_FOUND, "T003", "태그풀을 찾을 수 없습니다."),
-    TAG_POOL_EXISTS(HttpStatus.BAD_REQUEST, "T004", "이미 존재하는 태그풀입니다."),
-    KEYWORD_NOT_FOUND(HttpStatus.NOT_FOUND, "T005", "키워드를 찾을 수 없습니다."),
-    KEYWORD_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "T006", "이미 존재하는 키워드입니다."),
+    // TOKEN T000
+    TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "T000", "토큰이 없습니다."),
+    ACCESS_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "T001", "토큰이 만료되었습니다."),
+    REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "T002", "리프레시 토큰이 만료되었습니다."),
+    INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "T003", "유효하지 않은 토큰입니다."),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "T004", "리프레시 토큰이 유효하지 않습니다."),
+    TOKEN_PARSE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T005", "토큰 파싱에 실패했습니다."),
+    MALFORMED_TOKEN(HttpStatus.UNAUTHORIZED, "T006", "잘못된 토큰입니다."),
 
-    // TEST T100
-    TEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T100", "테스트가 실패했습니다."),
+    //TAG T100
+    TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "T100", "태그를 찾을 수 없습니다."),
+    TAG_EXISTS(HttpStatus.BAD_REQUEST, "T101", "이미 존재하는 태그입니다."),
+    TAG_PROFANITY(HttpStatus.BAD_REQUEST, "T102", "태그에 욕설/비방어를 포함 할 수 없습니다."),
+    TAG_POOL_NOT_FOUND(HttpStatus.NOT_FOUND, "T103", "태그풀을 찾을 수 없습니다."),
+    TAG_POOL_EXISTS(HttpStatus.BAD_REQUEST, "T104", "이미 존재하는 태그풀입니다."),
+    KEYWORD_NOT_FOUND(HttpStatus.NOT_FOUND, "T105", "키워드를 찾을 수 없습니다."),
+    KEYWORD_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "T106", "이미 존재하는 키워드입니다."),
+
+    // TEST T200
+    TEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T200", "테스트가 실패했습니다."),
 
     // Other Z000
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Z000", "UNAUTHORIZED"),
