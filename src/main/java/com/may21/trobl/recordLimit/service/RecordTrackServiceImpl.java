@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -72,8 +73,10 @@ public class RecordTrackServiceImpl implements RecordTrackService {
         if (usage >= aiLimit) {
             throw new BusinessException(ExceptionCode.AI_REPORT_LIMIT_EXCEEDED);
         }
-        RecordTrack recordTrack = recordTrackRepository.findByRecordId(recordId)
-                .orElse(null);
+        RecordTrack recordTrack = Objects.equals(recordId, "FILE") ?
+                recordTrackRepository.save(new RecordTrack(userId, recordId)) :
+                recordTrackRepository.findByRecordId(recordId)
+                        .orElse(null);
         if (recordTrack == null || recordTrack.isAiGenerated()) {
             log.error("already reported");
             new RecordDto.Usage(userId, aiLimit, usage);
