@@ -56,5 +56,11 @@ public class TagKeywordController {
         List<String> recommendedTags = tagService.analyzePostContent(content);
         return ResponseEntity.ok(Message.success(recommendedTags));
     }
+
+    @GetMapping("/with-keywords")
+    public ResponseEntity<Message> getTagsWithKeywords() {
+        List<Long> tagIds = tagService.getTagsWithKeywords();
+        return ResponseEntity.ok(Message.success(tagIds));
+    }
 }
 

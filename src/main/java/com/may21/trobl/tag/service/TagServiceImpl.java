@@ -423,4 +423,10 @@ public class TagServiceImpl implements TagService {
         return keywordMap;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getTagsWithKeywords() {
+        return tagKeywordRepository.findDistinctTagIds();
+    }
+
 }

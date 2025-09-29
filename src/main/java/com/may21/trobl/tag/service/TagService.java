@@ -84,4 +84,7 @@ public interface TagService {
     List<String> analyzePostContent(String content);
 
     Map<Tag, Set<String>>  getKeywordMap();
+    
+    @Transactional(readOnly = true)
+    List<Long> getTagsWithKeywords();
 }
