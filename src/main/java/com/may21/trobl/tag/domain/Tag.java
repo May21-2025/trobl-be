@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.checkerframework.common.aliasing.qual.Unique;
+
+import java.util.List;
 
 @Entity
 @Getter
@@ -21,6 +22,13 @@ public class Tag {
     @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     private TagPool tagPool;
+
+    @OneToMany(mappedBy = "tag", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TagKeyword> keywords;
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public Tag(String name) {
         this.name = name;

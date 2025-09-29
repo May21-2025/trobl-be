@@ -1,6 +1,7 @@
 package com.may21.trobl.tag.dto;
 
 import com.may21.trobl.tag.domain.Tag;
+import com.may21.trobl.tag.domain.TagKeyword;
 import com.may21.trobl.tag.domain.TagMapping;
 import com.may21.trobl.tag.domain.TagPool;
 import lombok.AllArgsConstructor;
@@ -101,4 +102,21 @@ public class TagDto {
             this.name = tagPool.getName();
         }
     }
+    @Getter
+    @AllArgsConstructor
+    public static class Keywords {
+        private final List<Keyword> keywords;
+    }
+    @Getter
+    @AllArgsConstructor
+    public static class Keyword {
+        private final Long keywordId;
+        private final String keyword;
+
+        public Keyword(TagKeyword tagKeyword) {
+            this.keywordId = tagKeyword.getId();
+            this.keyword = tagKeyword.getKeyword();
+        }
+    }
 }
+

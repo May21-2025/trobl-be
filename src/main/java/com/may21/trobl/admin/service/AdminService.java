@@ -36,7 +36,6 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -357,6 +356,8 @@ public class AdminService {
                         .getId() + "_" + tm.getTag()
                         .getId())
                 .collect(Collectors.toSet());
+
+        Map<Tag, Set<String>> categoryKeywords = tagService.getKeywordMap();
         for (Posting post : allPost) {
             StringBuilder postContent = new StringBuilder().append(post.getTitle())
                     .append("\n")
@@ -370,7 +371,7 @@ public class AdminService {
                     }
                 }
             }
-            for (Tag tag : examinePostingAndGetAdminTags(tagMap, postContent)) {
+            for (Tag tag : examinePostingAndGetAdminTags(categoryKeywords, postContent)) {
                 if (tag == null) continue;
                 String key = post.getId() + "_" + tag.getId();
                 // user 태그와 겹치면 skip
@@ -385,7 +386,7 @@ public class AdminService {
         tagMappingRepository.saveAll(tagsToSave);
     }
 
-    private Set<Tag> examinePostingAndGetAdminTags(Map<String, Tag> tagMap,
+    private Set<Tag> examinePostingAndGetAdminTags(Map<Tag, Set<String>> tagKeywordMapping ,
             StringBuilder postContent) {
         if (postContent == null || postContent.isEmpty()) {
             return new HashSet<>();
@@ -393,13 +394,16 @@ public class AdminService {
         String content = postContent.toString();
         Map<String, Double> tagScores = new HashMap<>();
 
-        // 모든 태그에 대해 점수 계산
-        for (Map.Entry<String, List<String>> category : TAG_POOL.entrySet()) {
-            for (String tag : category.getValue()) {
-                double score = calculateTagScore(content, tag);
-                if (score > 0) {
-                    tagScores.put(tag, score);
-                }
+        Map<String, Tag> tagMap = new HashMap<>();
+        // 1. 태그 키워드 매핑을 통한 점수 계산
+        for(Map.Entry<Tag, Set<String>> entry : tagKeywordMapping.entrySet()) {
+            Tag tag = entry.getKey();
+            String tagName = tag.getName();
+            tagMap.putIfAbsent(tag.getName(), tag);
+            Set<String> keywords = entry.getValue();
+            double score = calculateTagScore(content, tagName, keywords);
+            if (score > 0) {
+                tagScores.put(tagName, score);
             }
         }
 
@@ -468,7 +472,7 @@ public class AdminService {
     /**
      * 특정 태그에 대한 점수 계산 (더 정교한 매칭)
      */
-    private double calculateTagScore(String content, String tag) {
+    private double calculateTagScore(String content, String tag, Set<String> keywords) {
         double score = 0.0;
         String lowerContent = content.toLowerCase();
 
@@ -478,7 +482,6 @@ public class AdminService {
         }
 
         // 2. 키워드 매핑을 통한 매칭
-        Set<String> keywords = KEYWORD_MAPPINGS.get(tag);
         if (keywords != null) {
             for (String keyword : keywords) {
                 if (lowerContent.contains(keyword.toLowerCase())) {
