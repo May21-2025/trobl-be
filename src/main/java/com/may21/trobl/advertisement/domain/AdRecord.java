@@ -22,21 +22,16 @@ public class AdRecord {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Advertisement advertisement;
-
-    @Enumerated(EnumType.STRING)
-    private AdType adType;
+    private Banner banner;
 
     private Long userId;
 
     private boolean clicked = false;
 
-    @CreatedDate
     private LocalDateTime showedAt;
 
-    public AdRecord(Advertisement ad, AdType adType, Long userId) {
-        this.advertisement = ad;
-        this.adType = adType;
+    public AdRecord(Banner ad, Long userId) {
+        this.banner = ad;
         this.userId = userId;
     }
 }

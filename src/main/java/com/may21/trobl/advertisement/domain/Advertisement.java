@@ -1,17 +1,16 @@
 package com.may21.trobl.advertisement.domain;
 
-import com.may21.trobl._global.component.GlobalValues;
-import com.may21.trobl._global.enums.AdType;
+import com.may21.trobl.advertisement.dto.AdvertisementDto;
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static com.may21.trobl._global.component.GlobalValues.AD_IMAGE_PATH;
-
 @Entity
 @Getter
+@NoArgsConstructor
 public class Advertisement {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,8 +19,8 @@ public class Advertisement {
     private String brandName;
 
     private String linkUrl;
+    private Long postId;
 
-    private Integer weight;
 
     private Integer priority;
 
@@ -36,10 +35,18 @@ public class Advertisement {
     private Long costPerView;
 
     @OneToMany(mappedBy = "advertisement", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<AdRecord> records;
+    private List<Banner> banners;
 
-    public String getImageUrl(AdType adType) {
-        String path = AD_IMAGE_PATH + "/" + brandName + "/" + adType.name().toLowerCase() + ".png";
-        return GlobalValues.getCdnUrl() + path;
+    public Advertisement(AdvertisementDto.AdvertisementRequest advertisementRequest) {
+        this.brandName = advertisementRequest.getBrandName();
+        this.linkUrl = advertisementRequest.getLinkUrl();
+        this.postId = advertisementRequest.getPostId();
+        this.priority = advertisementRequest.getPriority();
+        LocalDateTime now = LocalDateTime.now();
+        this.startDate = advertisementRequest.getStartDate();
+        this.endDate = advertisementRequest.getEndDate();
+        this.active = startDate.isBefore(now) && endDate.isAfter(now);
+        this.dailyBudget = advertisementRequest.getDailyBudget();
+        this.costPerView = advertisementRequest.getCostPerView();
     }
 }

@@ -2,11 +2,5 @@ package com.may21.trobl._global.enums;
 
 public enum AdType {
 
-    WELCOME_AD,
-    GOODBYE_AD,
-    BANNER_AD,
-    BIG_BANNER_AD,
-    POLL_VIEW_AD,
-    FAIR_VIEW_AD,
-    EXIT_AD,
+    SPLASH_AD, LANDING_AD, TOP_BANNER_AD, POST_AD, POLL_AD, FAIR_AD, EXIT_AD,
 }

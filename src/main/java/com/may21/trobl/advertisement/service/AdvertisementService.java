@@ -3,9 +3,11 @@ package com.may21.trobl.advertisement.service;
 import com.may21.trobl._global.enums.AdType;
 import com.may21.trobl.advertisement.domain.AdRecord;
 import com.may21.trobl.advertisement.domain.Advertisement;
+import com.may21.trobl.advertisement.domain.Banner;
 import com.may21.trobl.advertisement.dto.AdvertisementDto;
 import com.may21.trobl.advertisement.repository.AdRecordRepository;
 import com.may21.trobl.advertisement.repository.AdRepository;
+import com.may21.trobl.advertisement.repository.BannerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -20,8 +22,9 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class AdvertisementService {
 
-    private final AdRepository advertisementRepository;
+    private final BannerRepository bannerRepository;
     private final AdRecordRepository adRecordRepository;
+    private final AdRepository adRepository;
 
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -29,107 +32,46 @@ public class AdvertisementService {
 
 
     @Transactional
-    public AdvertisementDto.Response getRandomAdvertisement(AdType adType, Long userId) {
-        List<Advertisement> activeAds = advertisementRepository
-                .findActiveAdvertisements();
-
-        Advertisement selectedAd = selectByWeight(activeAds);
-
-        recordAdView(selectedAd, adType, userId);
-
-        return new AdvertisementDto.Response(selectedAd, adType);
-    }
-
-
-    /**
-     * 가중치 기반 선택 알고리즘
-     */
-    private Advertisement selectByWeight(List<Advertisement> ads) {
-        // 총 가중치 계산
-        int totalWeight = ads.stream()
-                .mapToInt(Advertisement::getWeight)
-                .sum();
-
-        // 랜덤 값 생성
-        int randomValue = random.nextInt(totalWeight);
-        int currentWeight = 0;
-
-        // 가중치 기반 선택
-        for (Advertisement ad : ads) {
-            currentWeight += ad.getWeight();
-            if (randomValue < currentWeight) {
-                return ad;
-            }
-        }
-
-        return ads.get(0); // fallback
-    }
-
-
-    /**
-     * 라운드 로빈 방식 (더 공평한 분배)
-     */
-    public AdvertisementDto.Response getRoundRobinAdvertisement(AdType adType, Long userId) {
-        String redisKey = "ad_round_robin:" + adType.name();
-
-        Integer currentIndex = (Integer) redisTemplate.opsForValue().get(redisKey);
-        if (currentIndex == null) {
-            currentIndex = 0;
-        }
-
-        List<Advertisement> activeAds = advertisementRepository
-                .findActiveAdvertisements();
-
-        Advertisement selectedAd = activeAds.get(currentIndex % activeAds.size());
-
-        redisTemplate.opsForValue().set(redisKey, (currentIndex + 1) % activeAds.size());
-
-        recordAdView(selectedAd, adType, userId);
-
-        return new AdvertisementDto.Response(selectedAd, adType);
-    }
-
-    /**
-     * 스마트 분배 (가중치 + 라운드로빈 혼합)
-     */
-    public AdvertisementDto.Response getSmartAdvertisement(AdType adType, Long userId) {
-        String distributionKey = "ad_distribution:" + adType.name();
+    public AdvertisementDto.Response getRandomAdvertisement(AdType adType, Long userId,
+            Long bannerId) {
 
         Map<Long, Long> todayDistribution = getTodayDistribution(adType);
 
-        List<Advertisement> activeAds = advertisementRepository
-                .findActiveAdvertisements();
+        List<Banner> activeAds = bannerId == null ? bannerRepository.findActiveAdvertisements() :
+                bannerRepository.findActiveAdvertisementsExceptBannerId(bannerId);
 
         Map<Long, Double> targetRatio = calculateTargetRatio(activeAds);
 
-        // 현재 분배율과 목표 분배율 비교하여 선택
-        Advertisement selectedAd = selectByDistributionGap(activeAds, todayDistribution, targetRatio);
+        Banner selectedAd = selectByDistributionGap(activeAds, todayDistribution, targetRatio);
+        ;
+        Advertisement advertisement = selectedAd.getAdvertisement();
+        recordAdView(selectedAd, userId);
 
-        recordAdView(selectedAd, adType, userId);
-
-        return new AdvertisementDto.Response(selectedAd, adType);
+        return new AdvertisementDto.Response(advertisement, selectedAd);
     }
+
 
     /**
      * 목표 분배율 계산
      */
-    private Map<Long, Double> calculateTargetRatio(List<Advertisement> activeAds) {
+    private Map<Long, Double> calculateTargetRatio(List<Banner> activeAds) {
         Map<Long, Double> targetRatio = new HashMap<>();
 
         // 총 가중치 계산
         int totalWeight = activeAds.stream()
-                .mapToInt(Advertisement::getWeight)
+                .mapToInt(Banner::getWeight)
                 .sum();
 
         if (totalWeight == 0) {
             // 가중치가 모두 0이면 균등 분배
             double equalRatio = 1.0 / activeAds.size();
-            for (Advertisement ad : activeAds) {
+            for (Banner ad : activeAds) {
                 targetRatio.put(ad.getId(), equalRatio);
             }
-        } else {
+        }
+        else {
             // 가중치 기반 목표 비율 계산
-            for (Advertisement ad : activeAds) {
+            for (Banner ad : activeAds) {
                 double ratio = (double) ad.getWeight() / totalWeight;
                 targetRatio.put(ad.getId(), ratio);
             }
@@ -144,17 +86,19 @@ public class AdvertisementService {
     private Map<Long, Long> getTodayDistribution(AdType adType) {
         Map<Long, Long> distribution = new HashMap<>();
 
-        // Redis에서 오늘의 노출 데이터 조회
-        String pattern = "ad_views:*:" + LocalDate.now();
+        // Redis에서 오늘의 노출 데이터 조회 (adType 반영)
+        String pattern = "ad_views:" + adType.name()
+                .toLowerCase() + ":*:" + LocalDate.now();
         Set<String> keys = redisTemplate.keys(pattern);
 
         for (String key : keys) {
             try {
-                // key 형식: "ad_views:광고ID:날짜"
+                // key 형식: "ad_views:{adType}:{adId}:{date}"
                 String[] parts = key.split(":");
-                if (parts.length >= 2) {
-                    Long adId = Long.parseLong(parts[1]);
-                    Object viewsObj = redisTemplate.opsForValue().get(key);
+                if (parts.length >= 4) {
+                    Long adId = Long.parseLong(parts[2]);  // 0=ad_views, 1=adType, 2=adId, 3=date
+                    Object viewsObj = redisTemplate.opsForValue()
+                            .get(key);
                     Long views = viewsObj != null ? Long.parseLong(viewsObj.toString()) : 0L;
                     distribution.put(adId, views);
                 }
@@ -167,17 +111,18 @@ public class AdvertisementService {
         return distribution;
     }
 
-    private Advertisement selectByDistributionGap(
-            List<Advertisement> ads,
-            Map<Long, Long> todayDistribution,
+    private Banner selectByDistributionGap(List<Banner> ads, Map<Long, Long> todayDistribution,
             Map<Long, Double> targetRatio) {
 
-        long totalViews = todayDistribution.values().stream().mapToLong(Long::longValue).sum();
+        long totalViews = todayDistribution.values()
+                .stream()
+                .mapToLong(Long::longValue)
+                .sum();
 
-        Advertisement bestAd = null;
+        Banner bestAd = null;
         double maxGap = -1;
 
-        for (Advertisement ad : ads) {
+        for (Banner ad : ads) {
             long currentViews = todayDistribution.getOrDefault(ad.getId(), 0L);
             double currentRatio = totalViews > 0 ? (double) currentViews / totalViews : 0;
             double targetRatio_val = targetRatio.getOrDefault(ad.getId(), 0.0);
@@ -197,19 +142,46 @@ public class AdvertisementService {
     /**
      * 노출 기록
      */
-    private void recordAdView(Advertisement ad, AdType adType, Long userId) {
+    private void recordAdView(Banner ad, Long userId) {
 
         CompletableFuture.runAsync(() -> {
-            AdRecord adRecord = new AdRecord(ad, adType, userId);
+            AdRecord adRecord = new AdRecord(ad, userId);
             adRecordRepository.save(adRecord);
         });
 
         String todayKey = "ad_views:" + ad.getId() + ":" + LocalDate.now();
-        redisTemplate.opsForValue().increment(todayKey);
+        redisTemplate.opsForValue()
+                .increment(todayKey);
         redisTemplate.expire(todayKey, Duration.ofDays(1));
 
         String userViewKey = "user_ad_view:" + userId + ":" + ad.getId() + ":" + LocalDate.now();
-        redisTemplate.opsForValue().set(userViewKey, "1", Duration.ofDays(1));
+        redisTemplate.opsForValue()
+                .set(userViewKey, "1", Duration.ofDays(1));
     }
 
+    public AdvertisementDto.BannerList createAdvertisementAndBanners(
+            AdvertisementDto.CreateAdvertisement requestDto, List<String> imageUrls) {
+        AdvertisementDto.AdvertisementRequest advertisementRequest =
+                requestDto.getAdvertisementRequest();
+        List<AdvertisementDto.BannerRequest> bannerRequests = requestDto.getBannerRequestList();
+
+        Advertisement advertisement = new Advertisement(advertisementRequest);
+        advertisement = adRepository.save(advertisement);
+
+        List<Banner> banners = new ArrayList<>();
+        for (AdvertisementDto.BannerRequest bannerRequest : bannerRequests) {
+            Banner banner =
+                    new Banner(advertisement, bannerRequest.getType(), bannerRequest.getWeight());
+            banners.add(banner);
+        }
+        banners = bannerRepository.saveAll(banners);
+
+        List<AdvertisementDto.BannerInfo> bannerInfos = new ArrayList<>();
+        for (Banner banner : banners) {
+            bannerInfos.add(new AdvertisementDto.BannerInfo(banner));
+        }
+
+        return new AdvertisementDto.BannerList(
+                new AdvertisementDto.AdvertisementInfo(advertisement), bannerInfos);
+    }
 }
