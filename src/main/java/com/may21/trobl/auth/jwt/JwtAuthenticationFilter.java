@@ -27,7 +27,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) {
 
         try {
+            log.info("=== JWT 필터 디버깅 ===");
+            log.info("Request URI: {}", request.getRequestURI());
+            log.info("Request Method: {}", request.getMethod());
+            log.info("Authorization Header: {}", request.getHeader("Authorization"));
+            
             String token = jwtTokenUtil.getTokenFromRequest(request);
+            log.info("Extracted Token: {}", token != null ? token.substring(0, 20) + "..." : "null");
 
 
             if (token == null) {

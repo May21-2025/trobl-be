@@ -1,12 +1,9 @@
 package com.may21.trobl.advertisement.domain;
 
-import com.may21.trobl._global.component.GlobalValues;
-import com.may21.trobl._global.enums.AdType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -26,12 +23,17 @@ public class AdRecord {
 
     private Long userId;
 
+    private String brandName;
+
     private boolean clicked = false;
 
     private LocalDateTime showedAt;
 
-    public AdRecord(Banner ad, Long userId) {
+    public AdRecord(Banner ad, Long userId, String brandName) {
         this.banner = ad;
         this.userId = userId;
+        this.showedAt = LocalDateTime.now();
+        this.brandName = brandName;
     }
+
 }
