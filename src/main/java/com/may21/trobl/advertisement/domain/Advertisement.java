@@ -1,57 +1,49 @@
 package com.may21.trobl.advertisement.domain;
 
-import com.may21.trobl._global.utility.Timestamped;
+import com.may21.trobl._global.enums.BannerType;
+import com.may21.trobl._global.utility.UrlMaker;
 import com.may21.trobl.advertisement.dto.AdvertisementDto;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
+import lombok.Setter;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
-public class Advertisement extends Timestamped {
+public class Advertisement {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String brandName;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Brand brand;
 
-    private String linkUrl;
-    private Long postId;
+    @Enumerated(EnumType.STRING)
+    private BannerType bannerType;
 
+    private Integer weight;
+    
+    @Column(columnDefinition = "TEXT")
+    private String imageUrl;
 
-    private Integer priority;
+    public Advertisement(Brand brand, AdvertisementDto.BannerRequest request) {
+        this.brand = brand;
+        this.bannerType = BannerType.valueOf(request.type());
+        this.weight = request.weight() != null ? request.weight() : 1;
+    }
 
-    private Boolean active;
+    public String getImageUrl() {
+        // 저장된 imageUrl이 있으면 그것을 사용, 없으면 동적으로 생성
+        return this.imageUrl != null ? this.imageUrl : UrlMaker.makeAdImageUrl(brand.getBrandName(),
+                bannerType);
+    }
 
-    private LocalDateTime startDate;
-
-    private LocalDateTime endDate;
-
-    private Long dailyBudget;
-
-    private Long costPerView;
-
-    @OneToMany(mappedBy = "advertisement", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Banner> banners;
-
-    public Advertisement(AdvertisementDto.AdvertisementRequest advertisementRequest) {
-        this.brandName = advertisementRequest.brandName();
-        this.linkUrl = advertisementRequest.linkUrl();
-        this.postId = advertisementRequest.postId();
-        this.priority = advertisementRequest.priority();
-        LocalDateTime now = LocalDateTime.now();
-        
-        // 문자열 날짜를 LocalDateTime으로 변환
-        this.startDate = LocalDateTime.parse(advertisementRequest.startDate());
-        this.endDate = LocalDateTime.parse(advertisementRequest.endDate());
-        
-        this.active = startDate.isBefore(now) && endDate.isAfter(now);
-        this.dailyBudget = advertisementRequest.dailyBudget();
-        this.costPerView = advertisementRequest.costPerView();
+    public Advertisement(Brand brand, BannerType bannerType, Integer weight) {
+        this.brand = brand;
+        this.bannerType = bannerType;
+        this.weight = weight != null ? weight : 1;
     }
 
     // Getter methods
@@ -59,39 +51,24 @@ public class Advertisement extends Timestamped {
         return id;
     }
 
-    public String getBrandName() {
-        return brandName;
+    public Brand getBrand() {
+        return brand;
     }
 
-    public String getLinkUrl() {
-        return linkUrl;
+    public BannerType getBannerType() {
+        return bannerType;
     }
 
-    public Long getPostId() {
-        return postId;
+    public Integer getWeight() {
+        return weight;
     }
 
-    public Integer getPriority() {
-        return priority;
-    }
-
-    public Boolean getActive() {
-        return active;
-    }
-
-    public LocalDateTime getStartDate() {
-        return startDate;
-    }
-
-    public LocalDateTime getEndDate() {
-        return endDate;
-    }
-
-    public Long getDailyBudget() {
-        return dailyBudget;
-    }
-
-    public Long getCostPerView() {
-        return costPerView;
+    public void updateFromRequest(AdvertisementDto.BannerRequest request) {
+        if(request.type() != null) {
+            this.bannerType = BannerType.valueOf(request.type());
+        }
+        if(request.weight() != null) {
+            this.weight = request.weight();
+        }
     }
 }

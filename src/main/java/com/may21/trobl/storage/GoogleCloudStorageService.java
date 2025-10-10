@@ -5,9 +5,9 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.may21.trobl._global.component.GlobalValues;
-import com.may21.trobl._global.enums.AdType;
+import com.may21.trobl._global.enums.BannerType;
 import com.may21.trobl._global.utility.UrlMaker;
-import com.may21.trobl.advertisement.domain.Advertisement;
+import com.may21.trobl.advertisement.domain.Brand;
 import com.may21.trobl.advertisement.dto.AdvertisementDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +23,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -67,98 +65,15 @@ public class GoogleCloudStorageService implements StorageService {
         }
     }
 
-
     @Override
-    public List<String> uploadBannerImages(Long advertisementId, List<MultipartFile> adImages) {
-        List<String> uploadedImageKeys = new ArrayList<>();
-        
-        for (int i = 0; i < adImages.size(); i++) {
-            MultipartFile file = adImages.get(i);
-            try {
-                String imageKey = "ad_" + advertisementId + "_banner_" + i + "_" + System.currentTimeMillis();
-                String filePath = GlobalValues.getPREFIX() + "ads/" + imageKey;
-
-                byte[] imageBytes = file.getBytes();
-
-                BlobId blobId = BlobId.of(BUCKET_NAME, filePath);
-                BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
-                        .setContentType("image/webp")
-                        .setCacheControl("no-cache, max-age=0")
-                        .setMetadata(Map.of(
-                                "advertisementId", String.valueOf(advertisementId),
-                                "bannerIndex", String.valueOf(i),
-                                "originalName", file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown"
-                        ))
-                        .build();
-
-                Blob blob = storage.create(blobInfo, imageBytes);
-                String publicUrl = "https://storage.googleapis.com/" + BUCKET_NAME + "/" + filePath;
-                uploadedImageKeys.add(publicUrl);
-
-                System.out.println("Banner image uploaded successfully: " + publicUrl);
-            } catch (Exception e) {
-                System.err.println("Error uploading banner image " + i + ": " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-        
-        return uploadedImageKeys;
-    }
-
-    @Override
-    public List<String> uploadBannerImages(List<MultipartFile> adImages,
-            AdvertisementDto.CreateAdvertisement advertisementRequest) {
-        List<String> uploadedImageKeys = new ArrayList<>();
-        AdvertisementDto.AdvertisementRequest adRequest =
-                advertisementRequest.getAdvertisementRequest();
-        List<AdvertisementDto.BannerRequest> bannerRequestList =
-                advertisementRequest.getBannerRequestList();
-
-        for (int i = 0; i < adImages.size(); i++) {
-            MultipartFile file = adImages.get(i);
-            AdvertisementDto.BannerRequest bannerRequest = bannerRequestList.get(i);
-            try {
-                String imageKey = UrlMaker.makeAdImageUrlKey(adRequest.brandName(),
-                        AdType.fromString(bannerRequest.type()));
-                String filePath = GlobalValues.getPREFIX() + "ads/" + imageKey;
-
-                // 이미지 바이트 변환 (배너도 썸네일처럼 변환 필요하다면 createThumbnail 사용)
-                byte[] imageBytes = file.getBytes();
-
-                BlobId blobId = BlobId.of(BUCKET_NAME, filePath);
-                BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
-                        .setContentType("image/webp")
-                        .setCacheControl("no-cache, max-age=0")
-                        .setMetadata(Map.of(
-                                "brandName", String.valueOf(adRequest.brandName()),
-                                "url", String.valueOf(adRequest.linkUrl()),
-                                "type", "banner",
-                                "originalFileName", Objects.requireNonNull(file.getOriginalFilename()),
-                                "uploadTime", String.valueOf(System.currentTimeMillis())
-                        ))
-                        .build();
-
-                storage.create(blobInfo, imageBytes);
-                uploadedImageKeys.add(imageKey);
-
-            } catch (IOException e) {
-                log.error("배너 업로드 실패: {}", e.getMessage());
-                throw new RuntimeException("배너 업로드 실패: " + e.getMessage());
-            }
-        }
-
-        return uploadedImageKeys;
-    }
-
-    @Override
-    public String uploadBannerImage(Advertisement advertisement,AdvertisementDto.BannerRequest bannerRequest,
+    public String uploadBannerImage(Brand brand, AdvertisementDto.BannerRequest bannerRequest,
             MultipartFile file) {
-        String brandName = advertisement.getBrandName();
-        String url = advertisement.getLinkUrl();
+        String brandName = brand.getBrandName();
+        String url = brand.getLinkUrl();
         try {
-            String imageKey = UrlMaker.makeAdImageUrlKey(brandName,
-                    AdType.fromString(bannerRequest.type()));
-            String filePath = GlobalValues.getPREFIX() + "ads/" + imageKey;
+            String imageKey = UrlMaker.makeAdImageUrlKey(brand.getBrandName(),
+                    BannerType.fromString(bannerRequest.type()));
+            String filePath = GlobalValues.getPREFIX() + imageKey;
 
             // 이미지 바이트 변환 (배너도 썸네일처럼 변환 필요하다면 createThumbnail 사용)
             byte[] imageBytes = file.getBytes();
@@ -173,14 +88,13 @@ public class GoogleCloudStorageService implements StorageService {
                             String.valueOf(System.currentTimeMillis())))
                     .build();
 
-            storage.create(blobInfo, imageBytes);
-            return "";
+            Blob blobResponse = storage.create(blobInfo, imageBytes);
+            return blobResponse.toString();
         } catch (IOException e) {
             log.error("배너 업로드 실패: {}", e.getMessage());
             throw new RuntimeException("배너 업로드 실패: " + e.getMessage());
         }
     }
-
 
     // 썸네일 생성 메서드
     private byte[] createThumbnail(byte[] originalImage) throws IOException {

@@ -1,16 +1,17 @@
 package com.may21.trobl.advertisement.service;
 
-import com.may21.trobl._global.enums.AdType;
+import com.may21.trobl._global.enums.BannerType;
+import com.may21.trobl._global.exception.BusinessException;
+import com.may21.trobl._global.exception.ExceptionCode;
 import com.may21.trobl.advertisement.domain.AdRecord;
 import com.may21.trobl.advertisement.domain.Advertisement;
-import com.may21.trobl.advertisement.domain.Banner;
+import com.may21.trobl.advertisement.domain.Brand;
 import com.may21.trobl.advertisement.dto.AdvertisementDto;
 import com.may21.trobl.advertisement.repository.AdRecordRepository;
-import com.may21.trobl.advertisement.repository.AdRepository;
-import com.may21.trobl.advertisement.repository.BannerRepository;
+import com.may21.trobl.advertisement.repository.AdvertisementRepository;
+import com.may21.trobl.advertisement.repository.BrandRepository;
+import com.may21.trobl.user.domain.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,25 +31,30 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdvertisementService {
 
-    private final BannerRepository bannerRepository;
+    private final AdvertisementRepository advertisementRepository;
     private final AdRecordRepository adRecordRepository;
-    private final AdRepository adRepository;
+    private final BrandRepository brandRepository;
     private final RedisTemplate<String, Object> redisTemplate;
 
 
     @Transactional
-    public AdvertisementDto.Response getRandomAdvertisement(AdType adType, Long userId,
-            Long bannerId, String brandName) {
+    public AdvertisementDto.Response getRandomAdvertisement(BannerType bannerType, Long userId,
+            Long bannerId) {
 
-        Map<Long, Long> todayDistribution = getTodayDistribution(adType);
+        Map<Long, Long> todayDistribution = getTodayDistribution(bannerType);
 
-        List<Banner> activeAds = bannerId == null ? bannerRepository.findActiveAdvertisements() :
-                bannerRepository.findActiveAdvertisementsExceptBannerId(bannerId);
+        List<Advertisement> activeAds = bannerId == null ?
+                advertisementRepository.findActiveAdvertisementsByBannerType(bannerType) :
+                advertisementRepository.findActiveAdvertisementsByBannerTypeExceptBannerId(bannerId,
+                        bannerType);
 
+        if (activeAds.isEmpty()) return new AdvertisementDto.Response();
         Map<Long, Double> targetRatio = calculateTargetRatio(activeAds);
 
-        Banner selectedAd = selectByDistributionGap(activeAds, todayDistribution, targetRatio);
-        Advertisement advertisement = selectedAd.getAdvertisement();
+        Advertisement selectedAd =
+                selectByDistributionGap(activeAds, todayDistribution, targetRatio);
+        Brand advertisement = selectedAd.getBrand();
+        String brandName = advertisement.getBrandName();
         recordAdView(selectedAd, userId, brandName);
 
         return new AdvertisementDto.Response(advertisement, selectedAd);
@@ -58,24 +64,24 @@ public class AdvertisementService {
     /**
      * 목표 분배율 계산
      */
-    private Map<Long, Double> calculateTargetRatio(List<Banner> activeAds) {
+    private Map<Long, Double> calculateTargetRatio(List<Advertisement> activeAds) {
         Map<Long, Double> targetRatio = new HashMap<>();
 
         // 총 가중치 계산
         int totalWeight = activeAds.stream()
-                .mapToInt(Banner::getWeight)
+                .mapToInt(Advertisement::getWeight)
                 .sum();
 
         if (totalWeight == 0) {
             // 가중치가 모두 0이면 균등 분배
             double equalRatio = 1.0 / activeAds.size();
-            for (Banner ad : activeAds) {
+            for (Advertisement ad : activeAds) {
                 targetRatio.put(ad.getId(), equalRatio);
             }
         }
         else {
             // 가중치 기반 목표 비율 계산
-            for (Banner ad : activeAds) {
+            for (Advertisement ad : activeAds) {
                 double ratio = (double) ad.getWeight() / totalWeight;
                 targetRatio.put(ad.getId(), ratio);
             }
@@ -87,20 +93,20 @@ public class AdvertisementService {
     /**
      * 오늘의 광고별 노출 분배 현황 조회
      */
-    public Map<Long, Long> getTodayDistribution(AdType adType) {
+    public Map<Long, Long> getTodayDistribution(BannerType bannerType) {
         Map<Long, Long> distribution = new HashMap<>();
 
-        // Redis에서 오늘의 노출 데이터 조회 (adType 반영)
-        String pattern = "ad_views:" + adType.name()
+        // Redis에서 오늘의 노출 데이터 조회 (type 반영)
+        String pattern = "ad_views:" + bannerType.name()
                 .toLowerCase() + ":*:" + LocalDate.now();
         Set<String> keys = redisTemplate.keys(pattern);
 
         for (String key : keys) {
             try {
-                // key 형식: "ad_views:{adType}:{adId}:{date}"
+                // key 형식: "ad_views:{type}:{adId}:{date}"
                 String[] parts = key.split(":");
                 if (parts.length >= 4) {
-                    Long adId = Long.parseLong(parts[2]);  // 0=ad_views, 1=adType, 2=adId, 3=date
+                    Long adId = Long.parseLong(parts[2]);  // 0=ad_views, 1=type, 2=adId, 3=date
                     Object viewsObj = redisTemplate.opsForValue()
                             .get(key);
                     Long views = viewsObj != null ? Long.parseLong(viewsObj.toString()) : 0L;
@@ -114,18 +120,18 @@ public class AdvertisementService {
         return distribution;
     }
 
-    private Banner selectByDistributionGap(List<Banner> ads, Map<Long, Long> todayDistribution,
-            Map<Long, Double> targetRatio) {
+    private Advertisement selectByDistributionGap(List<Advertisement> ads,
+            Map<Long, Long> todayDistribution, Map<Long, Double> targetRatio) {
 
         long totalViews = todayDistribution.values()
                 .stream()
                 .mapToLong(Long::longValue)
                 .sum();
 
-        Banner bestAd = null;
+        Advertisement bestAd = null;
         double maxGap = -1;
 
-        for (Banner ad : ads) {
+        for (Advertisement ad : ads) {
             long currentViews = todayDistribution.getOrDefault(ad.getId(), 0L);
             double currentRatio = totalViews > 0 ? (double) currentViews / totalViews : 0;
             double targetRatio_val = targetRatio.getOrDefault(ad.getId(), 0.0);
@@ -145,7 +151,7 @@ public class AdvertisementService {
     /**
      * 노출 기록
      */
-    public void recordAdView(Banner ad, Long userId, String brandName) {
+    public void recordAdView(Advertisement ad, Long userId, String brandName) {
 
         CompletableFuture.runAsync(() -> {
             AdRecord adRecord = new AdRecord(ad, userId, brandName);
@@ -153,7 +159,7 @@ public class AdvertisementService {
         });
 
         // adType을 포함한 키 형식으로 수정
-        String todayKey = "ad_views:" + ad.getAdType()
+        String todayKey = "ad_views:" + ad.getBannerType()
                 .name()
                 .toLowerCase() + ":" + ad.getId() + ":" + LocalDate.now();
         redisTemplate.opsForValue()
@@ -167,100 +173,59 @@ public class AdvertisementService {
 
     // 1단계: JSON 광고 정보만 저장 (이미지 없이)
     @Transactional
-    public AdvertisementDto.BannerList createAdvertisement(AdvertisementDto.CreateAdvertisement requestDto) {
-        AdvertisementDto.AdvertisementRequest advertisementRequest = requestDto.getAdvertisementRequest();
-        List<AdvertisementDto.BannerRequest> bannerRequests = requestDto.getBannerRequestList();
+    public AdvertisementDto.BrandInfo createBrand(AdvertisementDto.BrandRequest requestDto) {
 
-        Advertisement advertisement = new Advertisement(advertisementRequest);
-        advertisement = adRepository.save(advertisement);
+        Brand advertisement = new Brand(requestDto);
+        advertisement = brandRepository.save(advertisement);
 
-        List<Banner> banners = new ArrayList<>();
-        if (bannerRequests != null && !bannerRequests.isEmpty()) {
-            for (AdvertisementDto.BannerRequest bannerRequest : bannerRequests) {
-                Banner banner = new Banner(advertisement, bannerRequest);
-                banners.add(banner);
-            }
-            banners = bannerRepository.saveAll(banners);
-        }
 
-        List<AdvertisementDto.BannerInfo> bannerInfos = new ArrayList<>();
-        for (Banner banner : banners) {
-            bannerInfos.add(new AdvertisementDto.BannerInfo(banner));
-        }
-
-        return new AdvertisementDto.BannerList(
-                new AdvertisementDto.AdvertisementInfo(advertisement), bannerInfos);
+        return new AdvertisementDto.BrandInfo(advertisement);
     }
 
     // 2단계: 이미지 URL 업데이트
     @Transactional
-    public AdvertisementDto.BannerList updateBannerImages(Long advertisementId, List<String> imageUrls) {
-        Advertisement advertisement = adRepository.findById(advertisementId)
-                .orElseThrow(() -> new RuntimeException("Advertisement not found with id: " + advertisementId));
+    public AdvertisementDto.BannerList updateBannerImages(Long brandId, List<String> imageUrls) {
+        Brand advertisement = brandRepository.findById(brandId)
+                .orElseThrow(
+                        () -> new RuntimeException("Advertisement not found with id: " + brandId));
 
-        List<Banner> banners = bannerRepository.findByAdvertisementId(advertisementId);
-        
+        List<Advertisement> advertisements = advertisementRepository.findByBrandId(brandId);
+
         // 이미지 URL 업데이트
-        for (int i = 0; i < banners.size() && i < imageUrls.size(); i++) {
-            Banner banner = banners.get(i);
+        for (int i = 0; i < advertisements.size() && i < imageUrls.size(); i++) {
+            Advertisement banner = advertisements.get(i);
             banner.setImageUrl(imageUrls.get(i));
         }
-        banners = bannerRepository.saveAll(banners);
+        advertisements = advertisementRepository.saveAll(advertisements);
 
-        List<AdvertisementDto.BannerInfo> bannerInfos = new ArrayList<>();
-        for (Banner banner : banners) {
-            bannerInfos.add(new AdvertisementDto.BannerInfo(banner));
+        List<AdvertisementDto.AdvertisementInfo> advertisementInfos = new ArrayList<>();
+        for (Advertisement banner : advertisements) {
+            advertisementInfos.add(new AdvertisementDto.AdvertisementInfo(banner));
         }
 
-        return new AdvertisementDto.BannerList(
-                new AdvertisementDto.AdvertisementInfo(advertisement), bannerInfos);
+        return new AdvertisementDto.BannerList(new AdvertisementDto.BrandInfo(advertisement),
+                advertisementInfos);
     }
 
-    @Transactional
-    public AdvertisementDto.BannerList createAdvertisementAndBanners(
-            AdvertisementDto.CreateAdvertisement requestDto, List<String> imageUrls) {
-        // DTO에서 데이터 추출 (getter 메서드가 없으므로 리플렉션 사용하거나 DTO 수정 필요)
-        AdvertisementDto.AdvertisementRequest advertisementRequest =
-                requestDto.getAdvertisementRequest();
-        List<AdvertisementDto.BannerRequest> bannerRequests = requestDto.getBannerRequestList();
-
-        Advertisement advertisement = new Advertisement(advertisementRequest);
-        advertisement = adRepository.save(advertisement);
-
-        List<Banner> banners = new ArrayList<>();
-        for (AdvertisementDto.BannerRequest bannerRequest : bannerRequests) {
-            Banner banner = new Banner(advertisement, bannerRequest);
-            banners.add(banner);
-        }
-        banners = bannerRepository.saveAll(banners);
-
-        List<AdvertisementDto.BannerInfo> bannerInfos = new ArrayList<>();
-        for (Banner banner : banners) {
-            bannerInfos.add(new AdvertisementDto.BannerInfo(banner));
-        }
-
-        return new AdvertisementDto.BannerList(
-                new AdvertisementDto.AdvertisementInfo(advertisement), bannerInfos);
-    }
 
     @Transactional(readOnly = true)
-    public Page<AdvertisementDto.AdvertisementInfo> getAdvertisements(int size, int page,
-            String sortType, boolean asc) {
+    public Page<AdvertisementDto.BrandInfo> getBrands(int size, int page, String sortType,
+            boolean asc) {
         Pageable pageable = asc ? PageRequest.of(page, size, Sort.by(sortType)
                 .ascending()) : PageRequest.of(page, size, Sort.by(sortType)
                 .descending());
-        Page<Advertisement> advertisements = adRepository.findAll(pageable);
-        return advertisements.map(AdvertisementDto.AdvertisementInfo::new);
+        Page<Brand> advertisements = brandRepository.findAll(pageable);
+        return advertisements.map(AdvertisementDto.BrandInfo::new);
     }
 
     @Transactional(readOnly = true)
-    public List<AdvertisementDto.BannerInfo> getAdvertisementBanners(Long advertisementId) {
-        List<Banner> banners = bannerRepository.findByAdvertisementId(advertisementId);
-        List<AdvertisementDto.BannerInfo> bannerInfos = new ArrayList<>();
-        for (Banner banner : banners) {
-            bannerInfos.add(new AdvertisementDto.BannerInfo(banner));
+    public List<AdvertisementDto.AdvertisementInfo> getAdvertisementBanners(Long brandId) {
+        List<Advertisement> advertisements = advertisementRepository.findByBrandId(brandId);
+        List<AdvertisementDto.AdvertisementInfo> advertisementInfos = new ArrayList<>();
+        for (Advertisement advertisement : advertisements) {
+            advertisementInfos.add(new AdvertisementDto.AdvertisementInfo(advertisement));
         }
-        return bannerInfos;
+        return advertisementInfos;
     }
 
     // 전체 광고 통계 조회
@@ -279,7 +244,7 @@ public class AdvertisementService {
         Long totalUsers = adRecordRepository.countDistinctUserId();
 
         // 활성 광고 수
-        Long activeAdvertisements = adRepository.countByActiveTrue();
+        Long activeAdvertisements = brandRepository.countByActiveTrue();
 
         // 일별 통계 (최근 7일)
         List<AdvertisementDto.DailyStats> dailyStats = getDailyStats(7);
@@ -296,33 +261,33 @@ public class AdvertisementService {
 
     // 개별 광고 통계 조회
     @Transactional(readOnly = true)
-    public AdvertisementDto.AdStats getAdvertisementStats(Long advertisementId) {
-        Advertisement advertisement = adRepository.findById(advertisementId)
+    public AdvertisementDto.AdStats getAdvertisementStats(Long brandId) {
+        Brand advertisement = brandRepository.findById(brandId)
                 .orElseThrow(() -> new RuntimeException("광고를 찾을 수 없습니다."));
 
         // 해당 광고의 모든 배너 조회
-        List<Banner> banners = bannerRepository.findByAdvertisementId(advertisementId);
+        List<Advertisement> advertisements = advertisementRepository.findByBrandId(brandId);
 
         // 총 노출 수
-        Long totalViews = adRecordRepository.countByBannerIn(banners);
+        Long totalViews = adRecordRepository.countByAdvertisementIn(advertisements);
 
         // 총 클릭 수
-        Long totalClicks = adRecordRepository.countByBannerInAndClickedTrue(banners);
+        Long totalClicks = adRecordRepository.countByAdvertisementInAndClickedTrue(advertisements);
 
         // 클릭률 계산
         Double clickThroughRate = totalViews > 0 ? (double) totalClicks / totalViews : 0.0;
 
         // 고유 사용자 수
-        Long uniqueUsers = adRecordRepository.countDistinctUserIdByBannerIn(banners);
+        Long uniqueUsers = adRecordRepository.countDistinctUserIdByAdvertisementIn(advertisements);
 
         // 배너별 통계
-        List<AdvertisementDto.BannerStats> bannerStats = getBannerStats(banners);
+        List<AdvertisementDto.BannerStats> bannerStats = getBannerStats(advertisements);
 
         // 일별 통계 (최근 30일)
-        List<AdvertisementDto.DailyStats> dailyStats = getDailyStatsByBanners(banners, 30);
+        List<AdvertisementDto.DailyStats> dailyStats = getDailyStatsByBanners(advertisements, 30);
 
-        return new AdvertisementDto.AdStats(advertisementId, advertisement.getBrandName(),
-                totalViews, totalClicks, clickThroughRate, uniqueUsers, bannerStats, dailyStats,
+        return new AdvertisementDto.AdStats(brandId, advertisement.getBrandName(), totalViews,
+                totalClicks, clickThroughRate, uniqueUsers, bannerStats, dailyStats,
                 advertisement.getStartDate(), advertisement.getEndDate(),
                 advertisement.getActive());
     }
@@ -355,23 +320,22 @@ public class AdvertisementService {
     }
 
     // 특정 배너들의 일별 통계
-    private List<AdvertisementDto.DailyStats> getDailyStatsByBanners(List<Banner> banners,
-            int days) {
+    private List<AdvertisementDto.DailyStats> getDailyStatsByBanners(
+            List<Advertisement> advertisements, int days) {
         List<AdvertisementDto.DailyStats> dailyStats = new ArrayList<>();
         LocalDate endDate = LocalDate.now();
 
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = endDate.minusDays(i);
-            Long views = adRecordRepository.countByBannerInAndShowedAtBetween(banners,
+            Long views = adRecordRepository.countByAdvertisementInAndShowedAtBetween(advertisements,
                     date.atStartOfDay(), date.plusDays(1)
                             .atStartOfDay());
-            Long clicks =
-                    adRecordRepository.countByBannerInAndShowedAtBetweenAndClickedTrue(banners,
-                            date.atStartOfDay(), date.plusDays(1)
-                                    .atStartOfDay());
+            Long clicks = adRecordRepository.countByAdvertisementInAndShowedAtBetweenAndClickedTrue(
+                    advertisements, date.atStartOfDay(), date.plusDays(1)
+                            .atStartOfDay());
             Long uniqueUsers =
-                    adRecordRepository.countDistinctUserIdByBannerInAndShowedAtBetween(banners,
-                            date.atStartOfDay(), date.plusDays(1)
+                    adRecordRepository.countByAdvertisementInAndShowedAtBetweenAndClickedTrue(
+                            advertisements, date.atStartOfDay(), date.plusDays(1)
                                     .atStartOfDay());
             Double clickThroughRate = views > 0 ? (double) clicks / views : 0.0;
 
@@ -386,15 +350,17 @@ public class AdvertisementService {
     private List<AdvertisementDto.AdTypeStats> getAdTypeStats() {
         List<AdvertisementDto.AdTypeStats> adTypeStats = new ArrayList<>();
 
-        for (AdType adType : AdType.values()) {
-            List<Banner> banners = bannerRepository.findByAdType(adType);
-            if (!banners.isEmpty()) {
-                Long views = adRecordRepository.countByBannerIn(banners);
-                Long clicks = adRecordRepository.countByBannerInAndClickedTrue(banners);
+        for (BannerType bannerType : BannerType.values()) {
+            List<Advertisement> advertisements =
+                    advertisementRepository.findByBannerType(bannerType);
+            if (!advertisements.isEmpty()) {
+                Long views = adRecordRepository.countByAdvertisementIn(advertisements);
+                Long clicks =
+                        adRecordRepository.countByAdvertisementInAndClickedTrue(advertisements);
                 Double clickThroughRate = views > 0 ? (double) clicks / views : 0.0;
-                Long advertisementCount = (long) banners.size();
+                Long advertisementCount = (long) advertisements.size();
 
-                adTypeStats.add(new AdvertisementDto.AdTypeStats(adType.name(), views, clicks,
+                adTypeStats.add(new AdvertisementDto.AdTypeStats(bannerType.name(), views, clicks,
                         clickThroughRate, advertisementCount));
             }
         }
@@ -403,24 +369,25 @@ public class AdvertisementService {
     }
 
     // 특정 배너들의 광고 타입별 통계
-    private List<AdvertisementDto.AdTypeStats> getAdTypeStatsByBanners(List<Banner> banners) {
-        Map<AdType, List<Banner>> bannersByType = banners.stream()
-                .collect(Collectors.groupingBy(Banner::getAdType));
+    private List<AdvertisementDto.AdTypeStats> getAdTypeStatsByBanners(
+            List<Advertisement> advertisements) {
+        Map<BannerType, List<Advertisement>> bannersByType = advertisements.stream()
+                .collect(Collectors.groupingBy(Advertisement::getBannerType));
 
         List<AdvertisementDto.AdTypeStats> adTypeStats = new ArrayList<>();
 
-        for (Map.Entry<AdType, List<Banner>> entry : bannersByType.entrySet()) {
-            AdType adType = entry.getKey();
-            List<Banner> typeBanners = entry.getValue();
+        for (Map.Entry<BannerType, List<Advertisement>> entry : bannersByType.entrySet()) {
+            BannerType bannerType = entry.getKey();
+            List<Advertisement> typeAdvertisements = entry.getValue();
 
-            Long views = adRecordRepository.countByBannerIn(typeBanners);
-            Long clicks = adRecordRepository.countByBannerInAndClickedTrue(typeBanners);
+            Long views = adRecordRepository.countByAdvertisementIn(typeAdvertisements);
+            Long clicks =
+                    adRecordRepository.countByAdvertisementInAndClickedTrue(typeAdvertisements);
             Double clickThroughRate = views > 0 ? (double) clicks / views : 0.0;
-            Long advertisementCount = (long) typeBanners.size();
+            Long advertisementCount = (long) typeAdvertisements.size();
 
-            adTypeStats.add(
-                    new AdvertisementDto.AdTypeStats(adType.name(), views, clicks, clickThroughRate,
-                            advertisementCount));
+            adTypeStats.add(new AdvertisementDto.AdTypeStats(bannerType.name(), views, clicks,
+                    clickThroughRate, advertisementCount));
         }
 
         return adTypeStats;
@@ -436,7 +403,7 @@ public class AdvertisementService {
             Long views = adRecordRepository.countByBrandName(brandName);
             Long clicks = adRecordRepository.countByBrandNameAndClickedTrue(brandName);
             Double clickThroughRate = views > 0 ? (double) clicks / views : 0.0;
-            Long advertisementCount = (long) adRepository.findByBrandName(brandName)
+            Long advertisementCount = (long) brandRepository.findByBrandName(brandName)
                     .size();
 
             // 간단한 AdTypeStats 리스트 생성 (실제로는 더 복잡한 로직 필요)
@@ -456,16 +423,17 @@ public class AdvertisementService {
     }
 
     // 배너별 통계
-    private List<AdvertisementDto.BannerStats> getBannerStats(List<Banner> banners) {
+    private List<AdvertisementDto.BannerStats> getBannerStats(List<Advertisement> advertisements) {
         List<AdvertisementDto.BannerStats> bannerStats = new ArrayList<>();
 
-        for (Banner banner : banners) {
-            Long views = adRecordRepository.countByBanner(banner);
-            Long clicks = adRecordRepository.countByBannerAndClickedTrue(banner);
+        for (Advertisement advertisement : advertisements) {
+            Long views = adRecordRepository.countByAdvertisement(advertisement);
+            Long clicks = adRecordRepository.countByAdvertisementAndClickedTrue(advertisement);
             Double clickThroughRate = views > 0 ? (double) clicks / views : 0.0;
 
-            bannerStats.add(new AdvertisementDto.BannerStats(banner.getId(), banner.getAdType()
-                    .name(), views, clicks, clickThroughRate, banner.getImageUrl()));
+            bannerStats.add(new AdvertisementDto.BannerStats(advertisement.getId(),
+                    advertisement.getBannerType()
+                            .name(), views, clicks, clickThroughRate, advertisement.getImageUrl()));
         }
 
         return bannerStats;
@@ -611,15 +579,15 @@ public class AdvertisementService {
         // 이 부분은 실제 구현에서 AdRecord와 Banner를 조인해서 처리해야 함
         List<AdvertisementDto.AdTypeStats> adTypeStats = new ArrayList<>();
 
-        for (AdType adType : AdType.values()) {
+        for (BannerType bannerType : BannerType.values()) {
             // 브랜드별 특정 광고 타입의 통계 계산
-            Long views = getBrandAdTypeViews(brandName, adType);
-            Long clicks = getBrandAdTypeClicks(brandName, adType);
+            Long views = getBrandAdTypeViews(brandName, bannerType);
+            Long clicks = getBrandAdTypeClicks(brandName, bannerType);
             Double clickThroughRate = views > 0 ? (double) clicks / views : 0.0;
-            Long advertisementCount = getBrandAdTypeCount(brandName, adType);
+            Long advertisementCount = getBrandAdTypeCount(brandName, bannerType);
 
             if (views > 0) {
-                adTypeStats.add(new AdvertisementDto.AdTypeStats(adType.name(), views, clicks,
+                adTypeStats.add(new AdvertisementDto.AdTypeStats(bannerType.name(), views, clicks,
                         clickThroughRate, advertisementCount));
             }
         }
@@ -632,13 +600,13 @@ public class AdvertisementService {
             LocalDate date) {
         List<AdvertisementDto.AdTypeStats> adTypeStats = new ArrayList<>();
 
-        for (AdType adType : AdType.values()) {
-            Long views = getBrandAdTypeViewsByDate(brandName, adType, date);
-            Long clicks = getBrandAdTypeClicksByDate(brandName, adType, date);
+        for (BannerType bannerType : BannerType.values()) {
+            Long views = getBrandAdTypeViewsByDate(brandName, bannerType, date);
+            Long clicks = getBrandAdTypeClicksByDate(brandName, bannerType, date);
             Double clickThroughRate = views > 0 ? (double) clicks / views : 0.0;
 
             if (views > 0) {
-                adTypeStats.add(new AdvertisementDto.AdTypeStats(adType.name(), views, clicks,
+                adTypeStats.add(new AdvertisementDto.AdTypeStats(bannerType.name(), views, clicks,
                         clickThroughRate, 0L));
             }
         }
@@ -683,74 +651,116 @@ public class AdvertisementService {
 
     // 브랜드별 활성 광고 수 조회
     private Long getActiveAdvertisementsByBrand(String brandName) {
-        return (long) adRepository.findByBrandName(brandName)
+        return (long) brandRepository.findByBrandName(brandName)
                 .size();
     }
 
     // 브랜드별 광고 타입별 노출 수 조회 (헬퍼 메서드들)
-    private Long getBrandAdTypeViews(String brandName, AdType adType) {
-        return adRecordRepository.countByBrandNameAndAdType(brandName, adType);
+    private Long getBrandAdTypeViews(String brandName, BannerType bannerType) {
+        return adRecordRepository.countByBrandNameAndAdType(brandName, bannerType);
     }
 
-    private Long getBrandAdTypeClicks(String brandName, AdType adType) {
-        return adRecordRepository.countByBrandNameAndAdTypeAndClickedTrue(brandName, adType);
+    private Long getBrandAdTypeClicks(String brandName, BannerType bannerType) {
+        return adRecordRepository.countByBrandNameAndAdTypeAndClickedTrue(brandName, bannerType);
     }
 
-    private Long getBrandAdTypeCount(String brandName, AdType adType) {
-        return adRecordRepository.countByBrandNameAndAdType(brandName, adType);
+    private Long getBrandAdTypeCount(String brandName, BannerType bannerType) {
+        return adRecordRepository.countByBrandNameAndAdType(brandName, bannerType);
     }
 
-    private Long getBrandAdTypeViewsByDate(String brandName, AdType adType, LocalDate date) {
+    private Long getBrandAdTypeViewsByDate(String brandName, BannerType bannerType,
+            LocalDate date) {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.plusDays(1)
                 .atStartOfDay();
-        return adRecordRepository.countByBrandNameAndAdTypeAndShowedAtBetween(brandName, adType,
+        return adRecordRepository.countByBrandNameAndAdTypeAndShowedAtBetween(brandName, bannerType,
                 startOfDay, endOfDay);
     }
 
-    private Long getBrandAdTypeClicksByDate(String brandName, AdType adType, LocalDate date) {
+    private Long getBrandAdTypeClicksByDate(String brandName, BannerType bannerType,
+            LocalDate date) {
 
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.plusDays(1)
                 .atStartOfDay();
         return adRecordRepository.countByBrandNameAndAdTypeAndShowedAtBetweenAndClickedTrue(
-                brandName, adType, startOfDay, endOfDay);
+                brandName, bannerType, startOfDay, endOfDay);
     }
 
     @Transactional
-    public AdvertisementDto.BannerInfo createBanner(Long advertisementId,
+    public AdvertisementDto.AdvertisementInfo createAdvertisement(Long advertisementId,
             AdvertisementDto.BannerRequest request) {
-        Advertisement advertisement = adRepository.findById(advertisementId)
+        Brand advertisement = brandRepository.findById(advertisementId)
                 .orElseThrow(() -> new RuntimeException("광고를 찾을 수 없습니다."));
 
-        Banner banner = new Banner(advertisement, request);
-        banner = bannerRepository.save(banner);
+        Advertisement banner = new Advertisement(advertisement, request);
+        banner = advertisementRepository.save(banner);
 
-        return new AdvertisementDto.BannerInfo(banner);
+        return new AdvertisementDto.AdvertisementInfo(banner);
     }
 
-    public AdvertisementDto.BannerInfo updateBanner(Long advertisementId, Long bannerId,
-            AdvertisementDto.BannerRequest request) {
-        Advertisement advertisement = adRepository.findById(advertisementId)
+    public AdvertisementDto.AdvertisementInfo updateAdvertisement(Long advertisementId,
+            Long bannerId, AdvertisementDto.BannerRequest request) {
+        Brand advertisement = brandRepository.findById(advertisementId)
                 .orElseThrow(() -> new RuntimeException("광고를 찾을 수 없습니다."));
 
-        Banner banner = bannerRepository.findById(bannerId)
+        Advertisement banner = advertisementRepository.findById(bannerId)
                 .orElseThrow(() -> new RuntimeException("배너를 찾을 수 없습니다."));
 
-        if (!banner.getAdvertisement()
+        if (!banner.getBrand()
                 .getId()
                 .equals(advertisement.getId())) {
             throw new RuntimeException("배너가 해당 광고에 속하지 않습니다.");
         }
 
         banner.updateFromRequest(request);
-        banner = bannerRepository.save(banner);
+        banner = advertisementRepository.save(banner);
 
-        return new AdvertisementDto.BannerInfo(banner);
+        return new AdvertisementDto.AdvertisementInfo(banner);
     }
 
-    public Advertisement getAdvertisementById(Long advertisementId) {
-        return adRepository.findById(advertisementId)
+    public Brand getBrandById(Long advertisementId) {
+        return brandRepository.findById(advertisementId)
                 .orElseThrow(() -> new RuntimeException("광고를 찾을 수 없습니다."));
+    }
+
+    @Transactional
+    public boolean deleteAdvertisement(Long advertisementId) {
+        Advertisement advertisement = advertisementRepository.findById(advertisementId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.ADVERTISEMENT_NOT_FOUND));
+        advertisementRepository.delete(advertisement);
+        return true;
+    }
+
+    @Transactional
+    public boolean clickAdvertisement(Long advertisementId, User user) {
+        Advertisement advertisement = advertisementRepository.findById(advertisementId)
+                .orElseThrow(() -> new BusinessException(ExceptionCode.ADVERTISEMENT_NOT_FOUND));
+        String userClickKey = null;
+        if (user != null) {
+            // 사용자가 이미 오늘 이 광고를 클릭했는지 확인
+            userClickKey =
+                    "user_ad_click:" + user.getId() + ":" + advertisementId + ":" + LocalDate.now();
+            Boolean hasClicked = redisTemplate.hasKey(userClickKey);
+            if (hasClicked) {return false;}
+        }
+        // 클릭 기록 저장
+        CompletableFuture.runAsync(() -> {
+            Optional<AdRecord> optionalAdRecord = user == null ? Optional.empty() :
+                    adRecordRepository.findTopByAdvertisementAndUserIdOrderByShowedAtDesc(
+                            advertisement, user.getId());
+            if (optionalAdRecord.isPresent()) {
+                AdRecord adRecord = optionalAdRecord.get();
+                adRecord.setClicked(true);
+                adRecordRepository.save(adRecord);
+            }
+        });
+        if (user != null) {
+            redisTemplate.opsForValue()
+                    .set(userClickKey, "1", Duration.ofHours(3));
+
+        }
+
+        return true;
     }
 }

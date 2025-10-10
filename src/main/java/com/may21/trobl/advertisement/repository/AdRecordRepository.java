@@ -1,8 +1,8 @@
 package com.may21.trobl.advertisement.repository;
 
-import com.may21.trobl._global.enums.AdType;
+import com.may21.trobl._global.enums.BannerType;
 import com.may21.trobl.advertisement.domain.AdRecord;
-import com.may21.trobl.advertisement.domain.Banner;
+import com.may21.trobl.advertisement.domain.Advertisement;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AdRecordRepository extends JpaRepository<AdRecord, Long> {
@@ -23,20 +24,20 @@ public interface AdRecordRepository extends JpaRepository<AdRecord, Long> {
     long countDistinctUserId();
 
     // 특정 배너들의 레코드 수 조회
-    long countByBannerIn(List<Banner> banners);
+    long countByAdvertisementIn(List<Advertisement> advertisements);
 
     // 특정 배너들 중 클릭된 레코드 수 조회
-    long countByBannerInAndClickedTrue(List<Banner> banners);
+    long countByAdvertisementInAndClickedTrue(List<Advertisement> advertisements);
 
     // 특정 배너들의 고유 사용자 수 조회
-    @Query("SELECT COUNT(DISTINCT ar.userId) FROM AdRecord ar WHERE ar.banner IN :banners")
-    long countDistinctUserIdByBannerIn(@Param("banners") List<Banner> banners);
+    @Query("SELECT COUNT(DISTINCT ar.userId) FROM AdRecord ar WHERE ar.advertisement IN :banners")
+    long countDistinctUserIdByAdvertisementIn(@Param("banners") List<Advertisement> advertisements);
 
     // 특정 배너의 레코드 수 조회
-    long countByBanner(Banner banner);
+    long countByAdvertisement(Advertisement advertisement);
 
     // 특정 배너의 클릭된 레코드 수 조회
-    long countByBannerAndClickedTrue(Banner banner);
+    long countByAdvertisementAndClickedTrue(Advertisement advertisement);
 
     // 특정 기간의 레코드 수 조회
     long countByShowedAtBetween(LocalDateTime start, LocalDateTime end);
@@ -50,16 +51,16 @@ public interface AdRecordRepository extends JpaRepository<AdRecord, Long> {
             @Param("end") LocalDateTime end);
 
     // 특정 배너들의 특정 기간 레코드 수 조회
-    long countByBannerInAndShowedAtBetween(List<Banner> banners, LocalDateTime start,
+    long countByAdvertisementInAndShowedAtBetween(List<Advertisement> advertisements, LocalDateTime start,
             LocalDateTime end);
 
     // 특정 배너들의 특정 기간 클릭된 레코드 수 조회
-    long countByBannerInAndShowedAtBetweenAndClickedTrue(List<Banner> banners, LocalDateTime start,
+    long countByAdvertisementInAndShowedAtBetweenAndClickedTrue(List<Advertisement> advertisements, LocalDateTime start,
             LocalDateTime end);
 
     // 특정 배너들의 특정 기간 고유 사용자 수 조회
-    @Query("SELECT COUNT(DISTINCT ar.userId) FROM AdRecord ar WHERE ar.banner IN :banners AND ar.showedAt BETWEEN :start AND :end")
-    long countDistinctUserIdByBannerInAndShowedAtBetween(@Param("banners") List<Banner> banners,
+    @Query("SELECT COUNT(DISTINCT ar.userId) FROM AdRecord ar WHERE ar.advertisement IN :banners AND ar.showedAt BETWEEN :start AND :end")
+    long countDistinctUserIdByAdvertisementInAndShowedAtBetween(@Param("banners") List<Advertisement> advertisements,
             @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     // 프로젝트별 통계 메서드들
@@ -100,7 +101,8 @@ public interface AdRecordRepository extends JpaRepository<AdRecord, Long> {
     @Query("SELECT MIN(ar.showedAt) FROM AdRecord ar WHERE " + "ar.brandName = :brandName")
     LocalDateTime findFirstActivityByBrandName(@Param("brandName") String brandName);
 
-    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.banner.advertisement a WHERE a.brandName = :brandName")
+    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.advertisement.brand a WHERE a.brandName = " +
+            ":brandName")
     Long countByBrandName(String brandName);
 
     @Query("SELECT COUNT(ar)  FROM AdRecord ar  WHERE ar.brandName = :brandName AND ar.clicked = true")
@@ -114,19 +116,22 @@ public interface AdRecordRepository extends JpaRepository<AdRecord, Long> {
     Long countByBrandNameAndShowedAtBetweenAndClickedTrue(String brandName, LocalDateTime start,
             LocalDateTime end);
 
-    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.banner b WHERE ar.brandName = :brandName AND b.adType = :adType")
-    Long countByBrandNameAndAdType(String brandName, AdType adType);
+    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.advertisement b WHERE ar.brandName = :brandName AND b.bannerType = :bannerType")
+    Long countByBrandNameAndAdType(String brandName, BannerType bannerType);
 
-    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.banner b WHERE ar.brandName = :brandName AND b.adType = :adType AND ar.clicked = true")
-    Long countByBrandNameAndAdTypeAndClickedTrue(String brandName, AdType adType);
+    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.advertisement b WHERE ar.brandName = :brandName AND b.bannerType = :bannerType AND ar.clicked = true")
+    Long countByBrandNameAndAdTypeAndClickedTrue(String brandName, BannerType bannerType);
 
-    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.banner b WHERE ar.brandName = :brandName " +
-            "AND b.adType = :adType AND ar.showedAt BETWEEN :startOfDay AND :endOfDay")
-    Long countByBrandNameAndAdTypeAndShowedAtBetween(String brandName, AdType adType,
+    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.advertisement b WHERE ar.brandName = :brandName " +
+            "AND b.bannerType = :bannerType AND ar.showedAt BETWEEN :startOfDay AND :endOfDay")
+    Long countByBrandNameAndAdTypeAndShowedAtBetween(String brandName, BannerType bannerType,
             LocalDateTime startOfDay, LocalDateTime endOfDay);
 
-    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.banner b WHERE ar.brandName = :brandName " +
-            "AND b.adType = :adType AND ar.showedAt BETWEEN :startOfDay AND :endOfDay AND ar.clicked = true")
-    Long countByBrandNameAndAdTypeAndShowedAtBetweenAndClickedTrue(String brandName, AdType adType,
+    @Query("SELECT COUNT(ar)  FROM AdRecord ar JOIN ar.advertisement b WHERE ar.brandName = :brandName " +
+            "AND b.bannerType = :bannerType AND ar.showedAt BETWEEN :startOfDay AND :endOfDay AND ar.clicked" +
+            " = true")
+    Long countByBrandNameAndAdTypeAndShowedAtBetweenAndClickedTrue(String brandName, BannerType bannerType,
             LocalDateTime startOfDay, LocalDateTime endOfDay);
+
+    Optional<AdRecord> findTopByAdvertisementAndUserIdOrderByShowedAtDesc(Advertisement advertisement, Long id);
 }

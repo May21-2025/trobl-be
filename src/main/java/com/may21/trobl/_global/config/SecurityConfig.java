@@ -41,6 +41,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/announcements/**").permitAll()
                         .requestMatchers("/oauth/**").permitAll() // ✅ 회원가입, 로그인은 인증 없이
+                        .requestMatchers(HttpMethod.GET, "/ads").permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/ads/advertisements/*/click").permitAll()
                         .requestMatchers(HttpMethod.GET, "/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // ✅ POST, PUT, DELETE 요청은 인증 필요

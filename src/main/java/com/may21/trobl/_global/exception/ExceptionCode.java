@@ -8,6 +8,10 @@ public enum ExceptionCode {
     //ANNOUNCEMENT A000
     ANNOUNCEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "A000", "공지사항을 찾을 수 없습니다."),
 
+    // BRAND B000
+    BRAND_NOT_FOUND(HttpStatus.NOT_FOUND, "B000", "브랜드를 찾을 수 없습니다."),
+    ADVERTISEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "B001", "광고를 찾을 수 없습니다."),
+
     // COMMENT C000
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "C000", "댓글을 찾을 수 없습니다."),
 

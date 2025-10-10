@@ -1,12 +1,9 @@
 package com.may21.trobl.advertisement.dto;
 
-import com.may21.trobl._global.enums.AdType;
+import com.may21.trobl.advertisement.domain.Brand;
 import com.may21.trobl.advertisement.domain.Advertisement;
-import com.may21.trobl.advertisement.domain.Banner;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,73 +13,67 @@ public class AdvertisementDto {
 
     @Getter
     public static class Response {
-        private final Long bannerId;
+        private final Long advertisementId;
         private final String imageUrl;
         private final String linkUrl;
         private final Long postId;
-        private final String adType;
+        private final String type;
 
-        public Response(Advertisement advertisement, Banner banner) {
-            this.bannerId = banner.getId();
+        public Response(Brand advertisement, Advertisement banner) {
+            this.advertisementId = banner.getId();
             this.imageUrl = banner.getImageUrl();
             this.linkUrl = advertisement.getLinkUrl();
             this.postId = advertisement.getId();
-            this.adType = banner.getAdType()
+            this.type = banner.getBannerType()
                     .name();
         }
 
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    public static class CreateAdvertisement {
-        private AdvertisementRequest advertisementRequest;
-        private List<BannerRequest> bannerRequestList;
-
-        public CreateAdvertisement(AdvertisementRequest advertisementRequest,
-                List<BannerRequest> bannerRequestList) {
-            this.advertisementRequest = advertisementRequest;
-            this.bannerRequestList = bannerRequestList;
+        public Response() {
+            this.advertisementId = null;
+            this.imageUrl = null;
+            this.linkUrl = null;
+            this.postId = null;
+            this.type = null;
         }
     }
+
 
     @Getter
     public static class BannerList {
-        private final AdvertisementInfo advertisementInfo;
-        private final List<BannerInfo> bannerInfos;
+        private final BrandInfo brandInfo;
+        private final List<AdvertisementInfo> advertisementInfos;
 
-        public BannerList(AdvertisementInfo advertisementInfo, List<BannerInfo> bannerInfos) {
-            this.advertisementInfo = advertisementInfo;
-            this.bannerInfos = bannerInfos;
+        public BannerList(BrandInfo brandInfo, List<AdvertisementInfo> advertisementInfos) {
+            this.brandInfo = brandInfo;
+            this.advertisementInfos = advertisementInfos;
         }
     }
 
     @Getter
-    public static class BannerInfo {
-        private final Long bannerId;
+    public static class AdvertisementInfo {
+        private final Long advertisementId;
         private final String imageUrl;
-        private final String adType;
+        private final String bannerType;
 
-        public BannerInfo(Banner banner) {
-            this.bannerId = banner.getId();
-            this.imageUrl = banner.getImageUrl();
-            this.adType = banner.getAdType()
+        public AdvertisementInfo(Advertisement advertisement) {
+            this.advertisementId = advertisement.getId();
+            this.imageUrl = advertisement.getImageUrl();
+            this.bannerType = advertisement.getBannerType()
                     .name();
         }
 
     }
 
-    public record AdvertisementRequest(String brandName, String linkUrl, Long postId,
-                                       Integer priority, Long dailyBudget, Long costPerView,
-                                       String startDate, String endDate) {}
+    public record BrandRequest(String brandName, String linkUrl, Long postId,
+                               Integer priority, Long dailyBudget, Long costPerView,
+                               String startDate, String endDate) {}
 
-    public record BannerRequest(String type, Integer weight, String size) {}
+    public record BannerRequest(String type, Integer weight) {}
 
     @Getter
     @AllArgsConstructor
-    public static class AdvertisementInfo {
-        private final Long advertisementId;
+    public static class BrandInfo {
+        private final Long brandId;
         private final String brandName;
         private final String linkUrl;
         private final Long postId;
@@ -93,17 +84,17 @@ public class AdvertisementDto {
         private final LocalDateTime startDate;
         private final LocalDateTime endDate;
 
-        public AdvertisementInfo(Advertisement advertisement) {
-            this.advertisementId = advertisement.getId();
-            this.brandName = advertisement.getBrandName();
-            this.linkUrl = advertisement.getLinkUrl();
-            this.postId = advertisement.getPostId();
-            this.priority = advertisement.getPriority();
-            this.active = advertisement.getActive();
-            this.dailyBudget = advertisement.getDailyBudget();
-            this.costPerView = advertisement.getCostPerView();
-            this.startDate = advertisement.getStartDate();
-            this.endDate = advertisement.getEndDate();
+        public BrandInfo(Brand brand) {
+            this.brandId = brand.getId();
+            this.brandName = brand.getBrandName();
+            this.linkUrl = brand.getLinkUrl();
+            this.postId = brand.getPostId();
+            this.priority = brand.getPriority();
+            this.active = brand.getActive();
+            this.dailyBudget = brand.getDailyBudget();
+            this.costPerView = brand.getCostPerView();
+            this.startDate = brand.getStartDate();
+            this.endDate = brand.getEndDate();
         }
 
     }
@@ -137,7 +128,7 @@ public class AdvertisementDto {
     // 개별 광고 통계
     @Getter
     public static class AdStats {
-        private final Long advertisementId;
+        private final Long brandId;
         private final String brandName;
         private final Long totalViews;
         private final Long totalClicks;
@@ -149,11 +140,11 @@ public class AdvertisementDto {
         private final LocalDateTime endDate;
         private final Boolean active;
 
-        public AdStats(Long advertisementId, String brandName, Long totalViews, Long totalClicks,
+        public AdStats(Long brandId, String brandName, Long totalViews, Long totalClicks,
                 Double clickThroughRate, Long uniqueUsers, List<BannerStats> bannerStats,
                 List<DailyStats> dailyStats, LocalDateTime startDate, LocalDateTime endDate,
                 Boolean active) {
-            this.advertisementId = advertisementId;
+            this.brandId = brandId;
             this.brandName = brandName;
             this.totalViews = totalViews;
             this.totalClicks = totalClicks;
@@ -171,17 +162,17 @@ public class AdvertisementDto {
     // 배너별 통계
     @Getter
     public static class BannerStats {
-        private final Long bannerId;
-        private final String adType;
+        private final Long advertisementId;
+        private final String type;
         private final Long views;
         private final Long clicks;
         private final Double clickThroughRate;
         private final String imageUrl;
 
-        public BannerStats(Long bannerId, String adType, Long views, Long clicks,
+        public BannerStats(Long advertisementId, String type, Long views, Long clicks,
                 Double clickThroughRate, String imageUrl) {
-            this.bannerId = bannerId;
-            this.adType = adType;
+            this.advertisementId = advertisementId;
+            this.type = type;
             this.views = views;
             this.clicks = clicks;
             this.clickThroughRate = clickThroughRate;
@@ -211,15 +202,15 @@ public class AdvertisementDto {
     // 광고 타입별 통계
     @Getter
     public static class AdTypeStats {
-        private final String adType;
+        private final String type;
         private final Long views;
         private final Long clicks;
         private final Double clickThroughRate;
         private final Long advertisementCount;
 
-        public AdTypeStats(String adType, Long views, Long clicks, Double clickThroughRate,
+        public AdTypeStats(String type, Long views, Long clicks, Double clickThroughRate,
                 Long advertisementCount) {
-            this.adType = adType;
+            this.type = type;
             this.views = views;
             this.clicks = clicks;
             this.clickThroughRate = clickThroughRate;
@@ -350,7 +341,7 @@ public class AdvertisementDto {
     }
 
     // 프로젝트 목록 통계
-    public record BrandListStats(List<BrandSummary> projects, Long totalBrands, Long totalViews,
+    public record BrandListStats(List<BrandSummary> brands, Long totalBrands, Long totalViews,
                                  Long totalClicks, Double overallClickThroughRate) {}
 
     // 프로젝트 요약 정보

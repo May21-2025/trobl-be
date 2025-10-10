@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -19,18 +20,19 @@ public class AdRecord {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Banner banner;
+    private Advertisement advertisement;
 
     private Long userId;
 
     private String brandName;
 
+    @Setter
     private boolean clicked = false;
 
     private LocalDateTime showedAt;
 
-    public AdRecord(Banner ad, Long userId, String brandName) {
-        this.banner = ad;
+    public AdRecord(Advertisement ad, Long userId, String brandName) {
+        this.advertisement = ad;
         this.userId = userId;
         this.showedAt = LocalDateTime.now();
         this.brandName = brandName;

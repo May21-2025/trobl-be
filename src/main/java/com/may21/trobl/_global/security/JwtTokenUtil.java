@@ -303,8 +303,12 @@ public class JwtTokenUtil {
         if (tokenStr == null) {
             return null;
         }
-        String token = tokenStr.startsWith("Bearer ") ? tokenStr.substring(7) : tokenStr;
-        Claims claims = getClaims(token);
-        return claims.get("userId", Long.class);
+        try {
+            String token = tokenStr.startsWith("Bearer ") ? tokenStr.substring(7) : tokenStr;
+            Claims claims = getClaims(token);
+            return claims.get("userId", Long.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
