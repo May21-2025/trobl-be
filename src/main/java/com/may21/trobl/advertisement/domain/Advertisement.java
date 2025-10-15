@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Entity
 @Getter
 @Setter
@@ -28,6 +30,9 @@ public class Advertisement {
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
+    @OneToMany(mappedBy = "advertisement", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AdRecord> adRecords;
+
     public Advertisement(Brand brand, AdvertisementDto.BannerRequest request) {
         this.brand = brand;
         this.bannerType = BannerType.valueOf(request.type());
@@ -36,7 +41,8 @@ public class Advertisement {
 
     public String getImageUrl() {
         // 저장된 imageUrl이 있으면 그것을 사용, 없으면 동적으로 생성
-        return this.imageUrl != null ? this.imageUrl : UrlMaker.makeAdImageUrl(brand.getBrandName(),
+        return this.imageUrl != null ? this.imageUrl :
+                UrlMaker.makeAdImageUrl(id, brand.getBrandName(),
                 bannerType);
     }
 

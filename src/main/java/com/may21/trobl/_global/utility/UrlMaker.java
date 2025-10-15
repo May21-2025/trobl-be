@@ -7,14 +7,13 @@ import static com.may21.trobl._global.component.GlobalValues.AD_IMAGE_PATH;
 
 public class UrlMaker {
 
-    public static String makeAdImageUrl(String brandName, BannerType bannerType) {
-        return GlobalValues.getCdnUrl() + GlobalValues.getPREFIX() + makeAdImageUrlKey(brandName,
-                bannerType);
+    public static String makeAdImageUrl(Long id, String brandName, BannerType bannerType) {
+        return GlobalValues.getCdnUrl() + GlobalValues.getPREFIX() +
+                makeAdImageUrlKey(id, brandName, bannerType);
     }
 
-    public static String makeAdImageUrlKey(String brandName, BannerType bannerType) {
-        return AD_IMAGE_PATH +  brandName +
-                "/" + bannerType.name().toLowerCase() +
-                ".webp";
+    public static String makeAdImageUrlKey(Long id, String brandName, BannerType bannerType) {
+        return AD_IMAGE_PATH + brandName + "/" + bannerType.name()
+                .toLowerCase() + "_" + id + ".webp";
     }
 }

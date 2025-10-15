@@ -699,6 +699,7 @@ public class AdvertisementService {
         return new AdvertisementDto.AdvertisementInfo(banner);
     }
 
+    @Transactional
     public AdvertisementDto.AdvertisementInfo updateAdvertisement(Long advertisementId,
             Long bannerId, AdvertisementDto.BannerRequest request) {
         Brand advertisement = brandRepository.findById(advertisementId)

@@ -66,13 +66,14 @@ public class GoogleCloudStorageService implements StorageService {
     }
 
     @Override
-    public String uploadBannerImage(Brand brand, AdvertisementDto.BannerRequest bannerRequest,
+    public String uploadBannerImage(Brand brand, AdvertisementDto.AdvertisementInfo bannerResponse,
             MultipartFile file) {
         String brandName = brand.getBrandName();
         String url = brand.getLinkUrl();
         try {
-            String imageKey = UrlMaker.makeAdImageUrlKey(brand.getBrandName(),
-                    BannerType.fromString(bannerRequest.type()));
+            Long id = bannerResponse.getAdvertisementId();
+            String imageKey = UrlMaker.makeAdImageUrlKey(id, brand.getBrandName(),
+                    BannerType.fromString(bannerResponse.getBannerType()));
             String filePath = GlobalValues.getPREFIX() + imageKey;
 
             // 이미지 바이트 변환 (배너도 썸네일처럼 변환 필요하다면 createThumbnail 사용)

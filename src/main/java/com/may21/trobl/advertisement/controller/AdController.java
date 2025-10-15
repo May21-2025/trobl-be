@@ -94,7 +94,7 @@ public class AdController {
         AdvertisementDto.AdvertisementInfo response =
                 advertisementService.createAdvertisement(brandId, request);
         Brand brand = advertisementService.getBrandById(brandId);
-        String image = storageService.uploadBannerImage(brand, request, file);
+        String image = storageService.uploadBannerImage(brand, response, file);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
@@ -106,9 +106,9 @@ public class AdController {
             @RequestHeader("Authorization") String token) {
         jwtTokenUtil.getAdminUserByToken(token);
         Brand ad = advertisementService.getBrandById(brandId);
-        String image = storageService.uploadBannerImage(ad, request, file);
         AdvertisementDto.AdvertisementInfo response =
                 advertisementService.updateAdvertisement(brandId, advertisementId, request);
+        String image = storageService.uploadBannerImage(ad, response, file);
         return new ResponseEntity<>(Message.success(response), HttpStatus.OK);
     }
 
